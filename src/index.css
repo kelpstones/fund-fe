@@ -1,0 +1,59 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  font-synthesis: none;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  background: #f6f7fb;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: #ffffff;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.btn,
+.input,
+.select,
+.textarea,
+.badge,
+.modal-box {
+  border-radius: 0.375rem;
+}
+
+.font-display {
+  letter-spacing: 0;
+}
+
+@layer components {
+  .table :where(th, td) {
+    white-space: nowrap;
+  }
+
+  .table :where(td:first-child) {
+    white-space: normal;
+  }
+}
