@@ -112,21 +112,14 @@ export function ProfilePage() {
         ...(isAdmin ? { level: form.level as "admin" | "superadmin" } : {}),
       };
 
-      if (canPersistAdminProfile) {
-        await directApi.put(`/admin/${user?.id}`, form, {
-          ...user,
-          ...localUpdates,
-        });
+      if (isAdmin && user?.id) {
+        await directApi.put(`/admin/${user.id}`, form, { ...user, ...localUpdates });
       }
 
       return updateUser(localUpdates);
     },
     onSuccess: async () => {
-      setSaveMessage(
-        canPersistAdminProfile
-          ? "Profile berhasil disimpan."
-          : "Profile tersimpan di sesi frontend. Sinkronisasi server belum tersedia untuk role ini.",
-      );
+      setSaveMessage("Profile berhasil disimpan.");
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
@@ -414,16 +407,12 @@ export function ApiStatusPage() {
     queryFn: () => directApi.get("/", { status: "offline" }),
   });
   const userClassesQuery = useQuery({
-    queryKey: ["api-status", "user-classes"],
-    queryFn: () => directApi.get("/user/kelas?page=1&limit=10", []),
+    queryKey: ["api-status", "bisnis-kelas"],
+    queryFn: () => directApi.get("/bisnis/kelas?page=1&limit=10", []),
   });
   const userClassDetailQuery = useQuery({
-    queryKey: ["api-status", "user-class-detail"],
-    queryFn: () => directApi.get("/user/kelas/1", null),
-  });
-  const adminDashboardQuery = useQuery({
-    queryKey: ["api-status", "dashboard-admin"],
-    queryFn: () => directApi.get("/dashboard/admin", null),
+    queryKey: ["api-status", "bisnis-kelas-detail"],
+    queryFn: () => directApi.get("/bisnis/kelas/1", null),
   });
 
   return (
@@ -450,12 +439,6 @@ export function ApiStatusPage() {
             isLoading={userClassDetailQuery.isLoading}
             isError={userClassDetailQuery.isError}
             hasData={Boolean(userClassDetailQuery.data)}
-          />
-          <SyncStatus
-            label="Dashboard admin"
-            isLoading={adminDashboardQuery.isLoading}
-            isError={adminDashboardQuery.isError}
-            hasData={Boolean(adminDashboardQuery.data)}
           />
         </div>
       </Panel>

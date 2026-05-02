@@ -16,11 +16,11 @@ import { resourceApi } from "../../lib/api/resources";
 import {
   adminConfig,
   businessConfig,
-  invoiceConfig,
-  investmentConfig,
-  negotiationConfig,
+  investorInvestmentConfig,
+  investorInvoiceConfig,
+  investorProfitConfig,
+  myNegotiationConfig,
   notificationConfig,
-  profitConfig,
   salesConfig,
   submissionConfig,
 } from "../../lib/resourceConfigs";
@@ -117,12 +117,17 @@ function ActivityPanel({ items }: { items: Entity[] }) {
 }
 
 export function UmkmOverviewPage() {
+  const d: Record<string, unknown> = {};
+
   const businesses = useResource(businessConfig).data ?? [];
   const submissions = useResource(submissionConfig).data ?? [];
   const sales = useResource(salesConfig).data ?? [];
-  const negotiations = useResource(negotiationConfig).data ?? [];
-  const totalSales = sales.reduce((sum, item) => sum + Number(item.total_penjualan || 0), 0);
-  const funded = submissions.reduce((sum, item) => sum + Number(item.total_pendanaan || 0), 0);
+  const negotiations = useResource(myNegotiationConfig).data ?? [];
+
+  const totalSales = Number(d.total_penjualan ?? 0) || sales.reduce((sum, item) => sum + Number(item.total_penjualan || 0), 0);
+  const funded = Number(d.total_pendanaan ?? 0) || submissions.reduce((sum, item) => sum + Number(item.total_pendanaan || 0), 0);
+  const bisnisCount = Number(d.total_bisnis ?? 0) || businesses.length;
+  const negosiasiCount = Number(d.total_negosiasi ?? 0) || negotiations.length;
 
   return (
     <div className="space-y-6">
@@ -131,10 +136,10 @@ export function UmkmOverviewPage() {
         body="Workspace UMKM menampilkan kesehatan bisnis, status pengajuan, laporan penjualan, serta interaksi negosiasi dengan investor."
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Bisnis" value={String(businesses.length)} helper="Profil aktif" icon={Building2} />
+        <StatCard label="Bisnis" value={String(bisnisCount)} helper="Profil aktif" icon={Building2} />
         <StatCard label="Total Pendanaan" value={compactCurrency(funded)} helper="Terkumpul" icon={CircleDollarSign} tone="green" />
         <StatCard label="Penjualan" value={compactCurrency(totalSales)} helper="Dari laporan" icon={BarChart3} tone="amber" />
-        <StatCard label="Negosiasi" value={String(negotiations.length)} helper="Interaksi aktif" icon={Handshake} />
+        <StatCard label="Negosiasi" value={String(negosiasiCount)} helper="Interaksi aktif" icon={Handshake} />
       </div>
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <MatchList submissions={submissions} />
@@ -145,12 +150,17 @@ export function UmkmOverviewPage() {
 }
 
 export function InvestorOverviewPage() {
+  const d: Record<string, unknown> = {};
+
   const submissions = useResource(submissionConfig).data ?? [];
-  const investments = useResource(investmentConfig).data ?? [];
-  const invoices = useResource(invoiceConfig).data ?? [];
-  const profits = useResource(profitConfig).data ?? [];
-  const invested = investments.reduce((sum, item) => sum + Number(item.nominal_investasi || 0), 0);
-  const profitTotal = profits.reduce((sum, item) => sum + Number(item.nominal_profit || 0), 0);
+  const investments = useResource(investorInvestmentConfig).data ?? [];
+  const invoices = useResource(investorInvoiceConfig).data ?? [];
+  const profits = useResource(investorProfitConfig).data ?? [];
+
+  const invested = Number(d.total_investasi ?? 0) || investments.reduce((sum, item) => sum + Number(item.nominal_investasi || 0), 0);
+  const profitTotal = Number(d.total_profit ?? 0) || profits.reduce((sum, item) => sum + Number(item.nominal_profit || 0), 0);
+  const peluangCount = Number(d.total_peluang ?? 0) || submissions.length;
+  const invoiceCount = Number(d.total_invoice ?? 0) || invoices.length;
 
   return (
     <div className="space-y-6">
@@ -159,10 +169,10 @@ export function InvestorOverviewPage() {
         body="Investor melihat peluang pendanaan, rekomendasi AI, negosiasi, invoice, portfolio investasi, dan distribusi profit."
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Peluang" value={String(submissions.length)} helper="Pengajuan tersedia" icon={FileCheck2} />
+        <StatCard label="Peluang" value={String(peluangCount)} helper="Pengajuan tersedia" icon={FileCheck2} />
         <StatCard label="Investasi" value={compactCurrency(invested)} helper="Portfolio aktif" icon={TrendingUp} tone="green" />
         <StatCard label="Profit" value={compactCurrency(profitTotal)} helper="Distribusi" icon={CircleDollarSign} tone="amber" />
-        <StatCard label="Invoice" value={String(invoices.length)} helper="Tagihan investor" icon={Receipt} />
+        <StatCard label="Invoice" value={String(invoiceCount)} helper="Tagihan investor" icon={Receipt} />
       </div>
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <MatchList submissions={submissions} />
@@ -188,11 +198,18 @@ export function InvestorOverviewPage() {
 }
 
 export function AdminOverviewPage() {
+  const d: Record<string, unknown> = {};
+
   const businesses = useResource(businessConfig).data ?? [];
   const submissions = useResource(submissionConfig).data ?? [];
   const admins = useResource(adminConfig).data ?? [];
   const notifications = useResource(notificationConfig).data ?? [];
-  const pending = submissions.filter((item) => String(item.approval_status || item.status) === "pending").length;
+
+  const bisnisCount = Number(d.total_bisnis ?? 0) || businesses.length;
+  const submissionCount = Number(d.total_pengajuan ?? 0) || submissions.length;
+  const adminCount = Number(d.total_admin ?? 0) || admins.length;
+  const notifCount = Number(d.total_notifikasi ?? 0) || notifications.length;
+  const pending = Number(d.total_pending ?? 0) || submissions.filter((item) => String(item.approval_status || item.status) === "pending").length;
 
   return (
     <div className="space-y-6">
@@ -201,10 +218,10 @@ export function AdminOverviewPage() {
         body="Admin mengelola bisnis, pengajuan, kelas, invoice, investasi, distribusi profit, admin management, dan notifikasi operasional."
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Bisnis" value={String(businesses.length)} helper="Terdaftar" icon={Building2} />
-        <StatCard label="Pengajuan" value={String(submissions.length)} helper={`${pending} pending`} icon={FileCheck2} tone="amber" />
-        <StatCard label="Admin" value={String(admins.length)} helper="Akun pengelola" icon={Users} />
-        <StatCard label="Notifikasi" value={String(notifications.length)} helper="Operasional" icon={Bell} tone="green" />
+        <StatCard label="Bisnis" value={String(bisnisCount)} helper="Terdaftar" icon={Building2} />
+        <StatCard label="Pengajuan" value={String(submissionCount)} helper={`${pending} pending`} icon={FileCheck2} tone="amber" />
+        <StatCard label="Admin" value={String(adminCount)} helper="Akun pengelola" icon={Users} />
+        <StatCard label="Notifikasi" value={String(notifCount)} helper="Operasional" icon={Bell} tone="green" />
       </div>
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">

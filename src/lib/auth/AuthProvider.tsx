@@ -102,7 +102,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password: payload.password,
       password_confirmation: payload.password_confirmation,
       nik: payload.nik,
-      no_telp: payload.no_telp,
       role_id,
     };
 

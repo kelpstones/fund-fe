@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Filter } from "lucide-react";
 import { ResourcePage } from "../../components/ResourcePage";
+import { resourceApi } from "../../lib/api/resources";
 import {
   adminConfig,
   adminBusinessConfig,
@@ -14,6 +16,7 @@ import {
   negotiationConfig,
   notificationConfig,
   profitConfig,
+  publishedSubmissionConfig,
   salesConfig,
   submissionConfig,
   myBusinessConfig,
@@ -22,7 +25,6 @@ import {
 } from "../../lib/resourceConfigs";
 import { currency, dateShort, percent, readPath, statusTone, textValue } from "../../lib/format";
 import type { Entity, ResourceAction, ResourceColumn, ResourceConfig, ResourceField } from "../../types";
-import { mockSubmissions } from "../../lib/mockData";
 
 const badge = (status: unknown) => (
   <span className={`badge ${statusTone(status)}`}>{textValue(status)}</span>
@@ -30,7 +32,7 @@ const badge = (status: unknown) => (
 
 const businessFields: ResourceField<Entity>[] = [
   { name: "nama", label: "Nama Bisnis", required: true },
-  { name: "sektor", label: "Sektor", required: true },
+  { name: "tipe_usaha", label: "Tipe Usaha", required: true },
   { name: "alamat", label: "Alamat", required: true },
   { name: "no_telp", label: "No. Telp", required: true },
   { name: "email", label: "Email", type: "email", required: true },
@@ -58,7 +60,7 @@ const businessColumns: ResourceColumn<Entity>[] = [
       </div>
     ),
   },
-  { label: "Sektor", render: (item) => textValue(item.sektor) },
+  { label: "Tipe Usaha", render: (item) => textValue(item.tipe_usaha) },
   { label: "Kelas", render: (item) => textValue(readPath(item, ["kelas.nama_kelas", "kelas_id"])) },
   {
     label: "Kontak",
@@ -427,8 +429,8 @@ export function OpportunitiesPage() {
   return (
     <ResourcePage
       title="Peluang Pendanaan"
-      description="Daftar pengajuan UMKM yang bisa dianalisis investor sebelum memulai negosiasi."
-      config={submissionConfig}
+      description="Daftar pengajuan UMKM yang sudah dipublikasikan dan siap untuk investasi."
+      config={publishedSubmissionConfig}
       columns={submissionColumns}
       readonly
     />
@@ -437,14 +439,18 @@ export function OpportunitiesPage() {
 
 export function AiRecommendationsPage() {
   const [risk, setRisk] = useState("all");
-  const [minScore, setMinScore] = useState(80);
+  const [minScore, setMinScore] = useState(0);
+  const { data: allSubmissions = [] } = useQuery({
+    queryKey: ["ai-recommendations"],
+    queryFn: () => resourceApi.list(publishedSubmissionConfig),
+  });
   const data = useMemo(
     () =>
-      mockSubmissions.filter((item) => {
+      allSubmissions.filter((item) => {
         const riskMatch = risk === "all" || String(item.risk_level).toLowerCase() === risk;
         return riskMatch && Number(item.match_score || 0) >= minScore;
       }),
-    [minScore, risk],
+    [allSubmissions, minScore, risk],
   );
 
   return (

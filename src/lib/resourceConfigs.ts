@@ -55,6 +55,12 @@ export const submissionConfig: ResourceConfig<Entity> = {
   fallback: mockSubmissions,
 };
 
+export const publishedSubmissionConfig: ResourceConfig<Entity> = {
+  ...submissionConfig,
+  key: "published-submissions",
+  listPath: "/bisnis/pengajuan?page=1&limit=50&status=published",
+};
+
 export const salesConfig: ResourceConfig<Entity> = {
   key: "sales",
   listPath: "/bisnis/pengajuan/penjualan",
@@ -131,8 +137,6 @@ export const classConfig: ResourceConfig<Entity> = {
 export const userClassConfig: ResourceConfig<Entity> = {
   ...classConfig,
   key: "user-classes",
-  listPath: "/user/kelas?page=1&limit=50",
-  detailPath: "/user/kelas/:id",
 };
 
 export const adminConfig: ResourceConfig<Entity> = {
