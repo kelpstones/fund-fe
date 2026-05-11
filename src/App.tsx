@@ -24,10 +24,12 @@ import {
   BusinessesPage,
   ClassesPage,
   InvoicesPage,
+  InvestmentsByProposalPage,
   InvestmentsPage,
   NegotiationsPage,
   NotificationsPage,
   OpportunitiesPage,
+  ProfitsBySalesPage,
   ProfitsPage,
   SalesPage,
   SubmissionsPage,
@@ -36,6 +38,7 @@ import {
 import {
   ApiStatusPage,
   BusinessProfilePage,
+  InvestorPreferencesPage,
   ProfilePage,
 } from "./pages/dashboard/IntegrationPages";
 
@@ -73,7 +76,10 @@ export default function App() {
           <Route path="bisnis-profile" element={<BusinessProfilePage />} />
           <Route path="pengajuan" element={<SubmissionsPage />} />
           <Route path="penjualan" element={<SalesPage />} />
+          <Route path="investasi" element={<InvestmentsByProposalPage />} />
+          <Route path="profit" element={<ProfitsBySalesPage />} />
           <Route path="negosiasi" element={<NegotiationsPage mine />} />
+          <Route path="kelas" element={<ClassesPage />} />
           <Route path="notifikasi" element={<NotificationsPage />} />
         </Route>
       </Route>
@@ -82,12 +88,15 @@ export default function App() {
         <Route path="/dashboard/investor" element={<DashboardLayout />}>
           <Route index element={<InvestorOverviewPage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="preferensi" element={<InvestorPreferencesPage />} />
           <Route path="peluang" element={<OpportunitiesPage />} />
           <Route path="rekomendasi" element={<AiRecommendationsPage />} />
           <Route path="negosiasi" element={<NegotiationsPage mine />} />
+          <Route path="kelas" element={<ClassesPage />} />
           <Route path="invoice" element={<InvoicesPage investor />} />
           <Route path="portfolio" element={<InvestmentsPage investor />} />
           <Route path="profit" element={<ProfitsPage investor />} />
+          <Route path="notifikasi" element={<NotificationsPage />} />
         </Route>
       </Route>
 

@@ -80,30 +80,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const { data, token: responseToken } = unwrapToken<Record<string, unknown>>(response.data);
       const nextUser = normalizeUser(data, payload.role ?? fallbackRole);
-      const nextToken = responseToken || `mock-token-${nextUser.role}-${Date.now()}`;
-      saveSession(nextUser, nextToken);
+      if (!responseToken) throw new Error("Login response does not include token");
+      saveSession(nextUser, responseToken);
       setUser(nextUser);
-      setToken(nextToken);
+      setToken(responseToken);
       return nextUser;
     };
 
     try {
       return await loginWithPath("/user/login", "umkm");
     } catch (userError) {
-      if (axios.isAxiosError(userError) && userError.response) {
+      if (axios.isAxiosError(userError) && userError.response?.status === 401) {
         return await loginWithPath("/admin/login", "admin");
       }
-
-      const fallbackRole = payload.role ?? "umkm";
-      const nextUser = {
-        ...mockUsers[fallbackRole],
-        email: payload.email || mockUsers[fallbackRole].email,
-      };
-      const nextToken = `mock-token-${nextUser.role}-${Date.now()}`;
-      saveSession(nextUser, nextToken);
-      setUser(nextUser);
-      setToken(nextToken);
-      return nextUser;
+      throw userError;
     }
   }, []);
 
@@ -119,24 +109,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role_id,
     };
 
-    try {
-      const response = await apiClient.post("/user/register", body);
-      const created = response.data?.data ?? body;
-      const user = normalizeUser({ ...created, role: payload.role, role_id }, payload.role);
-      const token = `registered-${payload.role}-${Date.now()}`;
-      saveSession(user, token);
-      setUser(user);
-      setToken(token);
-      return user;
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response) throw error;
-      const user = normalizeUser({ ...body, role: payload.role }, payload.role);
-      const token = `mock-register-${payload.role}-${Date.now()}`;
-      saveSession(user, token);
-      setUser(user);
-      setToken(token);
-      return user;
-    }
+    const response = await apiClient.post("/user/register", body);
+    const created = response.data?.data ?? body;
+    return normalizeUser({ ...created, role: payload.role, role_id }, payload.role);
   }, []);
 
   const updateUser = useCallback((updates: Partial<AuthUser>) => {

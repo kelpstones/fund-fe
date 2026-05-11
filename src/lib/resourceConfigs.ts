@@ -148,6 +148,13 @@ export const investmentConfig: ResourceConfig<Entity> = {
   fallback: mockInvestments,
 };
 
+export const investmentByPengajuanConfig = (pengajuansId: string): ResourceConfig<Entity> => ({
+  ...investmentConfig,
+  key: `investments-pengajuan-${pengajuansId}`,
+  listPath: `/investasi/proposals?pengajuans_id=${encodeURIComponent(pengajuansId)}`,
+  detailPath: undefined,
+});
+
 export const investorInvestmentConfig: ResourceConfig<Entity> = {
   ...investmentConfig,
   listPath: "/investasi/investor",
@@ -167,6 +174,13 @@ export const investorProfitConfig: ResourceConfig<Entity> = {
   ...profitConfig,
   listPath: "/profit-distributions/investor",
 };
+
+export const profitBySalesConfig = (penjualansId: string): ResourceConfig<Entity> => ({
+  ...profitConfig,
+  key: `profits-penjualan-${penjualansId}`,
+  listPath: `/profit-distributions/sales?penjualans_id=${encodeURIComponent(penjualansId)}`,
+  detailPath: undefined,
+});
 
 export const classConfig: ResourceConfig<Entity> = {
   key: "classes",

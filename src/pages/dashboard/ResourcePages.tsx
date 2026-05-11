@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Filter } from "lucide-react";
+import { useMemo, useState, type FormEvent } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
+import { Link } from "react-router-dom";
+import { Filter, Loader2, RefreshCw } from "lucide-react";
 import { ResourcePage } from "../../components/ResourcePage";
 import { resourceApi } from "../../lib/api/resources";
-import { directApi } from "../../lib/api/direct";
+import { apiClient, unwrap } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/AuthProvider";
 import {
   adminConfig,
@@ -11,6 +13,7 @@ import {
   businessConfig,
   classConfig,
   investmentConfig,
+  investmentByPengajuanConfig,
   investorInvestmentConfig,
   investorInvoiceConfig,
   investorProfitConfig,
@@ -18,9 +21,9 @@ import {
   negotiationConfig,
   notificationConfig,
   profitConfig,
+  profitBySalesConfig,
   publishedSubmissionConfig,
   salesConfig,
-  salesByPengajuanConfig,
   submissionConfig,
   myBusinessConfig,
   myNegotiationConfig,
@@ -32,6 +35,25 @@ import type { Entity, ResourceAction, ResourceColumn, ResourceConfig, ResourceFi
 const badge = (status: unknown) => (
   <span className={`badge ${statusTone(status)}`}>{textValue(status)}</span>
 );
+
+const isStatus = (item: Entity, statuses: string[]) =>
+  statuses.includes(String(readPath(item, ["approval.status", "status", "approval_status"])).toLowerCase());
+
+const entityLabel = (item: Entity, paths: string[]) =>
+  `${textValue(readPath(item, paths))} (#${textValue(item.id)})`;
+
+const asOptions = (items: Entity[], paths: string[]) =>
+  items.map((item) => ({
+    value: item.id,
+    label: entityLabel(item, paths),
+  }));
+
+const apiErrorMessage = (error: unknown, fallback: string) => {
+  if (axios.isAxiosError(error) && error.response?.data?.message) {
+    return String(error.response.data.message);
+  }
+  return fallback;
+};
 
 const businessFields: ResourceField<Entity>[] = [
   { name: "nama_bisnis", label: "Nama Bisnis", required: true },
@@ -94,7 +116,7 @@ const businessColumns: ResourceColumn<Entity>[] = [
 ];
 
 const submissionFields: ResourceField<Entity>[] = [
-  { name: "bisnis_id", label: "ID Bisnis", type: "number", required: true },
+  { name: "bisnis_id", label: "Bisnis", type: "number", required: true },
   { name: "target_pendanaan", label: "Target Pendanaan", type: "number", required: true },
   { name: "total_pendanaan", label: "Total Pendanaan", type: "number" },
   { name: "per_anual_return", label: "Return Tahunan", type: "number", required: true },
@@ -141,7 +163,7 @@ const submissionColumns: ResourceColumn<Entity>[] = [
 ];
 
 const salesFields: ResourceField<Entity>[] = [
-  { name: "pengajuans_id", label: "ID Pengajuan", type: "number", required: true },
+  { name: "pengajuans_id", label: "Pengajuan", type: "number", required: true },
   { name: "periode", label: "Periode", required: true },
   { name: "total_penjualan", label: "Total Penjualan", type: "number", required: true },
   { name: "laba_kotor", label: "Laba Kotor", type: "number", required: true },
@@ -158,7 +180,7 @@ const salesColumns: ResourceColumn<Entity>[] = [
 ];
 
 const negotiationFields: ResourceField<Entity>[] = [
-  { name: "pengajuans_id", label: "ID Pengajuan", type: "number", required: true },
+  { name: "pengajuans_id", label: "Pengajuan", type: "number", required: true },
   { name: "penawaran_nominal", label: "Penawaran Nominal", type: "number", required: true },
   { name: "penawaran_return", label: "Penawaran Return", type: "number", required: true },
   { name: "catatan", label: "Catatan", type: "textarea" },
@@ -301,6 +323,7 @@ const submissionActions: ResourceAction<Entity>[] = [
     body: { status: "approved", catatan: "Pengajuan disetujui dari dashboard." },
     confirm: "Setujui pengajuan ini?",
     className: "btn btn-success btn-xs rounded-md text-white",
+    isVisible: (item) => isStatus(item, ["pending", "draft"]),
   },
   {
     label: "Reject",
@@ -309,15 +332,7 @@ const submissionActions: ResourceAction<Entity>[] = [
     body: { status: "rejected", catatan: "Pengajuan ditolak dari dashboard." },
     confirm: "Tolak pengajuan ini?",
     className: "btn btn-error btn-xs rounded-md text-white",
-  },
-];
-
-const salesActions: ResourceAction<Entity>[] = [
-  {
-    label: "By Pengajuan",
-    method: "GET",
-    path: (item) => `/businesses/proposals/sales/pengajuan?pengajuans_id=${item.pengajuans_id}`,
-    className: "btn btn-outline btn-xs rounded-md",
+    isVisible: (item) => !isStatus(item, ["rejected", "approved", "published", "funded"]),
   },
 ];
 
@@ -329,6 +344,7 @@ const negotiationActions: ResourceAction<Entity>[] = [
     body: { catatan: "Negosiasi disetujui dari dashboard." },
     confirm: "Setujui negosiasi ini?",
     className: "btn btn-success btn-xs rounded-md text-white",
+    isVisible: (item) => !isStatus(item, ["accepted", "rejected", "deal"]),
   },
   {
     label: "Reject",
@@ -337,6 +353,7 @@ const negotiationActions: ResourceAction<Entity>[] = [
     body: { catatan: "Negosiasi ditolak dari dashboard." },
     confirm: "Tolak negosiasi ini?",
     className: "btn btn-error btn-xs rounded-md text-white",
+    isVisible: (item) => !isStatus(item, ["accepted", "rejected", "deal"]),
   },
 ];
 
@@ -347,6 +364,7 @@ const invoiceActions: ResourceAction<Entity>[] = [
     path: (item) => `/invoices/${item.kode_pembayaran || item.id}/pay`,
     confirm: "Bayar invoice ini?",
     className: "btn btn-success btn-xs rounded-md text-white",
+    isVisible: (item) => !isStatus(item, ["paid", "completed"]),
   },
 ];
 
@@ -374,6 +392,7 @@ const notificationActions: ResourceAction<Entity>[] = [
     method: "PUT",
     path: (item) => `/notifications/${item.id}`,
     className: "btn btn-outline btn-xs rounded-md",
+    isVisible: (item) => !item.is_read && !isStatus(item, ["read"]),
   },
 ];
 
@@ -397,92 +416,241 @@ export function BusinessesPage({
       fields={businessFields}
       createLabel="Tambah Bisnis"
       allowCreate={isUmkmOwner}
-      allowEdit={isUmkmOwner}
-      allowDelete={isUmkmOwner || user?.role === "superadmin"}
+      allowEdit={false}
+      allowDelete={isUmkmOwner}
+      emptyTitle={isUmkmOwner ? "Belum ada bisnis" : "Belum ada bisnis terdaftar"}
+      emptyDescription={
+        isUmkmOwner
+          ? "Tambahkan bisnis pertama agar kamu bisa membuat pengajuan pendanaan."
+          : "Data bisnis akan muncul setelah UMKM mendaftarkan profil usaha."
+      }
+      searchableFields={["nama_bisnis", "nama", "tipe_usaha", "email", "no_telp"]}
     />
   );
 }
 
 export function SubmissionsPage({ admin = false }: { admin?: boolean }) {
+  const businessOptionsQuery = useQuery({
+    queryKey: ["submission-business-options", admin],
+    queryFn: () => resourceApi.list(admin ? businessConfig : myBusinessConfig),
+    enabled: !admin,
+  });
+  const fields = useMemo<ResourceField<Entity>[]>(() => {
+    if (admin) return submissionFields;
+    return [
+      {
+        name: "bisnis_id",
+        label: "Bisnis",
+        type: "select",
+        required: true,
+        options: asOptions(businessOptionsQuery.data ?? [], ["nama_bisnis", "nama"]),
+      },
+      { name: "target_pendanaan", label: "Target Pendanaan", type: "number", required: true },
+      { name: "per_anual_return", label: "Return Tahunan", type: "number", required: true },
+    ];
+  }, [admin, businessOptionsQuery.data]);
+
   return (
     <ResourcePage
       title="Pengajuan Dana"
       description="Kelola target pendanaan, return tahunan, progress pendanaan, status publikasi, dan approval."
       config={submissionConfig}
       columns={submissionColumns}
-      fields={submissionFields}
+      fields={fields}
       createLabel="Tambah Pengajuan"
       actions={admin ? submissionActions : []}
       allowCreate={!admin}
+      allowEdit={!admin}
       allowDelete={admin}
+      emptyTitle={admin ? "Belum ada pengajuan" : "Belum ada pengajuan dana"}
+      emptyDescription={
+        admin
+          ? "Pengajuan UMKM akan muncul di sini untuk proses review."
+          : "Buat pengajuan setelah profil bisnis tersedia agar investor bisa melihat peluang pendanaan."
+      }
+      searchableFields={["id", "target_pendanaan", "per_anual_return", (item) => readPath(item, ["bisnis.nama_bisnis", "bisnis.nama"])]}
     />
   );
 }
 
 export function SalesPage() {
   const { user } = useAuth();
-  const [pengajuanId, setPengajuanId] = useState("");
 
-  if (user?.role === "umkm" && !pengajuanId.trim()) {
-    return (
-      <section className="space-y-5">
-        <div>
-          <h2 className="text-2xl font-black tracking-normal text-neutral">Laporan Penjualan</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">
-            Masukkan ID pengajuan untuk melihat laporan penjualan yang tersedia di backend.
-          </p>
-        </div>
-        <label className="form-control max-w-sm">
-          <span className="label-text mb-2 font-semibold">ID Pengajuan</span>
-          <input
-            className="input input-bordered rounded-md bg-white"
-            value={pengajuanId}
-            onChange={(event) => setPengajuanId(event.target.value)}
-            placeholder="Contoh: 101"
-          />
-        </label>
-      </section>
-    );
-  }
+  if (user?.role === "umkm") return <UmkmSalesPage />;
 
   return (
-    <div className="space-y-5">
-      {user?.role === "umkm" ? (
-        <label className="form-control max-w-sm">
-          <span className="label-text mb-2 font-semibold">ID Pengajuan</span>
-          <input
-            className="input input-bordered rounded-md bg-white"
-            value={pengajuanId}
-            onChange={(event) => setPengajuanId(event.target.value)}
-          />
-        </label>
-      ) : null}
-      <ResourcePage
-        title="Laporan Penjualan"
-        description="Catat periode penjualan, laba, dan transaksi untuk kebutuhan distribusi profit."
-        config={user?.role === "umkm" ? salesByPengajuanConfig(pengajuanId) : salesConfig}
-        columns={salesColumns}
-        fields={salesFields}
-        createLabel="Tambah Laporan"
-        actions={user?.role === "umkm" ? [] : salesActions}
-        allowCreate={user?.role === "umkm"}
-        allowEdit={user?.role === "umkm"}
-        allowDelete={false}
-      />
-    </div>
+    <ResourcePage
+      title="Laporan Penjualan"
+      description="Catat periode penjualan, laba, dan transaksi untuk kebutuhan distribusi profit."
+      config={salesConfig}
+      columns={salesColumns}
+      fields={salesFields}
+      createLabel="Tambah Laporan"
+      actions={[]}
+      allowCreate={false}
+      allowEdit={false}
+      allowDelete={false}
+      emptyTitle="Belum ada laporan penjualan"
+      emptyDescription="Laporan penjualan UMKM akan tampil setelah backend menyediakan daftar data untuk role ini."
+      searchableFields={["periode", "pengajuans_id", "total_penjualan"]}
+    />
+  );
+}
+
+function UmkmSalesPage() {
+  const [form, setForm] = useState({
+    pengajuans_id: "",
+    periode: "",
+    total_penjualan: "",
+    laba_kotor: "",
+    laba_bersih: "",
+    jumlah_transaksi: "",
+  });
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const submissionsQuery = useQuery({
+    queryKey: ["sales-submission-options"],
+    queryFn: () => resourceApi.list(submissionConfig),
+  });
+  const submissionOptions = asOptions(submissionsQuery.data ?? [], [
+    "bisnis.nama_bisnis",
+    "bisnis.nama",
+    "nama",
+    "id",
+  ]);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post("/businesses/proposals/sales", {
+        pengajuans_id: Number(form.pengajuans_id),
+        periode: form.periode,
+        total_penjualan: Number(form.total_penjualan),
+        laba_kotor: Number(form.laba_kotor),
+        laba_bersih: Number(form.laba_bersih),
+        jumlah_transaksi: Number(form.jumlah_transaksi),
+      });
+      return unwrap<unknown>(response.data);
+    },
+    onSuccess: () => {
+      setMessage("Laporan penjualan berhasil dikirim.");
+      setError("");
+      setForm({
+        pengajuans_id: "",
+        periode: "",
+        total_penjualan: "",
+        laba_kotor: "",
+        laba_bersih: "",
+        jumlah_transaksi: "",
+      });
+    },
+    onError: (err) => {
+      setMessage("");
+      setError(apiErrorMessage(err, "Laporan penjualan belum berhasil dikirim."));
+    },
+  });
+
+  const update = (key: keyof typeof form, value: string) =>
+    setForm((current) => ({ ...current, [key]: value }));
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    mutation.mutate();
+  };
+
+  return (
+    <section className="space-y-5">
+      <div>
+        <h2 className="text-2xl font-black tracking-normal text-neutral">Laporan Penjualan</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">
+          Kirim laporan penjualan ke backend. Daftar laporan per pengajuan belum ditampilkan karena endpoint list BE masih perlu perbaikan.
+        </p>
+      </div>
+      <form className="rounded-md border border-base-300 bg-white p-5 shadow-sm" onSubmit={submit}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {salesFields.map((field) => (
+            <label key={field.name} className="form-control">
+              <span className="label-text mb-2 font-semibold">{field.label}</span>
+              {field.name === "pengajuans_id" && submissionOptions.length > 0 ? (
+                <select
+                  className="select select-bordered rounded-md"
+                  value={form.pengajuans_id}
+                  onChange={(event) => update("pengajuans_id", event.target.value)}
+                  required
+                >
+                  <option value="">Pilih pengajuan</option>
+                  {submissionOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  className="input input-bordered rounded-md"
+                  type={field.type ?? "text"}
+                  value={form[field.name as keyof typeof form] ?? ""}
+                  onChange={(event) => update(field.name as keyof typeof form, event.target.value)}
+                  required={field.required}
+                  placeholder={field.name === "periode" ? "Contoh: 2026-05" : undefined}
+                />
+              )}
+            </label>
+          ))}
+        </div>
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <button className="btn btn-primary rounded-md text-white" disabled={mutation.isPending}>
+            {mutation.isPending ? <Loader2 className="animate-spin" size={18} /> : null}
+            Tambah Laporan
+          </button>
+          {message ? <span className="text-sm font-semibold text-success">{message}</span> : null}
+          {error ? <span className="text-sm font-semibold text-error">{error}</span> : null}
+        </div>
+      </form>
+    </section>
   );
 }
 
 export function NegotiationsPage({ mine = false }: { mine?: boolean }) {
+  const { user } = useAuth();
+  const canNegotiate = user?.role === "umkm" || user?.role === "investor";
+  const opportunitiesQuery = useQuery({
+    queryKey: ["negotiation-opportunity-options"],
+    queryFn: () => resourceApi.list(publishedSubmissionConfig),
+    enabled: user?.role === "investor",
+  });
+  const fields = useMemo<ResourceField<Entity>[]>(() => {
+    if (user?.role !== "investor") return negotiationFields.slice(1);
+    return [
+      {
+        name: "pengajuans_id",
+        label: "Pengajuan",
+        type: "select",
+        required: true,
+        options: asOptions(opportunitiesQuery.data ?? [], ["bisnis.nama_bisnis", "bisnis.nama", "nama"]),
+      },
+      ...negotiationFields.slice(1),
+    ];
+  }, [opportunitiesQuery.data, user?.role]);
+
   return (
     <ResourcePage
       title="Negosiasi"
       description="Kelola penawaran nominal, return, status, dan catatan antara investor dan pemilik bisnis."
       config={mine ? myNegotiationConfig : negotiationConfig}
       columns={negotiationColumns}
-      fields={negotiationFields}
+      fields={fields}
       createLabel="Mulai Negosiasi"
-      actions={negotiationActions}
+      actions={canNegotiate ? negotiationActions : []}
+      allowCreate={user?.role === "investor"}
+      allowEdit={canNegotiate}
+      allowDelete={false}
+      emptyTitle="Belum ada negosiasi"
+      emptyDescription={
+        user?.role === "investor"
+          ? "Mulai negosiasi dari peluang pendanaan yang tersedia."
+          : "Negosiasi investor akan muncul di sini setelah ada penawaran."
+      }
+      searchableFields={["status", "catatan", (item) => readPath(item, ["investor.nama", "bisnis.nama", "bisnis.nama_bisnis"])]}
     />
   );
 }
@@ -495,6 +663,9 @@ export function OpportunitiesPage() {
       config={publishedSubmissionConfig}
       columns={submissionColumns}
       readonly
+      emptyTitle="Belum ada peluang pendanaan"
+      emptyDescription="Peluang akan muncul setelah pengajuan UMKM dipublikasikan."
+      searchableFields={["target_pendanaan", "per_anual_return", (item) => readPath(item, ["bisnis.nama_bisnis", "bisnis.nama"])]}
     />
   );
 }
@@ -502,9 +673,35 @@ export function OpportunitiesPage() {
 export function AiRecommendationsPage() {
   const [risk, setRisk] = useState("all");
   const [minScore, setMinScore] = useState(0);
-  const { data: recommendationsPayload = null } = useQuery({
+  const [refreshMessage, setRefreshMessage] = useState("");
+  const [refreshError, setRefreshError] = useState("");
+  const queryClient = useQueryClient();
+  const {
+    data: recommendationsPayload = null,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ["ai-recommendations", "backend"],
-    queryFn: () => directApi.get("/user/investor/recommendations", null),
+    queryFn: async () => {
+      const response = await apiClient.get("/user/investor/recommendations");
+      return unwrap<unknown>(response.data);
+    },
+  });
+  const refreshMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post("/user/investor/preferences/refresh");
+      return unwrap<unknown>(response.data);
+    },
+    onSuccess: async () => {
+      setRefreshMessage("Rekomendasi berhasil diperbarui.");
+      setRefreshError("");
+      await queryClient.invalidateQueries({ queryKey: ["ai-recommendations"] });
+    },
+    onError: (error) => {
+      setRefreshMessage("");
+      setRefreshError(apiErrorMessage(error, "Rekomendasi belum bisa diperbarui."));
+    },
   });
   const backendRecommendations = useMemo(() => {
     if (Array.isArray(recommendationsPayload)) return recommendationsPayload as Entity[];
@@ -514,20 +711,14 @@ export function AiRecommendationsPage() {
     }
     return [];
   }, [recommendationsPayload]);
-  const { data: allSubmissions = [] } = useQuery({
-    queryKey: ["ai-recommendations", "fallback"],
-    queryFn: () => resourceApi.list(publishedSubmissionConfig),
-    enabled: backendRecommendations.length === 0,
-  });
-  const sourceData = backendRecommendations.length > 0 ? backendRecommendations : allSubmissions;
   const data = useMemo(
     () =>
-      sourceData.filter((item) => {
+      backendRecommendations.filter((item) => {
         const riskValue = textValue(readPath(item, ["risk_level", "matched_class", "bisnis.kelas.nama_kelas"])).toLowerCase();
         const riskMatch = risk === "all" || riskValue === risk;
         return riskMatch && Number(item.match_score || item.skor_kecocokan || 0) >= minScore;
       }),
-    [minScore, risk, sourceData],
+    [backendRecommendations, minScore, risk],
   );
 
   return (
@@ -541,6 +732,17 @@ export function AiRecommendationsPage() {
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
+          <Link to="/dashboard/investor/preferensi" className="btn btn-outline h-11 rounded-md">
+            Preferensi
+          </Link>
+          <button
+            className="btn btn-primary h-11 rounded-md text-white"
+            onClick={() => refreshMutation.mutate()}
+            disabled={refreshMutation.isPending}
+          >
+            {refreshMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} />}
+            Refresh
+          </button>
           <label className="flex h-11 items-center gap-2 rounded-md border border-base-300 bg-white px-3">
             <Filter size={18} />
             <select
@@ -568,7 +770,27 @@ export function AiRecommendationsPage() {
           </label>
         </div>
       </div>
+      {refreshMessage ? (
+        <div className="rounded-md border border-info/20 bg-info/10 px-4 py-3 text-sm font-semibold text-info">
+          {refreshMessage}
+        </div>
+      ) : null}
+      {refreshError ? (
+        <div className="rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-semibold text-error">
+          {refreshError}
+        </div>
+      ) : null}
+      {isError ? (
+        <div className="rounded-md border border-warning/20 bg-warning/10 px-4 py-3 text-sm font-semibold text-warning">
+          {apiErrorMessage(error, "Rekomendasi belum tersedia. Lengkapi preferensi investor terlebih dahulu.")}
+        </div>
+      ) : null}
       <div className="grid gap-5 lg:grid-cols-3">
+        {isLoading ? (
+          <div className="rounded-md border border-base-300 bg-white p-5 text-sm font-semibold text-neutral/55">
+            Memuat rekomendasi
+          </div>
+        ) : null}
         {data.map((item) => (
           <article key={item.id} className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-4">
@@ -595,12 +817,20 @@ export function AiRecommendationsPage() {
               </div>
             </div>
             <p className="mt-5 text-sm leading-6 text-neutral/60">
-              Cocok untuk investor dengan preferensi pertumbuhan stabil,
-              toleransi risiko {textValue(item.risk_level).toLowerCase()}, dan
-              target return menengah.
+              {textValue(
+                readPath(item, ["reason", "alasan", "explanation", "match_reason"], ""),
+                `Cocok dengan profil risiko ${textValue(
+                  readPath(item, ["risk_level", "matched_class", "bisnis.kelas.nama_kelas"]),
+                ).toLowerCase()} dan target return ${percent(item.per_anual_return)}.`,
+              )}
             </p>
           </article>
         ))}
+        {!isLoading && !isError && data.length === 0 ? (
+          <div className="rounded-md border border-base-300 bg-white p-5 text-sm font-semibold text-neutral/55">
+            Rekomendasi belum tersedia. Isi preferensi investor lalu jalankan refresh.
+          </div>
+        ) : null}
       </div>
     </section>
   );
@@ -617,6 +847,13 @@ export function InvoicesPage({ investor = false }: { investor?: boolean }) {
       createLabel="Update Invoice"
       actions={investor ? invoiceActions : []}
       readonly
+      emptyTitle="Belum ada invoice"
+      emptyDescription={
+        investor
+          ? "Invoice investasi akan muncul setelah negosiasi berlanjut ke proses pembayaran."
+          : "Invoice platform akan muncul setelah ada transaksi investasi."
+      }
+      searchableFields={["kode_pembayaran", "status", "total_nominal", "nominal_tagihan"]}
     />
   );
 }
@@ -630,7 +867,101 @@ export function InvestmentsPage({ investor = false }: { investor?: boolean }) {
       columns={investmentColumns}
       actions={investor ? [] : investmentActions}
       readonly
+      emptyTitle="Belum ada investasi"
+      emptyDescription={
+        investor
+          ? "Portfolio investasi akan muncul setelah invoice dibayar."
+          : "Investasi akan muncul setelah investor menyelesaikan pembayaran invoice."
+      }
+      searchableFields={["status", "nominal_investasi", (item) => readPath(item, ["bisnis.nama_bisnis", "bisnis", "pengajuan.bisnis.nama"])]}
     />
+  );
+}
+
+export function InvestmentsByProposalPage() {
+  const [pengajuanId, setPengajuanId] = useState("");
+  const submissionsQuery = useQuery({
+    queryKey: ["investments-submission-options"],
+    queryFn: () => resourceApi.list(submissionConfig),
+  });
+  const submissionOptions = asOptions(submissionsQuery.data ?? [], [
+    "bisnis.nama_bisnis",
+    "bisnis.nama",
+    "nama",
+  ]);
+
+  if (!pengajuanId.trim()) {
+    return (
+      <section className="space-y-5">
+        <div>
+          <h2 className="text-2xl font-black tracking-normal text-neutral">Investasi Pengajuan</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">
+            Masukkan ID pengajuan untuk melihat investasi yang masuk ke proposal bisnis.
+          </p>
+        </div>
+        <label className="form-control max-w-sm">
+          <span className="label-text mb-2 font-semibold">Pengajuan</span>
+          {submissionOptions.length > 0 ? (
+            <select
+              className="select select-bordered rounded-md bg-white"
+              value={pengajuanId}
+              onChange={(event) => setPengajuanId(event.target.value)}
+            >
+              <option value="">Pilih pengajuan</option>
+              {submissionOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              className="input input-bordered rounded-md bg-white"
+              value={pengajuanId}
+              onChange={(event) => setPengajuanId(event.target.value)}
+              placeholder="Contoh: 101"
+            />
+          )}
+        </label>
+      </section>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <label className="form-control max-w-sm">
+        <span className="label-text mb-2 font-semibold">Pengajuan</span>
+        {submissionOptions.length > 0 ? (
+          <select
+            className="select select-bordered rounded-md bg-white"
+            value={pengajuanId}
+            onChange={(event) => setPengajuanId(event.target.value)}
+          >
+            <option value="">Pilih pengajuan</option>
+            {submissionOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            className="input input-bordered rounded-md bg-white"
+            value={pengajuanId}
+            onChange={(event) => setPengajuanId(event.target.value)}
+          />
+        )}
+      </label>
+      <ResourcePage
+        title="Investasi Pengajuan"
+        description="Investasi yang tercatat untuk pengajuan bisnis tertentu."
+        config={investmentByPengajuanConfig(pengajuanId)}
+        columns={investmentColumns}
+        readonly
+        emptyTitle="Belum ada investasi untuk pengajuan ini"
+        emptyDescription="Investasi akan muncul setelah investor menyelesaikan pembayaran untuk pengajuan yang dipilih."
+      />
+    </div>
   );
 }
 
@@ -647,11 +978,100 @@ export function ProfitsPage({ investor = false }: { investor?: boolean }) {
       actions={profitActions}
       allowCreate={false}
       allowDelete={false}
+      emptyTitle="Belum ada distribusi profit"
+      emptyDescription="Distribusi profit akan muncul setelah laporan penjualan dan investasi tersedia."
+      searchableFields={["periode", "status", "nominal_profit", (item) => readPath(item, ["penjualan.nama_bisnis", "bisnis"])]}
     />
   );
 }
 
+export function ProfitsBySalesPage() {
+  const [penjualanId, setPenjualanId] = useState("");
+  const salesQuery = useQuery({
+    queryKey: ["profit-sales-options"],
+    queryFn: () => resourceApi.list(salesConfig),
+  });
+  const salesOptions = asOptions(salesQuery.data ?? [], ["periode", "pengajuans_id"]);
+
+  if (!penjualanId.trim()) {
+    return (
+      <section className="space-y-5">
+        <div>
+          <h2 className="text-2xl font-black tracking-normal text-neutral">Profit Penjualan</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">
+            Masukkan ID penjualan untuk melihat distribusi profit yang dibuat backend.
+          </p>
+        </div>
+        <label className="form-control max-w-sm">
+          <span className="label-text mb-2 font-semibold">Penjualan</span>
+          {salesOptions.length > 0 ? (
+            <select
+              className="select select-bordered rounded-md bg-white"
+              value={penjualanId}
+              onChange={(event) => setPenjualanId(event.target.value)}
+            >
+              <option value="">Pilih laporan penjualan</option>
+              {salesOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              className="input input-bordered rounded-md bg-white"
+              value={penjualanId}
+              onChange={(event) => setPenjualanId(event.target.value)}
+              placeholder="Contoh: 201"
+            />
+          )}
+        </label>
+      </section>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <label className="form-control max-w-sm">
+        <span className="label-text mb-2 font-semibold">Penjualan</span>
+        {salesOptions.length > 0 ? (
+          <select
+            className="select select-bordered rounded-md bg-white"
+            value={penjualanId}
+            onChange={(event) => setPenjualanId(event.target.value)}
+          >
+            <option value="">Pilih laporan penjualan</option>
+            {salesOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            className="input input-bordered rounded-md bg-white"
+            value={penjualanId}
+            onChange={(event) => setPenjualanId(event.target.value)}
+          />
+        )}
+      </label>
+      <ResourcePage
+        title="Profit Penjualan"
+        description="Distribusi profit investor berdasarkan laporan penjualan tertentu."
+        config={profitBySalesConfig(penjualanId)}
+        columns={profitColumns}
+        readonly
+        emptyTitle="Belum ada profit untuk penjualan ini"
+        emptyDescription="Distribusi profit akan muncul setelah backend membuat distribusi untuk laporan yang dipilih."
+      />
+    </div>
+  );
+}
+
 export function ClassesPage() {
+  const { user } = useAuth();
+  const canMutate = user?.role === "admin" || user?.role === "superadmin";
+
   return (
     <ResourcePage
       title="Kelas Bisnis"
@@ -660,6 +1080,12 @@ export function ClassesPage() {
       columns={classColumns}
       fields={classFields}
       createLabel="Tambah Kelas"
+      allowCreate={canMutate}
+      allowEdit={canMutate}
+      allowDelete={canMutate}
+      emptyTitle="Belum ada kelas bisnis"
+      emptyDescription="Kelas bisnis dipakai untuk klasifikasi risiko dan kualitas usaha."
+      searchableFields={["nama_kelas", "deskripsi"]}
     />
   );
 }
@@ -687,6 +1113,9 @@ export function UsersPage() {
       fields={[]}
       createLabel="Update User"
       readonly
+      emptyTitle="Belum ada user"
+      emptyDescription="Data user platform akan muncul setelah akun UMKM atau investor terdaftar."
+      searchableFields={["nama", "email", "no_telp", (item) => readPath(item, ["role.nama_role", "role_name", "role_id"])]}
     />
   );
 }
@@ -706,6 +1135,9 @@ export function AdminsPage() {
       allowCreate={canMutate}
       allowEdit={canMutate}
       allowDelete={canMutate}
+      emptyTitle="Belum ada admin"
+      emptyDescription="Akun admin operasional akan muncul di sini."
+      searchableFields={["nama", "email", "no_telp", "level"]}
     />
   );
 }
@@ -722,6 +1154,9 @@ export function NotificationsPage() {
       actions={notificationActions}
       allowCreate={false}
       allowEdit={false}
+      emptyTitle="Belum ada notifikasi"
+      emptyDescription="Notifikasi sistem dan aktivitas user akan muncul di sini."
+      searchableFields={["title", "message", "type", "status"]}
     />
   );
 }

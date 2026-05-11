@@ -10,8 +10,10 @@ import {
 
 export type Language = "id" | "en";
 
-type TranslationKey =
+export type TranslationKey =
   | "language"
+  | "logout"
+  | "workspaceTitle"
   | "loginTitle"
   | "loginSubtitle"
   | "email"
@@ -37,7 +39,32 @@ type TranslationKey =
   | "navPortfolio"
   | "navContact"
   | "getStarted"
-  | "navigation";
+  | "navigation"
+  | "dashboardOverview"
+  | "dashboardProfile"
+  | "dashboardBusiness"
+  | "dashboardBusinessModel"
+  | "dashboardSubmissions"
+  | "dashboardSales"
+  | "dashboardNegotiations"
+  | "dashboardNotifications"
+  | "dashboardOpportunities"
+  | "dashboardRecommendations"
+  | "dashboardPreferences"
+  | "dashboardInvoices"
+  | "dashboardPortfolio"
+  | "dashboardProfit"
+  | "dashboardSystemStatus"
+  | "dashboardUsers"
+  | "dashboardClasses"
+  | "dashboardInvestments"
+  | "dashboardAdmins"
+  | "dashboardGroupMain"
+  | "dashboardGroupAccount"
+  | "dashboardGroupBusiness"
+  | "dashboardGroupFunding"
+  | "dashboardGroupTransactions"
+  | "dashboardGroupSystem";
 
 const labels: Record<Language, string> = {
   id: "Indonesia",
@@ -47,6 +74,8 @@ const labels: Record<Language, string> = {
 const translations: Record<Language, Record<TranslationKey, string>> = {
   id: {
     language: "Bahasa",
+    logout: "Logout",
+    workspaceTitle: "FundRaise Workspace",
     loginTitle: "Login",
     loginSubtitle: "Masuk ke dashboard FundRaise.",
     email: "Email",
@@ -73,9 +102,36 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     navContact: "Kontak",
     getStarted: "Mulai",
     navigation: "Navigasi",
+    dashboardOverview: "Overview",
+    dashboardProfile: "Profile",
+    dashboardBusiness: "Bisnis",
+    dashboardBusinessModel: "Profil Model",
+    dashboardSubmissions: "Pengajuan",
+    dashboardSales: "Penjualan",
+    dashboardNegotiations: "Negosiasi",
+    dashboardNotifications: "Notifikasi",
+    dashboardOpportunities: "Peluang",
+    dashboardRecommendations: "AI Match",
+    dashboardPreferences: "Preferensi",
+    dashboardInvoices: "Invoice",
+    dashboardPortfolio: "Portfolio",
+    dashboardProfit: "Profit",
+    dashboardSystemStatus: "Status Sistem",
+    dashboardUsers: "Users",
+    dashboardClasses: "Kelas",
+    dashboardInvestments: "Investasi",
+    dashboardAdmins: "Admin",
+    dashboardGroupMain: "Utama",
+    dashboardGroupAccount: "Akun",
+    dashboardGroupBusiness: "Bisnis",
+    dashboardGroupFunding: "Pendanaan",
+    dashboardGroupTransactions: "Transaksi",
+    dashboardGroupSystem: "Sistem",
   },
   en: {
     language: "Language",
+    logout: "Logout",
+    workspaceTitle: "FundRaise Workspace",
     loginTitle: "Login",
     loginSubtitle: "Sign in to your FundRaise dashboard.",
     email: "Email",
@@ -102,6 +158,31 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     navContact: "Contact",
     getStarted: "Get Started",
     navigation: "Navigation",
+    dashboardOverview: "Overview",
+    dashboardProfile: "Profile",
+    dashboardBusiness: "Business",
+    dashboardBusinessModel: "Model Profile",
+    dashboardSubmissions: "Submissions",
+    dashboardSales: "Sales",
+    dashboardNegotiations: "Negotiations",
+    dashboardNotifications: "Notifications",
+    dashboardOpportunities: "Opportunities",
+    dashboardRecommendations: "AI Match",
+    dashboardPreferences: "Preferences",
+    dashboardInvoices: "Invoices",
+    dashboardPortfolio: "Portfolio",
+    dashboardProfit: "Profit",
+    dashboardSystemStatus: "System Status",
+    dashboardUsers: "Users",
+    dashboardClasses: "Classes",
+    dashboardInvestments: "Investments",
+    dashboardAdmins: "Admins",
+    dashboardGroupMain: "Main",
+    dashboardGroupAccount: "Account",
+    dashboardGroupBusiness: "Business",
+    dashboardGroupFunding: "Funding",
+    dashboardGroupTransactions: "Transactions",
+    dashboardGroupSystem: "System",
   },
 };
 

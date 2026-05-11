@@ -1,8 +1,12 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 import { Loader2, RefreshCw, Save } from "lucide-react";
 import { useAuth } from "../../lib/auth/AuthProvider";
 import { directApi } from "../../lib/api/direct";
+import { apiClient, unwrap } from "../../lib/api/client";
+import { resourceApi } from "../../lib/api/resources";
+import { businessConfig, myBusinessConfig } from "../../lib/resourceConfigs";
 
 function Panel({
   title,
@@ -30,6 +34,13 @@ const asRecord = (data: unknown): Record<string, unknown> =>
 const displayValue = (value: unknown) => {
   if (value === null || value === undefined || value === "") return "-";
   return String(value);
+};
+
+const apiErrorMessage = (error: unknown, fallback: string) => {
+  if (axios.isAxiosError(error) && error.response?.data?.message) {
+    return String(error.response.data.message);
+  }
+  return fallback;
 };
 
 function DetailRows({ rows }: { rows: Array<[string, unknown]> }) {
@@ -78,7 +89,9 @@ export function ProfilePage() {
   const { user, updateUser } = useAuth();
   const queryClient = useQueryClient();
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+  const canEditProfile = !isAdmin || user?.role === "superadmin";
   const [saveMessage, setSaveMessage] = useState("");
+  const [saveError, setSaveError] = useState("");
   const [form, setForm] = useState<{
     nama: string;
     email: string;
@@ -115,22 +128,29 @@ export function ProfilePage() {
       };
 
       if (isAdmin && user?.id) {
-        await directApi.put(`/admin/${user.id}`, form, { ...user, ...localUpdates });
+        const response = await apiClient.put(`/admin/${user.id}`, form);
+        unwrap<unknown>(response.data);
       } else {
-        await directApi.put("/user/profile", localUpdates, { ...user, ...localUpdates });
+        const response = await apiClient.put("/user/profile", localUpdates);
+        unwrap<unknown>(response.data);
       }
 
       return updateUser(localUpdates);
     },
     onSuccess: async () => {
       setSaveMessage("Profile berhasil disimpan.");
+      setSaveError("");
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+    onError: (err) => {
+      setSaveMessage("");
+      setSaveError(apiErrorMessage(err, "Profile belum berhasil disimpan."));
     },
   });
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await updateMutation.mutateAsync();
+    if (canEditProfile) updateMutation.mutate();
   };
 
   const profileRecord: Record<string, unknown> = {
@@ -158,6 +178,7 @@ export function ProfilePage() {
               className="input input-bordered rounded-md"
               value={form.nama}
               onChange={(event) => setForm((current) => ({ ...current, nama: event.target.value }))}
+              disabled={!canEditProfile}
             />
           </label>
           <label className="form-control">
@@ -167,6 +188,7 @@ export function ProfilePage() {
               className="input input-bordered rounded-md"
               value={form.email}
               onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+              disabled={!canEditProfile}
             />
           </label>
           <label className="form-control">
@@ -175,6 +197,7 @@ export function ProfilePage() {
               className="input input-bordered rounded-md"
               value={form.no_telp}
               onChange={(event) => setForm((current) => ({ ...current, no_telp: event.target.value }))}
+              disabled={!canEditProfile}
             />
           </label>
           {isAdmin ? (
@@ -184,19 +207,31 @@ export function ProfilePage() {
                 className="select select-bordered rounded-md"
                 value={form.level}
                 onChange={(event) => setForm((current) => ({ ...current, level: event.target.value }))}
+                disabled={!canEditProfile}
               >
                 <option value="admin">Admin</option>
                 <option value="superadmin">Superadmin</option>
               </select>
             </label>
           ) : null}
-          <button className="btn btn-primary rounded-md text-white" disabled={updateMutation.isPending}>
-            {updateMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-            Simpan Profile
-          </button>
+          {canEditProfile ? (
+            <button className="btn btn-primary rounded-md text-white" disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+              Simpan Profile
+            </button>
+          ) : (
+            <div className="rounded-md border border-info/20 bg-info/10 px-4 py-3 text-sm font-semibold text-info">
+              Admin biasa hanya dapat melihat profile. Update admin hanya tersedia untuk superadmin.
+            </div>
+          )}
           {saveMessage ? (
             <div className="rounded-md border border-success/20 bg-success/10 px-4 py-3 text-sm font-semibold text-success">
               {saveMessage}
+            </div>
+          ) : null}
+          {saveError ? (
+            <div className="rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-semibold text-error">
+              {saveError}
             </div>
           ) : null}
         </form>
@@ -234,173 +269,525 @@ export function ProfilePage() {
   );
 }
 
-export function BusinessProfilePage() {
+type InvestorPreferenceForm = {
+  kepuasan_pelanggan: number;
+  digital_adoption_score: number;
+  net_profit_margin: number;
+  year_revenue: number;
+  business_tenure_years: number;
+};
+
+const defaultInvestorPreference: InvestorPreferenceForm = {
+  kepuasan_pelanggan: 3.5,
+  digital_adoption_score: 7,
+  net_profit_margin: 15,
+  year_revenue: 500000000,
+  business_tenure_years: 3,
+};
+
+const investorPreferenceFields: Array<{
+  key: keyof InvestorPreferenceForm;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+}> = [
+  { key: "kepuasan_pelanggan", label: "Kepuasan Pelanggan", min: 1, max: 5, step: 0.1 },
+  { key: "digital_adoption_score", label: "Digital Adoption Score", min: 1, max: 10, step: 1 },
+  { key: "net_profit_margin", label: "Net Profit Margin", min: -35, max: 100, step: 0.1 },
+  { key: "year_revenue", label: "Year Revenue", min: 18000000, max: 50000000000, step: 1000000 },
+  { key: "business_tenure_years", label: "Business Tenure", min: 0, max: 50, step: 0.1 },
+];
+
+export function InvestorPreferencesPage() {
   const queryClient = useQueryClient();
-  const [bisnisId, setBisnisId] = useState("1");
-  const [form, setForm] = useState({
-    net_profit_margin: 15.5,
-    kepuasan_pelanggan: 3.5,
-    peak_hour_latency: "medium",
-    review_volatility: 0.8,
-    repeat_order_rate: 65,
-    digital_adoption_score: 7,
-    year_revenue: 500000000,
-    business_tenure_years: 2.5,
-    class: 2,
+  const [form, setForm] = useState<InvestorPreferenceForm>(defaultInvestorPreference);
+  const [isDirty, setIsDirty] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const preferenceQuery = useQuery({
+    queryKey: ["investor-preferences"],
+    queryFn: async () => {
+      try {
+        const response = await apiClient.get("/user/investor/preferences");
+        return unwrap<Record<string, unknown>>(response.data);
+      } catch (err) {
+        if (axios.isAxiosError(err) && err.response?.status === 404) return null;
+        throw err;
+      }
+    },
   });
 
+  const savedPreference = preferenceQuery.data
+    ? {
+      kepuasan_pelanggan: Number(preferenceQuery.data.kepuasan_pelanggan ?? defaultInvestorPreference.kepuasan_pelanggan),
+      digital_adoption_score: Number(preferenceQuery.data.digital_adoption_score ?? defaultInvestorPreference.digital_adoption_score),
+      net_profit_margin: Number(preferenceQuery.data.net_profit_margin ?? defaultInvestorPreference.net_profit_margin),
+      year_revenue: Number(preferenceQuery.data.year_revenue ?? defaultInvestorPreference.year_revenue),
+      business_tenure_years: Number(preferenceQuery.data.business_tenure_years ?? defaultInvestorPreference.business_tenure_years),
+    }
+    : defaultInvestorPreference;
+  const activeForm = isDirty ? form : savedPreference;
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post("/user/investor/preferences", activeForm);
+      return unwrap<unknown>(response.data);
+    },
+    onSuccess: async () => {
+      setForm(activeForm);
+      setIsDirty(false);
+      setMessage("Preferensi berhasil disimpan.");
+      setError("");
+      await queryClient.invalidateQueries({ queryKey: ["investor-preferences"] });
+      await queryClient.invalidateQueries({ queryKey: ["ai-recommendations"] });
+    },
+    onError: (err) => {
+      setMessage("");
+      setError(apiErrorMessage(err, "Preferensi belum berhasil disimpan."));
+    },
+  });
+
+  const refreshMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post("/user/investor/preferences/refresh");
+      return unwrap<unknown>(response.data);
+    },
+    onSuccess: async () => {
+      setMessage("Rekomendasi berhasil diperbarui.");
+      setError("");
+      await queryClient.invalidateQueries({ queryKey: ["ai-recommendations"] });
+    },
+    onError: (err) => {
+      setMessage("");
+      setError(apiErrorMessage(err, "Rekomendasi belum bisa diperbarui."));
+    },
+  });
+
+  const update = (key: keyof InvestorPreferenceForm, value: string) => {
+    setIsDirty(true);
+    setForm({ ...activeForm, [key]: Number(value) });
+  };
+
+  return (
+    <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+      <Panel
+        title="Preferensi Investor"
+        description="Preferensi ini dipakai backend untuk menghasilkan rekomendasi UMKM."
+      >
+        <form
+          className="grid gap-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            saveMutation.mutate();
+          }}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            {investorPreferenceFields.map((field) => (
+              <label className="form-control" key={field.key}>
+                <span className="label-text mb-2 font-semibold">{field.label}</span>
+                <input
+                  type="number"
+                  min={field.min}
+                  max={field.max}
+                  step={field.step}
+                  className="input input-bordered rounded-md"
+                  value={String(activeForm[field.key])}
+                  onChange={(event) => update(field.key, event.target.value)}
+                  required
+                />
+              </label>
+            ))}
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button className="btn btn-primary rounded-md text-white" disabled={saveMutation.isPending}>
+              {saveMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+              Simpan Preferensi
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary rounded-md text-white"
+              onClick={() => refreshMutation.mutate()}
+              disabled={refreshMutation.isPending}
+            >
+              {refreshMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} />}
+              Refresh Rekomendasi
+            </button>
+          </div>
+          {message ? (
+            <div className="rounded-md border border-success/20 bg-success/10 px-4 py-3 text-sm font-semibold text-success">
+              {message}
+            </div>
+          ) : null}
+          {error ? (
+            <div className="rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-semibold text-error">
+              {error}
+            </div>
+          ) : null}
+        </form>
+      </Panel>
+      <div className="grid gap-5">
+        <Panel title="Preferensi Aktif" description="Data yang tersimpan di backend untuk akun investor.">
+          <div className="mb-4">
+            <SyncStatus
+              label="Preferensi investor"
+              isLoading={preferenceQuery.isLoading}
+              isError={preferenceQuery.isError}
+              hasData={Boolean(preferenceQuery.data)}
+            />
+          </div>
+          <DetailRows
+            rows={[
+              ["Kepuasan Pelanggan", preferenceQuery.data?.kepuasan_pelanggan],
+              ["Digital Adoption Score", preferenceQuery.data?.digital_adoption_score],
+              ["Net Profit Margin", preferenceQuery.data?.net_profit_margin],
+              ["Year Revenue", preferenceQuery.data?.year_revenue],
+              ["Business Tenure", preferenceQuery.data?.business_tenure_years],
+              ["Updated", preferenceQuery.data?.updated_at],
+            ]}
+          />
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+const defaultBusinessProfileForm = {
+  net_profit_margin: 15.5,
+  kepuasan_pelanggan: 3.5,
+  peak_hour_latency: "medium",
+  review_volatility: 0.8,
+  repeat_order_rate: 65,
+  digital_adoption_score: 7,
+  year_revenue: 500000000,
+  business_tenure_years: 2.5,
+  class: 2,
+};
+
+export function BusinessProfilePage() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [bisnisId, setBisnisId] = useState("");
+  const [form, setForm] = useState(defaultBusinessProfileForm);
+  const [isDirty, setIsDirty] = useState(false);
+  const [profileMessage, setProfileMessage] = useState("");
+  const [profileError, setProfileError] = useState("");
+  const isUmkm = user?.role === "umkm";
+  const canSeeMlProfiles = user?.role === "admin" || user?.role === "superadmin";
+  const businessOptionsQuery = useQuery({
+    queryKey: ["business-profile", "business-options", user?.role],
+    queryFn: () => resourceApi.list(canSeeMlProfiles ? businessConfig : myBusinessConfig),
+  });
+  const businessOptions = useMemo(
+    () =>
+      (businessOptionsQuery.data ?? []).map((item) => ({
+        id: String(item.id),
+        label: `${displayValue(item.nama_bisnis ?? item.nama)} (#${displayValue(item.id)})`,
+      })),
+    [businessOptionsQuery.data],
+  );
+
+  const activeBisnisId = bisnisId || businessOptions[0]?.id || "";
+
   const profileQuery = useQuery({
-    queryKey: ["business-profile", bisnisId],
-    queryFn: () => directApi.get(`/businesses/${bisnisId}/profile`, form),
-    enabled: Boolean(bisnisId),
+    queryKey: ["business-profile", activeBisnisId],
+    queryFn: () => directApi.get(`/businesses/${activeBisnisId}/profile`, form),
+    enabled: Boolean(activeBisnisId),
+  });
+
+  const mlProfilesQuery = useQuery({
+    queryKey: ["business-profile", "ml"],
+    queryFn: () => directApi.get("/businesses/ml", []),
+    enabled: canSeeMlProfiles,
   });
 
   const upsertMutation = useMutation({
-    mutationFn: () =>
-      directApi.post(`/businesses/${bisnisId}/profile`, {
-        net_profit_margin: form.net_profit_margin,
-        kepuasan_pelanggan: form.kepuasan_pelanggan,
-        peak_hour_latency: form.peak_hour_latency,
-        review_volatility: form.review_volatility,
-        repeat_order_rate: form.repeat_order_rate,
-        digital_adoption_score: form.digital_adoption_score,
-        year_revenue: form.year_revenue,
-        business_tenure_years: form.business_tenure_years,
-      }),
+    mutationFn: async () => {
+      const response = await apiClient.post(`/businesses/${activeBisnisId}/profile`, {
+        net_profit_margin: activeBusinessProfile.net_profit_margin,
+        kepuasan_pelanggan: activeBusinessProfile.kepuasan_pelanggan,
+        peak_hour_latency: activeBusinessProfile.peak_hour_latency,
+        review_volatility: activeBusinessProfile.review_volatility,
+        repeat_order_rate: activeBusinessProfile.repeat_order_rate,
+        digital_adoption_score: activeBusinessProfile.digital_adoption_score,
+        year_revenue: activeBusinessProfile.year_revenue,
+        business_tenure_years: activeBusinessProfile.business_tenure_years,
+      });
+      return unwrap<unknown>(response.data);
+    },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["business-profile", bisnisId] });
+      setForm(activeBusinessProfile);
+      setIsDirty(false);
+      setProfileMessage("Profil bisnis berhasil disimpan.");
+      setProfileError("");
+      await queryClient.invalidateQueries({ queryKey: ["business-profile", activeBisnisId] });
+    },
+    onError: (err) => {
+      setProfileMessage("");
+      setProfileError(apiErrorMessage(err, "Profil bisnis belum berhasil disimpan."));
     },
   });
 
   const classMutation = useMutation({
-    mutationFn: () => directApi.put(`/businesses/${bisnisId}/profile/class`, { class: form.class }),
+    mutationFn: async () => {
+      const response = await apiClient.put(`/businesses/${activeBisnisId}/profile/class`, {
+        class: activeBusinessProfile.class,
+      });
+      return unwrap<unknown>(response.data);
+    },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["business-profile", bisnisId] });
+      setForm(activeBusinessProfile);
+      setIsDirty(false);
+      setProfileMessage("Class bisnis berhasil diperbarui.");
+      setProfileError("");
+      await queryClient.invalidateQueries({ queryKey: ["business-profile", activeBisnisId] });
+    },
+    onError: (err) => {
+      setProfileMessage("");
+      setProfileError(apiErrorMessage(err, "Class bisnis belum berhasil diperbarui."));
     },
   });
 
+  const profileData = asRecord(profileQuery.data);
+  const savedBusinessProfile =
+    profileData.net_profit_margin === undefined
+      ? defaultBusinessProfileForm
+      : {
+        net_profit_margin: Number(profileData.net_profit_margin ?? defaultBusinessProfileForm.net_profit_margin),
+        kepuasan_pelanggan: Number(profileData.kepuasan_pelanggan ?? defaultBusinessProfileForm.kepuasan_pelanggan),
+        peak_hour_latency: String(profileData.peak_hour_latency ?? defaultBusinessProfileForm.peak_hour_latency),
+        review_volatility: Number(profileData.review_volatility ?? defaultBusinessProfileForm.review_volatility),
+        repeat_order_rate: Number(profileData.repeat_order_rate ?? defaultBusinessProfileForm.repeat_order_rate),
+        digital_adoption_score: Number(profileData.digital_adoption_score ?? defaultBusinessProfileForm.digital_adoption_score),
+        year_revenue: Number(profileData.year_revenue ?? defaultBusinessProfileForm.year_revenue),
+        business_tenure_years: Number(profileData.business_tenure_years ?? defaultBusinessProfileForm.business_tenure_years),
+        class: Number(profileData.class ?? defaultBusinessProfileForm.class),
+      };
+  const activeBusinessProfile = isDirty ? form : savedBusinessProfile;
+
   const updateNumber = (key: keyof typeof form, value: string) => {
-    setForm((current) => ({ ...current, [key]: Number(value) }));
+    setIsDirty(true);
+    setForm({ ...activeBusinessProfile, [key]: Number(value) });
   };
 
   const businessProfile = {
-    ...form,
     ...asRecord(profileQuery.data),
+    ...activeBusinessProfile,
   };
+  const mlProfiles = Array.isArray(mlProfilesQuery.data)
+    ? (mlProfilesQuery.data as Record<string, unknown>[])
+    : [];
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
-      <Panel
-        title="Profil Model Bisnis"
-        description="Kelola variabel kesehatan bisnis, performa digital, dan kelas risiko usaha."
-      >
-        <div className="grid gap-4">
-          <label className="form-control">
-            <span className="label-text mb-2 font-semibold">ID Bisnis</span>
-            <div className="flex gap-2">
-              <input
-                className="input input-bordered flex-1 rounded-md"
-                value={bisnisId}
-                onChange={(event) => setBisnisId(event.target.value)}
-              />
-              <button
-                className="btn btn-outline rounded-md"
-                onClick={() => queryClient.invalidateQueries({ queryKey: ["business-profile", bisnisId] })}
-              >
-                <RefreshCw size={18} />
-              </button>
-            </div>
-          </label>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {[
-              ["net_profit_margin", "Net Profit Margin"],
-              ["kepuasan_pelanggan", "Kepuasan Pelanggan"],
-              ["review_volatility", "Review Volatility"],
-              ["repeat_order_rate", "Repeat Order Rate"],
-              ["digital_adoption_score", "Digital Adoption Score"],
-              ["year_revenue", "Year Revenue"],
-              ["business_tenure_years", "Business Tenure"],
-            ].map(([key, label]) => (
-              <label className="form-control" key={key}>
-                <span className="label-text mb-2 font-semibold">{label}</span>
-                <input
-                  type="number"
-                  className="input input-bordered rounded-md"
-                  value={String(form[key as keyof typeof form])}
-                  onChange={(event) => updateNumber(key as keyof typeof form, event.target.value)}
-                />
+    <div className="space-y-5">
+      <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
+        <Panel
+          title="Profil Model Bisnis"
+          description="Kelola variabel kesehatan bisnis, performa digital, dan kelas risiko usaha."
+        >
+          <div className="grid gap-4">
+            <label className="form-control">
+              <span className="label-text mb-2 font-semibold">Bisnis</span>
+              <div className="flex gap-2">
+                {businessOptions.length > 0 ? (
+                  <select
+                    className="select select-bordered flex-1 rounded-md"
+                    value={activeBisnisId}
+                    onChange={(event) => {
+                      setBisnisId(event.target.value);
+                      setIsDirty(false);
+                    }}
+                  >
+                    {businessOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    className="input input-bordered flex-1 rounded-md"
+                  value={activeBisnisId}
+                    onChange={(event) => {
+                      setBisnisId(event.target.value);
+                      setIsDirty(false);
+                    }}
+                    placeholder="Masukkan ID bisnis"
+                  />
+                )}
+                <button
+                  className="btn btn-outline rounded-md"
+                  onClick={() => queryClient.invalidateQueries({ queryKey: ["business-profile", activeBisnisId] })}
+                  disabled={!activeBisnisId || profileQuery.isLoading}
+                >
+                  <RefreshCw size={18} />
+                </button>
+              </div>
+              {!businessOptionsQuery.isLoading && businessOptions.length === 0 ? (
+                <span className="mt-2 text-xs font-semibold text-warning">
+                  Belum ada bisnis yang bisa dipilih. Buat profil bisnis terlebih dahulu.
+                </span>
+              ) : null}
+            </label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                ["net_profit_margin", "Net Profit Margin"],
+                ["kepuasan_pelanggan", "Kepuasan Pelanggan"],
+                ["review_volatility", "Review Volatility"],
+                ["repeat_order_rate", "Repeat Order Rate"],
+                ["digital_adoption_score", "Digital Adoption Score"],
+                ["year_revenue", "Year Revenue"],
+                ["business_tenure_years", "Business Tenure"],
+              ].map(([key, label]) => (
+                <label className="form-control" key={key}>
+                  <span className="label-text mb-2 font-semibold">{label}</span>
+                  <input
+                    type="number"
+                    className="input input-bordered rounded-md"
+                    value={String(activeBusinessProfile[key as keyof typeof form])}
+                    onChange={(event) => updateNumber(key as keyof typeof form, event.target.value)}
+                    disabled={!isUmkm}
+                  />
+                </label>
+              ))}
+              <label className="form-control">
+                <span className="label-text mb-2 font-semibold">Peak Hour Latency</span>
+                <select
+                  className="select select-bordered rounded-md"
+                  value={activeBusinessProfile.peak_hour_latency}
+                  onChange={(event) => {
+                    setIsDirty(true);
+                    setForm({ ...activeBusinessProfile, peak_hour_latency: event.target.value });
+                  }}
+                  disabled={!isUmkm}
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
               </label>
-            ))}
-            <label className="form-control">
-              <span className="label-text mb-2 font-semibold">Peak Hour Latency</span>
-              <select
-                className="select select-bordered rounded-md"
-                value={form.peak_hour_latency}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, peak_hour_latency: event.target.value }))
-                }
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-            </label>
-            <label className="form-control">
-              <span className="label-text mb-2 font-semibold">Class</span>
-              <select
-                className="select select-bordered rounded-md"
-                value={form.class}
-                onChange={(event) => updateNumber("class", event.target.value)}
-              >
-                <option value={0}>Critical</option>
-                <option value={1}>Struggling</option>
-                <option value={2}>Growth</option>
-                <option value={3}>Elite</option>
-              </select>
-            </label>
+              <label className="form-control">
+                <span className="label-text mb-2 font-semibold">Class</span>
+                <select
+                  className="select select-bordered rounded-md"
+                  value={activeBusinessProfile.class}
+                  onChange={(event) => updateNumber("class", event.target.value)}
+                  disabled={!isUmkm}
+                >
+                  <option value={0}>Critical</option>
+                  <option value={1}>Struggling</option>
+                  <option value={2}>Growth</option>
+                  <option value={3}>Elite</option>
+                </select>
+              </label>
+            </div>
+            {isUmkm ? (
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  className="btn btn-primary rounded-md text-white"
+                  onClick={() => upsertMutation.mutate()}
+                  disabled={!activeBisnisId || upsertMutation.isPending}
+                >
+                  {upsertMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                  Simpan Profil
+                </button>
+                <button
+                  className="btn btn-secondary rounded-md text-white"
+                  onClick={() => classMutation.mutate()}
+                  disabled={!activeBisnisId || classMutation.isPending}
+                >
+                  Update Class
+                </button>
+              </div>
+            ) : (
+              <div className="rounded-md border border-info/20 bg-info/10 px-4 py-3 text-sm font-semibold text-info">
+                Role ini hanya dapat melihat profil model bisnis.
+              </div>
+            )}
+            {profileMessage ? (
+              <div className="rounded-md border border-success/20 bg-success/10 px-4 py-3 text-sm font-semibold text-success">
+                {profileMessage}
+              </div>
+            ) : null}
+            {profileError ? (
+              <div className="rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-semibold text-error">
+                {profileError}
+              </div>
+            ) : null}
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <button
-              className="btn btn-primary rounded-md text-white"
-              onClick={() => upsertMutation.mutate()}
-              disabled={upsertMutation.isPending}
-            >
-              {upsertMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-              Simpan Profil
-            </button>
-            <button
-              className="btn btn-secondary rounded-md text-white"
-              onClick={() => classMutation.mutate()}
-              disabled={classMutation.isPending}
-            >
-              Update Class
-            </button>
+        </Panel>
+        <Panel title="Ringkasan Profil Bisnis" description="Nilai model bisnis yang sedang aktif untuk proses scoring.">
+          <div className="mb-4">
+            <SyncStatus
+              label="Profil bisnis"
+              isLoading={profileQuery.isLoading}
+              isError={profileQuery.isError}
+              hasData={Boolean(profileQuery.data)}
+            />
           </div>
-        </div>
-      </Panel>
-      <Panel title="Ringkasan Profil Bisnis" description="Nilai model bisnis yang sedang aktif untuk proses scoring.">
-        <div className="mb-4">
-          <SyncStatus
-            label="Profil bisnis"
-            isLoading={profileQuery.isLoading}
-            isError={profileQuery.isError}
-            hasData={Boolean(profileQuery.data)}
+          <DetailRows
+            rows={[
+              ["Net Profit Margin", businessProfile.net_profit_margin],
+              ["Kepuasan Pelanggan", businessProfile.kepuasan_pelanggan],
+              ["Peak Hour Latency", businessProfile.peak_hour_latency],
+              ["Review Volatility", businessProfile.review_volatility],
+              ["Repeat Order Rate", businessProfile.repeat_order_rate],
+              ["Digital Adoption Score", businessProfile.digital_adoption_score],
+              ["Year Revenue", businessProfile.year_revenue],
+              ["Business Tenure", businessProfile.business_tenure_years],
+              ["Class", businessProfile.class],
+            ]}
           />
-        </div>
-        <DetailRows
-          rows={[
-            ["Net Profit Margin", businessProfile.net_profit_margin],
-            ["Kepuasan Pelanggan", businessProfile.kepuasan_pelanggan],
-            ["Peak Hour Latency", businessProfile.peak_hour_latency],
-            ["Review Volatility", businessProfile.review_volatility],
-            ["Repeat Order Rate", businessProfile.repeat_order_rate],
-            ["Digital Adoption Score", businessProfile.digital_adoption_score],
-            ["Year Revenue", businessProfile.year_revenue],
-            ["Business Tenure", businessProfile.business_tenure_years],
-            ["Class", businessProfile.class],
-          ]}
-        />
-      </Panel>
+        </Panel>
+      </div>
+      {canSeeMlProfiles ? (
+        <Panel title="Semua Profil Model" description="Data profil bisnis yang tersedia untuk proses ML.">
+          <div className="mb-4">
+            <SyncStatus
+              label="Profil ML"
+              isLoading={mlProfilesQuery.isLoading}
+              isError={mlProfilesQuery.isError}
+              hasData={mlProfiles.length > 0}
+            />
+          </div>
+          <div className="overflow-x-auto rounded-md border border-base-300">
+            <table className="table">
+              <thead>
+                <tr className="bg-base-200 text-xs uppercase tracking-wide text-neutral/60">
+                  <th>Bisnis</th>
+                  <th>Class</th>
+                  <th>Margin</th>
+                  <th>Revenue</th>
+                  <th>Digital</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mlProfiles.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center text-neutral/55">
+                      Data belum tersedia
+                    </td>
+                  </tr>
+                ) : (
+                  mlProfiles.map((item) => {
+                    const bisnis = asRecord(item.bisnis);
+                    return (
+                      <tr key={String(item.id)}>
+                        <td className="font-black">{displayValue(bisnis.nama_bisnis)}</td>
+                        <td>{displayValue(item.class_label ?? item.class)}</td>
+                        <td>{displayValue(item.net_profit_margin)}</td>
+                        <td>{displayValue(item.year_revenue)}</td>
+                        <td>{displayValue(item.digital_adoption_score)}</td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      ) : null}
     </div>
   );
 }
@@ -417,6 +804,14 @@ export function ApiStatusPage() {
   const userClassDetailQuery = useQuery({
     queryKey: ["api-status", "bisnis-kelas-detail"],
     queryFn: () => directApi.get("/businesses/classes/1", null),
+  });
+  const adminDashboardQuery = useQuery({
+    queryKey: ["api-status", "dashboard-admin"],
+    queryFn: () => directApi.get("/dashboard/admin", null),
+  });
+  const mlProfilesQuery = useQuery({
+    queryKey: ["api-status", "businesses-ml"],
+    queryFn: () => directApi.get("/businesses/ml", []),
   });
 
   return (
@@ -443,6 +838,18 @@ export function ApiStatusPage() {
             isLoading={userClassDetailQuery.isLoading}
             isError={userClassDetailQuery.isError}
             hasData={Boolean(userClassDetailQuery.data)}
+          />
+          <SyncStatus
+            label="Dashboard admin"
+            isLoading={adminDashboardQuery.isLoading}
+            isError={adminDashboardQuery.isError}
+            hasData={Boolean(adminDashboardQuery.data)}
+          />
+          <SyncStatus
+            label="Profil ML"
+            isLoading={mlProfilesQuery.isLoading}
+            isError={mlProfilesQuery.isError}
+            hasData={Boolean(mlProfilesQuery.data)}
           />
         </div>
       </Panel>

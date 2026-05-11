@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { Logo } from "../../components/Logo";
@@ -8,6 +8,7 @@ import axios from "axios";
 export function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") ?? "";
+  const requestedTokenRef = useRef<string | null>(null);
 
   const [status, setStatus] = useState<"loading" | "success" | "error">(
     token ? "loading" : "error",
@@ -20,9 +21,10 @@ export function VerifyEmailPage() {
   const [resendMessage, setResendMessage] = useState("");
 
   useEffect(() => {
-    if (!token) {
+    if (!token || requestedTokenRef.current === token) {
       return;
     }
+    requestedTokenRef.current = token;
 
     apiClient
       .get(`/user/verify-email?token=${token}`)

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { ChangeEvent, FormEvent, ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -20,6 +21,7 @@ import type {
   ResourceField,
 } from "../types";
 import { resourceApi } from "../lib/api/resources";
+import { useLanguage } from "../lib/i18n/LanguageProvider";
 
 type ResourcePageProps<T extends Entity> = {
   title: string;
@@ -33,6 +35,10 @@ type ResourcePageProps<T extends Entity> = {
   allowEdit?: boolean;
   allowDelete?: boolean;
   actions?: ResourceAction<T>[];
+  emptyTitle?: string;
+  emptyDescription?: string;
+  searchableFields?: Array<keyof T & string | ((item: T) => unknown)>;
+  pageSize?: number;
 };
 
 type ConfirmDialog = {
@@ -82,6 +88,70 @@ const displayPreviewValue = (value: unknown): ReactNode => {
     return entries.length > 0 ? entries.join(", ") : "-";
   }
   return String(value);
+};
+
+const apiErrorMessage = (error: unknown, fallback: string) => {
+  if (axios.isAxiosError(error) && error.response?.data?.message) {
+    return String(error.response.data.message);
+  }
+  return fallback;
+};
+
+const nestedValue = (item: Entity, path: string) =>
+  path.split(".").reduce<unknown>((current, segment) => {
+    if (current && typeof current === "object" && segment in current) {
+      return (current as Record<string, unknown>)[segment];
+    }
+    return undefined;
+  }, item);
+
+const genericStatus = (item: Entity) =>
+  item.status ??
+  item.approval_status ??
+  nestedValue(item, "approval.status") ??
+  (typeof item.is_read === "boolean" ? (item.is_read ? "read" : "unread") : undefined);
+
+const uiCopy = {
+  id: {
+    allStatus: "Semua status",
+    search: "Cari",
+    actions: "Aksi",
+    loading: "Memuat data",
+    loadError: "Gagal memuat data dari backend",
+    noFilterMatch: "Tidak ada data yang cocok dengan filter saat ini.",
+    detail: "Detail",
+    edit: "Edit",
+    delete: "Hapus",
+    choose: "Pilih",
+    cancel: "Batal",
+    save: "Simpan",
+    previous: "Sebelumnya",
+    next: "Berikutnya",
+    showing: "Menampilkan",
+    from: "dari",
+    data: "data",
+    closeAlert: "Tutup alert",
+  },
+  en: {
+    allStatus: "All statuses",
+    search: "Search",
+    actions: "Actions",
+    loading: "Loading data",
+    loadError: "Failed to load data from backend",
+    noFilterMatch: "No data matches the current filters.",
+    detail: "Detail",
+    edit: "Edit",
+    delete: "Delete",
+    choose: "Choose",
+    cancel: "Cancel",
+    save: "Save",
+    previous: "Previous",
+    next: "Next",
+    showing: "Showing",
+    from: "of",
+    data: "records",
+    closeAlert: "Close alert",
+  },
 };
 
 function DataPreview({ data }: { data: unknown }) {
@@ -149,9 +219,17 @@ export function ResourcePage<T extends Entity>({
   allowEdit = true,
   allowDelete = true,
   actions = [],
+  emptyTitle = "Data belum tersedia",
+  emptyDescription = "Belum ada data yang bisa ditampilkan untuk halaman ini.",
+  searchableFields,
+  pageSize = 10,
 }: ResourcePageProps<T>) {
+  const { language } = useLanguage();
+  const copy = uiCopy[language];
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<T | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [resultModal, setResultModal] = useState<{ title: string; data: unknown } | null>(null);
@@ -211,11 +289,14 @@ export function ResourcePage<T extends Entity>({
     try {
       await task();
       setNotice(success);
-    } catch {
+    } catch (error) {
       setNotice({
         tone: "error",
         title: "Aksi gagal",
-        message: "Terjadi kendala saat memproses aksi. Coba ulangi beberapa saat lagi.",
+        message: apiErrorMessage(
+          error,
+          "Terjadi kendala saat memproses aksi. Coba ulangi beberapa saat lagi.",
+        ),
       });
     } finally {
       setLoadingAlert(null);
@@ -224,10 +305,38 @@ export function ResourcePage<T extends Entity>({
 
   const rows = useMemo(() => {
     const data = query.data ?? [];
-    if (!search.trim()) return data;
+    const byStatus =
+      statusFilter === "all"
+        ? data
+        : data.filter((item) => String(genericStatus(item)).toLowerCase() === statusFilter);
+    if (!search.trim()) return byStatus;
     const needle = search.toLowerCase();
-    return data.filter((item) => JSON.stringify(item).toLowerCase().includes(needle));
-  }, [query.data, search]);
+    return byStatus.filter((item) => {
+      if (!searchableFields?.length) {
+        return JSON.stringify(item).toLowerCase().includes(needle);
+      }
+      return searchableFields
+        .map((field) => (typeof field === "function" ? field(item) : nestedValue(item, field)))
+        .join(" ")
+        .toLowerCase()
+        .includes(needle);
+    });
+  }, [query.data, search, searchableFields, statusFilter]);
+
+  const statusOptions = useMemo(() => {
+    const values = new Set<string>();
+    (query.data ?? []).forEach((item) => {
+      const value = genericStatus(item);
+      if (value !== undefined && value !== null && value !== "") {
+        values.add(String(value).toLowerCase());
+      }
+    });
+    return Array.from(values).sort();
+  }, [query.data]);
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const visibleRows = rows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const openCreate = () => {
     setEditing(null);
@@ -274,11 +383,14 @@ export function ResourcePage<T extends Entity>({
         });
       }
       closeForm();
-    } catch {
+    } catch (error) {
       setNotice({
         tone: "error",
         title: "Gagal menyimpan",
-        message: "Perubahan belum berhasil diproses. Coba ulangi beberapa saat lagi.",
+        message: apiErrorMessage(
+          error,
+          "Perubahan belum berhasil diproses. Coba ulangi beberapa saat lagi.",
+        ),
       });
     }
   };
@@ -367,6 +479,66 @@ export function ResourcePage<T extends Entity>({
   const canEdit = allowEdit && !readonly && fields.length > 0 && Boolean(config.updatePath);
   const canDelete = allowDelete && !readonly && Boolean(config.deletePath);
   const hasRowActions = canEdit || canDelete || actions.length > 0 || Boolean(config.detailPath);
+  const colSpan = columns.length + (hasRowActions ? 1 : 0);
+
+  const visibleActionsFor = (item: T) =>
+    actions.filter((action) => !action.isVisible || action.isVisible(item));
+
+  const renderActionButtons = (item: T) => (
+    <>
+      {config.detailPath ? (
+        <button
+          className="btn btn-square btn-ghost btn-sm"
+          onClick={() => showDetail(item)}
+          aria-label={copy.detail}
+          title={copy.detail}
+          disabled={isProcessing}
+        >
+          <Eye size={16} />
+        </button>
+      ) : null}
+      {canEdit ? (
+        <button
+          className="btn btn-square btn-ghost btn-sm"
+          onClick={() => openEdit(item)}
+          aria-label={copy.edit}
+          title={copy.edit}
+          disabled={isProcessing}
+        >
+          <Edit3 size={16} />
+        </button>
+      ) : null}
+      {canDelete ? (
+        <button
+          className="btn btn-square btn-ghost btn-sm text-error"
+          onClick={() => remove(item)}
+          aria-label={copy.delete}
+          title={copy.delete}
+          disabled={isProcessing}
+        >
+          <Trash2 size={16} />
+        </button>
+      ) : null}
+      {visibleActionsFor(item).map((action) => {
+        const disabled = isProcessing || Boolean(action.isDisabled?.(item));
+        const disabledReason =
+          typeof action.disabledReason === "function"
+            ? action.disabledReason(item)
+            : action.disabledReason;
+        return (
+          <button
+            key={`${item.id}-${action.label}`}
+            className={action.className ?? "btn btn-outline btn-xs rounded-md"}
+            onClick={() => runAction(action, item)}
+            disabled={disabled}
+            title={disabled ? disabledReason : undefined}
+          >
+            {action.label}
+          </button>
+        );
+      })}
+    </>
+  );
 
   return (
     <section className="space-y-5">
@@ -393,7 +565,7 @@ export function ResourcePage<T extends Entity>({
           <button
             className="btn btn-square btn-ghost btn-sm"
             onClick={() => setNotice(null)}
-            aria-label="Tutup alert"
+            aria-label={copy.closeAlert}
           >
             <X size={16} />
           </button>
@@ -406,13 +578,34 @@ export function ResourcePage<T extends Entity>({
           <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">{description}</p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
+          {statusOptions.length > 1 ? (
+            <select
+              className="select select-bordered h-11 rounded-md bg-white text-sm font-semibold"
+              value={statusFilter}
+              onChange={(event) => {
+                setStatusFilter(event.target.value);
+                setPage(1);
+              }}
+              aria-label="Filter status"
+            >
+              <option value="all">{copy.allStatus}</option>
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          ) : null}
           <label className="input input-bordered flex h-11 items-center gap-2 rounded-md bg-white">
             <Search size={18} className="text-neutral/40" />
             <input
               className="w-full min-w-0"
-              placeholder="Cari"
+              placeholder={copy.search}
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
             />
           </label>
           {canCreate ? (
@@ -429,7 +622,7 @@ export function ResourcePage<T extends Entity>({
       </div>
 
       <div className="overflow-hidden rounded-md border border-base-300 bg-white shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="hidden overflow-x-auto md:block">
           <table className="table">
             <thead>
               <tr className="bg-base-200 text-xs uppercase tracking-wide text-neutral/60">
@@ -438,37 +631,42 @@ export function ResourcePage<T extends Entity>({
                     {column.label}
                   </th>
                 ))}
-                {hasRowActions ? <th className="w-48 text-right">Aksi</th> : null}
+                {hasRowActions ? <th className="w-48 text-right">{copy.actions}</th> : null}
               </tr>
             </thead>
             <tbody>
               {query.isLoading ? (
                 <tr>
-                  <td colSpan={columns.length + 1}>
+                  <td colSpan={colSpan}>
                     <div className="flex h-28 items-center justify-center gap-2 text-neutral/50">
                       <Loader2 className="animate-spin" size={18} />
-                      Memuat data
+                      {copy.loading}
                     </div>
                   </td>
                 </tr>
               ) : query.isError ? (
                 <tr>
-                  <td colSpan={columns.length + 1}>
-                    <div className="flex h-28 items-center justify-center text-error">
-                      Gagal memuat data dari backend
+                  <td colSpan={colSpan}>
+                    <div className="flex h-28 items-center justify-center px-6 text-center text-error">
+                      {apiErrorMessage(query.error, copy.loadError)}
                     </div>
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length + 1}>
-                    <div className="flex h-28 items-center justify-center text-neutral/50">
-                      Data belum tersedia
+                  <td colSpan={colSpan}>
+                    <div className="flex h-36 flex-col items-center justify-center px-6 text-center">
+                      <p className="font-black text-neutral">{emptyTitle}</p>
+                      <p className="mt-2 max-w-lg text-sm leading-6 text-neutral/55">
+                        {search || statusFilter !== "all"
+                          ? copy.noFilterMatch
+                          : emptyDescription}
+                      </p>
                     </div>
                   </td>
                 </tr>
               ) : (
-                rows.map((item) => (
+                visibleRows.map((item) => (
                   <tr key={item.id} className="hover:bg-base-200/60">
                     {columns.map((column) => (
                       <td key={`${item.id}-${column.label}`} className={column.className}>
@@ -478,46 +676,7 @@ export function ResourcePage<T extends Entity>({
                     {hasRowActions ? (
                       <td>
                         <div className="flex flex-wrap justify-end gap-1">
-                          {config.detailPath ? (
-                            <button
-                              className="btn btn-square btn-ghost btn-sm"
-                              onClick={() => showDetail(item)}
-                              aria-label="Detail"
-                              disabled={isProcessing}
-                            >
-                              <Eye size={16} />
-                            </button>
-                          ) : null}
-                          {canEdit ? (
-                            <button
-                              className="btn btn-square btn-ghost btn-sm"
-                              onClick={() => openEdit(item)}
-                              aria-label="Edit"
-                              disabled={isProcessing}
-                            >
-                              <Edit3 size={16} />
-                            </button>
-                          ) : null}
-                          {canDelete ? (
-                            <button
-                              className="btn btn-square btn-ghost btn-sm text-error"
-                              onClick={() => remove(item)}
-                              aria-label="Hapus"
-                              disabled={isProcessing}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          ) : null}
-                          {actions.map((action) => (
-                            <button
-                              key={`${item.id}-${action.label}`}
-                              className={action.className ?? "btn btn-outline btn-xs rounded-md"}
-                              onClick={() => runAction(action, item)}
-                              disabled={isProcessing}
-                            >
-                              {action.label}
-                            </button>
-                          ))}
+                          {renderActionButtons(item)}
                         </div>
                       </td>
                     ) : null}
@@ -527,7 +686,80 @@ export function ResourcePage<T extends Entity>({
             </tbody>
           </table>
         </div>
+
+        <div className="grid gap-3 p-3 md:hidden">
+          {query.isLoading ? (
+            <div className="flex h-28 items-center justify-center gap-2 text-neutral/50">
+              <Loader2 className="animate-spin" size={18} />
+              {copy.loading}
+            </div>
+          ) : query.isError ? (
+            <div className="flex min-h-28 items-center justify-center rounded-md border border-error/20 bg-error/10 p-4 text-center text-sm font-semibold text-error">
+              {apiErrorMessage(query.error, copy.loadError)}
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="flex min-h-36 flex-col items-center justify-center rounded-md border border-base-300 p-4 text-center">
+              <p className="font-black text-neutral">{emptyTitle}</p>
+              <p className="mt-2 text-sm leading-6 text-neutral/55">
+                {search || statusFilter !== "all"
+                  ? copy.noFilterMatch
+                  : emptyDescription}
+              </p>
+            </div>
+          ) : (
+            visibleRows.map((item) => (
+              <article key={item.id} className="rounded-md border border-base-300 p-4">
+                <div className="grid gap-3">
+                  {columns.map((column, index) => (
+                    <div
+                      key={`${item.id}-${column.label}`}
+                      className={index === 0 ? "" : "border-t border-base-200 pt-3"}
+                    >
+                      <p className="mb-1 text-xs font-bold uppercase tracking-wide text-neutral/45">
+                        {column.label}
+                      </p>
+                      <div className="text-sm text-neutral">{column.render(item)}</div>
+                    </div>
+                  ))}
+                </div>
+                {hasRowActions ? (
+                  <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-base-200 pt-3">
+                    {renderActionButtons(item)}
+                  </div>
+                ) : null}
+              </article>
+            ))
+          )}
+        </div>
       </div>
+
+      {!query.isLoading && !query.isError && rows.length > pageSize ? (
+        <div className="flex flex-col gap-3 rounded-md border border-base-300 bg-white p-3 text-sm font-semibold text-neutral/60 sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            {copy.showing} {(currentPage - 1) * pageSize + 1}-
+            {Math.min(currentPage * pageSize, rows.length)} {copy.from} {rows.length} {copy.data}
+          </span>
+          <div className="join">
+            <button
+              className="btn join-item btn-sm rounded-md"
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              disabled={currentPage === 1}
+            >
+              {copy.previous}
+            </button>
+            <button className="btn join-item btn-sm rounded-md" disabled>
+              {currentPage}/{totalPages}
+            </button>
+            <button
+              className="btn join-item btn-sm rounded-md"
+              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+              disabled={currentPage === totalPages}
+            >
+              {copy.next}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {isFormOpen ? (
         <div className="modal modal-open">
@@ -572,7 +804,7 @@ export function ResourcePage<T extends Entity>({
                         />
                       ) : field.type === "select" ? (
                         <select {...commonProps} className="select select-bordered rounded-md">
-                          <option value="">Pilih</option>
+                          <option value="">{copy.choose}</option>
                           {field.options?.map((option) => (
                             <option key={option.value} value={option.value}>
                               {option.label}
@@ -593,11 +825,11 @@ export function ResourcePage<T extends Entity>({
               </div>
               <div className="modal-action">
                 <button type="button" className="btn rounded-md" onClick={closeForm}>
-                  Batal
+                  {copy.cancel}
                 </button>
                 <button type="submit" className="btn btn-primary rounded-md text-white" disabled={isSaving}>
                   {isSaving ? <Loader2 className="animate-spin" size={18} /> : null}
-                  Simpan
+                  {copy.save}
                 </button>
               </div>
             </form>

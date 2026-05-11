@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { Logo } from "../../components/Logo";
-import { dashboardPathFor, useAuth } from "../../lib/auth/AuthProvider";
+import { useAuth } from "../../lib/auth/AuthProvider";
 import { LanguageSwitcher } from "../../components/LanguageSwitcher";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import type { RegisterPayload } from "../../types";
@@ -33,8 +33,11 @@ export function RegisterPage() {
     setIsSubmitting(true);
     setError("");
     try {
-      const user = await register(form);
-      navigate(dashboardPathFor(user.role), { replace: true });
+      await register(form);
+      navigate("/login", {
+        replace: true,
+        state: { message: "Registrasi berhasil. Cek email kamu untuk verifikasi sebelum login." },
+      });
     } catch (err) {
       import("axios").then(({ default: axios }) => {
         if (axios.isAxiosError(err) && err.response?.data?.message) {
