@@ -1,0 +1,14 @@
+services:
+  frontend:
+    build: .
+    container_name: fund_frontend
+    restart: always
+    ports:
+      - "3000:80"
+    networks:
+      - fund_network
+
+networks:
+  fund_network:
+    external: true
+    name: fund-be_fund_network
