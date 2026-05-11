@@ -54,7 +54,9 @@ function PageHeader({
 
 function MatchList({ submissions }: { submissions: Entity[] }) {
   const sorted = [...submissions].sort(
-    (a, b) => Number(b.match_score || 0) - Number(a.match_score || 0),
+    (a, b) =>
+      Number(b.match_score || b.skor_kecocokan || 0) -
+      Number(a.match_score || a.skor_kecocokan || 0),
   );
 
   return (
@@ -67,12 +69,14 @@ function MatchList({ submissions }: { submissions: Entity[] }) {
       </div>
       <div className="mt-5 grid gap-3">
         {sorted.slice(0, 4).map((item) => {
-          const score = Number(item.match_score || 0);
+          const score = Number(item.match_score || item.skor_kecocokan || 0);
           return (
             <div key={item.id} className="rounded-md border border-base-300 p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="font-black">{textValue(readPath(item, ["bisnis.nama", "businessName"]))}</p>
+                  <p className="font-black">
+                    {textValue(readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "businessName"]))}
+                  </p>
                   <p className="mt-1 text-sm text-neutral/55">
                     Return {percent(item.per_anual_return)} · Risk {textValue(item.risk_level)}
                   </p>
@@ -182,8 +186,10 @@ export function InvestorOverviewPage() {
             {investments.map((item) => (
               <div key={item.id} className="rounded-md border border-base-300 p-4">
                 <div className="flex justify-between gap-4">
-                  <p className="font-black">{textValue(item.bisnis)}</p>
-                  <span className={`badge ${statusTone(item.status)}`}>{textValue(item.status)}</span>
+                  <p className="font-black">{textValue(readPath(item, ["bisnis.nama_bisnis", "bisnis"]))}</p>
+                  <span className={`badge ${statusTone(readPath(item, ["negosiasi.status", "status"]))}`}>
+                    {textValue(readPath(item, ["negosiasi.status", "status"]))}
+                  </span>
                 </div>
                 <p className="mt-2 text-sm text-neutral/55">
                   {currency(item.nominal_investasi)} · Return {percent(item.return_investasi)}
@@ -209,7 +215,9 @@ export function AdminOverviewPage() {
   const submissionCount = Number(d.total_pengajuan ?? 0) || submissions.length;
   const adminCount = Number(d.total_admin ?? 0) || admins.length;
   const notifCount = Number(d.total_notifikasi ?? 0) || notifications.length;
-  const pending = Number(d.total_pending ?? 0) || submissions.filter((item) => String(item.approval_status || item.status) === "pending").length;
+  const pending =
+    Number(d.total_pending ?? 0) ||
+    submissions.filter((item) => String(readPath(item, ["approval.status", "approval_status", "status"])) === "pending").length;
 
   return (
     <div className="space-y-6">
@@ -230,11 +238,13 @@ export function AdminOverviewPage() {
             {submissions.map((item) => (
               <div key={item.id} className="flex items-center justify-between gap-4 rounded-md border border-base-300 p-4">
                 <div>
-                  <p className="font-black">{textValue(readPath(item, ["bisnis.nama", "nama"]))}</p>
+                  <p className="font-black">
+                    {textValue(readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "nama"]))}
+                  </p>
                   <p className="mt-1 text-sm text-neutral/55">{currency(item.target_pendanaan)}</p>
                 </div>
-                <span className={`badge ${statusTone(item.approval_status || item.status)}`}>
-                  {textValue(item.approval_status || item.status)}
+                <span className={`badge ${statusTone(readPath(item, ["approval.status", "approval_status", "status"]))}`}>
+                  {textValue(readPath(item, ["approval.status", "approval_status", "status"]))}
                 </span>
               </div>
             ))}

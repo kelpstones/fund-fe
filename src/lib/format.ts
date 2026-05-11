@@ -62,10 +62,10 @@ export const roleLabel = (role: UserRole) => {
 
 export const statusTone = (status: unknown) => {
   const normalized = String(status || "").toLowerCase();
-  if (["approved", "paid", "published", "deal", "completed", "read"].includes(normalized)) {
+  if (["approved", "paid", "published", "deal", "completed", "distributed", "read"].includes(normalized)) {
     return "badge-success";
   }
-  if (["pending", "active", "draft"].includes(normalized)) return "badge-warning";
+  if (["pending", "active", "draft", "unread"].includes(normalized)) return "badge-warning";
   if (["rejected", "failed", "unpaid"].includes(normalized)) return "badge-error";
   return "badge-neutral";
 };

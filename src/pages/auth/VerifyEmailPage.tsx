@@ -9,16 +9,18 @@ export function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") ?? "";
 
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
-  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState<"loading" | "success" | "error">(
+    token ? "loading" : "error",
+  );
+  const [message, setMessage] = useState(
+    token ? "" : "Token verifikasi tidak ditemukan di URL.",
+  );
   const [resendEmail, setResendEmail] = useState("");
   const [isResending, setIsResending] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
 
   useEffect(() => {
     if (!token) {
-      setStatus("error");
-      setMessage("Token verifikasi tidak ditemukan di URL.");
       return;
     }
 

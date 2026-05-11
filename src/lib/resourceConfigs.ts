@@ -13,37 +13,58 @@ import {
   mockUsers,
 } from "./mockData";
 
+const asObject = (value: unknown) =>
+  value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+
 export const businessConfig: ResourceConfig<Entity> = {
   key: "businesses",
-  listPath: "/bisnis?page=1&limit=50",
-  createPath: "/bisnis",
-  updatePath: "/bisnis/:id",
-  deletePath: "/bisnis/:id",
-  detailPath: "/bisnis/:id",
+  listPath: "/businesses?page=1&limit=50",
+  createPath: "/businesses",
+  updatePath: "/businesses/:id",
+  deletePath: "/businesses/:id",
+  detailPath: "/businesses/:id",
+  createBody: (values) => ({
+    nama: values.nama_bisnis ?? values.nama,
+    tipe_usaha: values.tipe_usaha,
+    alamat: values.alamat,
+    no_telp: values.no_telp,
+    email: values.email,
+    kelas_id: values.kelas_id,
+    deskripsi: values.deskripsi,
+  }),
+  updateBody: (item) => ({
+    nama: item.nama_bisnis ?? item.nama,
+    tipe_usaha: item.tipe_usaha,
+    alamat: item.alamat,
+    no_telp: item.no_telp,
+    email: item.email,
+    kelas_id: item.kelas_id ?? asObject(item.kelas).id,
+    deskripsi: item.deskripsi,
+  }),
   fallback: mockBusinesses,
 };
 
 export const myBusinessConfig: ResourceConfig<Entity> = {
   ...businessConfig,
   key: "my-businesses",
-  listPath: "/bisnis/user",
+  listPath: "/businesses/user",
 };
 
 export const adminBusinessConfig: ResourceConfig<Entity> = {
   ...businessConfig,
   key: "admin-businesses",
-  detailPath: "/user/bisnis/:id",
-  deletePath: "/user/bisnis/:id",
+  detailPath: "/businesses/:id",
+  deletePath: "/businesses/:id",
 };
 
 export const submissionConfig: ResourceConfig<Entity> = {
   key: "submissions",
-  listPath: "/bisnis/pengajuan?page=1&limit=50",
-  createPath: (values) => `/bisnis/pengajuan/${values.bisnis_id || 1}`,
-  updatePath: "/bisnis/pengajuan/:id",
-  deletePath: "/bisnis/pengajuan/:id",
-  detailPath: (item) => `/bisnis/pengajuan/${item.bisnis_id || item.id}`,
+  listPath: "/businesses/proposals?page=1&limit=50",
+  createPath: "/businesses/proposals",
+  updatePath: "/businesses/proposals/:id",
+  deletePath: "/businesses/proposals/:id",
   createBody: (values) => ({
+    bisnis_id: values.bisnis_id,
     target_pendanaan: values.target_pendanaan,
     per_anual_return: values.per_anual_return,
   }),
@@ -58,31 +79,53 @@ export const submissionConfig: ResourceConfig<Entity> = {
 export const publishedSubmissionConfig: ResourceConfig<Entity> = {
   ...submissionConfig,
   key: "published-submissions",
-  listPath: "/bisnis/pengajuan?page=1&limit=50&status=published",
+  listPath: "/businesses/proposals?page=1&limit=50&status=published",
 };
 
 export const salesConfig: ResourceConfig<Entity> = {
   key: "sales",
-  listPath: "/bisnis/pengajuan/penjualan",
-  createPath: "/bisnis/pengajuan/penjualan",
-  updatePath: "/bisnis/pengajuan/penjualan/:id",
-  detailPath: "/bisnis/pengajuan/penjualan/:id",
+  listPath: "/businesses/proposals/sales?page=1&limit=50",
+  createPath: "/businesses/proposals/sales",
+  updatePath: "/businesses/proposals/sales/:id",
+  detailPath: "/businesses/proposals/sales/:id",
   fallback: mockSales,
 };
 
+export const salesByPengajuanConfig = (pengajuansId: string): ResourceConfig<Entity> => ({
+  ...salesConfig,
+  key: `sales-pengajuan-${pengajuansId}`,
+  listPath: `/businesses/proposals/sales/pengajuan?pengajuans_id=${encodeURIComponent(pengajuansId)}`,
+});
+
 export const negotiationConfig: ResourceConfig<Entity> = {
   key: "negotiations",
-  listPath: "/bisnis/pengajuan/negosiasi",
-  createPath: "/bisnis/pengajuan/negosiasi/start",
-  updatePath: (item) => `/bisnis/pengajuan/negosiasi/reply/${item.id}`,
-  detailPath: (item) => `/bisnis/pengajuan/negosiasi/${item.pengajuans_id || item.id}`,
+  listPath: "/businesses/proposals/negotiations",
+  createPath: "/businesses/proposals/negotiations/start",
+  updatePath: (item) => `/businesses/proposals/negotiations/reply/${item.id}`,
+  updateMethod: "POST",
+  detailPath: (item) =>
+    `/businesses/proposals/negotiations/${item.pengajuans_id || asObject(item.pengajuan).id || item.id}`,
+  createBody: (values) => ({
+    pengajuans_id: values.pengajuans_id,
+    penawaran_return: values.penawaran_return,
+    penawaran_nominal: values.penawaran_nominal,
+    catatan: values.catatan,
+  }),
+  updateBody: (item) => {
+    const last = asObject(item.negosiasi_terakhir);
+    return {
+      penawaran_return: item.penawaran_return ?? last.penawaran_return,
+      penawaran_nominal: item.penawaran_nominal ?? last.penawaran_nominal,
+      catatan: item.catatan ?? last.catatan,
+    };
+  },
   fallback: mockNegotiations,
 };
 
 export const myNegotiationConfig: ResourceConfig<Entity> = {
   ...negotiationConfig,
   key: "my-negotiations",
-  listPath: "/bisnis/pengajuan/negosiasi/user",
+  listPath: "/businesses/proposals/negotiations/user",
 };
 
 export const invoiceConfig: ResourceConfig<Entity> = {
@@ -108,29 +151,30 @@ export const investmentConfig: ResourceConfig<Entity> = {
 export const investorInvestmentConfig: ResourceConfig<Entity> = {
   ...investmentConfig,
   listPath: "/investasi/investor",
+  detailPath: undefined,
 };
 
 export const profitConfig: ResourceConfig<Entity> = {
   key: "profits",
-  listPath: "/distribusi-profit",
-  updatePath: "/distribusi-profit/:id/status",
-  detailPath: "/distribusi-profit/:id",
+  listPath: "/profit-distributions",
+  updatePath: "/profit-distributions/:id/status",
+  detailPath: "/profit-distributions/:id",
   updateBody: (item) => ({ status: item.status }),
   fallback: mockProfits,
 };
 
 export const investorProfitConfig: ResourceConfig<Entity> = {
   ...profitConfig,
-  listPath: "/distribusi-profit/investor",
+  listPath: "/profit-distributions/investor",
 };
 
 export const classConfig: ResourceConfig<Entity> = {
   key: "classes",
-  listPath: "/bisnis/kelas?page=1&limit=50",
-  createPath: "/bisnis/kelas",
-  updatePath: "/bisnis/kelas/:id",
-  deletePath: "/bisnis/kelas/:id",
-  detailPath: "/bisnis/kelas/:id",
+  listPath: "/businesses/classes?page=1&limit=50",
+  createPath: "/businesses/classes",
+  updatePath: "/businesses/classes/:id",
+  deletePath: "/businesses/classes/:id",
+  detailPath: "/businesses/classes/:id",
   fallback: mockClasses,
 };
 
@@ -152,8 +196,6 @@ export const adminConfig: ResourceConfig<Entity> = {
 export const userManagementConfig: ResourceConfig<Entity> = {
   key: "users",
   listPath: "/user/users?page=1&limit=50",
-  updatePath: "/user/:id",
-  detailPath: "/user/:id",
   fallback: Object.values(mockUsers),
 };
 

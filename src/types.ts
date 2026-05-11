@@ -66,6 +66,7 @@ export type ResourceConfig<T extends Entity> = {
   listPath: string;
   createPath?: string | ((values: Partial<T>) => string);
   updatePath?: string | ((item: T) => string);
+  updateMethod?: "PUT" | "POST";
   deletePath?: string | ((item: T) => string);
   detailPath?: string | ((item: T) => string);
   fallback: T[];
