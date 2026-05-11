@@ -16,6 +16,7 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const successMessage = (location.state as { message?: string } | null)?.message ?? "";
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -43,6 +44,11 @@ export function LoginPage() {
           <h1 className="text-3xl font-black tracking-normal">{t("loginTitle")}</h1>
           <p className="mt-2 text-sm text-neutral/60">{t("loginSubtitle")}</p>
         </div>
+        {successMessage ? (
+          <div className="mt-6 rounded-md border border-success/20 bg-success/10 px-4 py-3 text-sm font-semibold text-success">
+            {successMessage}
+          </div>
+        ) : null}
         <form className="mt-8 grid gap-4" onSubmit={submit}>
           <label className="form-control">
             <span className="label-text mb-2 font-semibold">{t("email")}</span>
@@ -65,6 +71,11 @@ export function LoginPage() {
             />
           </label>
           {error ? <p className="text-sm font-semibold text-error">{error}</p> : null}
+          <div className="flex justify-end">
+            <Link className="text-sm font-semibold text-primary" to="/forgot-password">
+              Lupa password?
+            </Link>
+          </div>
           <button className="btn btn-primary h-12 rounded-md text-white" disabled={isSubmitting}>
             {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : null}
             {t("loginButton")}

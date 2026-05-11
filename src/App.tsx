@@ -4,6 +4,9 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { PublicLayout } from "./components/PublicLayout";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { RegisterPage } from "./pages/auth/RegisterPage";
+import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/auth/ResetPasswordPage";
+import { VerifyEmailPage } from "./pages/auth/VerifyEmailPage";
 import { AboutPage } from "./pages/public/AboutPage";
 import { ContactPage } from "./pages/public/ContactPage";
 import { HomePage } from "./pages/public/HomePage";
@@ -54,6 +57,9 @@ export default function App() {
 
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<RoleRedirect />} />

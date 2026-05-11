@@ -29,6 +29,9 @@ type ResourcePageProps<T extends Entity> = {
   fields?: ResourceField<T>[];
   createLabel?: string;
   readonly?: boolean;
+  allowCreate?: boolean;
+  allowEdit?: boolean;
+  allowDelete?: boolean;
   actions?: ResourceAction<T>[];
 };
 
@@ -142,6 +145,9 @@ export function ResourcePage<T extends Entity>({
   fields = [],
   createLabel = "Tambah Data",
   readonly = false,
+  allowCreate = true,
+  allowEdit = true,
+  allowDelete = true,
   actions = [],
 }: ResourcePageProps<T>) {
   const queryClient = useQueryClient();
@@ -357,7 +363,10 @@ export function ResourcePage<T extends Entity>({
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
   const isProcessing = Boolean(loadingAlert);
-  const hasRowActions = !readonly || actions.length > 0 || Boolean(config.detailPath);
+  const canCreate = allowCreate && !readonly && fields.length > 0 && Boolean(config.createPath);
+  const canEdit = allowEdit && !readonly && fields.length > 0 && Boolean(config.updatePath);
+  const canDelete = allowDelete && !readonly && Boolean(config.deletePath);
+  const hasRowActions = canEdit || canDelete || actions.length > 0 || Boolean(config.detailPath);
 
   return (
     <section className="space-y-5">
@@ -406,7 +415,7 @@ export function ResourcePage<T extends Entity>({
               onChange={(event) => setSearch(event.target.value)}
             />
           </label>
-          {!readonly && fields.length > 0 && config.createPath ? (
+          {canCreate ? (
             <button
               className="btn btn-primary h-11 rounded-md text-white"
               onClick={openCreate}
@@ -442,6 +451,14 @@ export function ResourcePage<T extends Entity>({
                     </div>
                   </td>
                 </tr>
+              ) : query.isError ? (
+                <tr>
+                  <td colSpan={columns.length + 1}>
+                    <div className="flex h-28 items-center justify-center text-error">
+                      Gagal memuat data dari backend
+                    </div>
+                  </td>
+                </tr>
               ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={columns.length + 1}>
@@ -471,7 +488,7 @@ export function ResourcePage<T extends Entity>({
                               <Eye size={16} />
                             </button>
                           ) : null}
-                          {!readonly && fields.length > 0 ? (
+                          {canEdit ? (
                             <button
                               className="btn btn-square btn-ghost btn-sm"
                               onClick={() => openEdit(item)}
@@ -481,7 +498,7 @@ export function ResourcePage<T extends Entity>({
                               <Edit3 size={16} />
                             </button>
                           ) : null}
-                          {!readonly ? (
+                          {canDelete ? (
                             <button
                               className="btn btn-square btn-ghost btn-sm text-error"
                               onClick={() => remove(item)}

@@ -26,9 +26,18 @@ const tokenKey = "fundraise_token";
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const normalizeRole = (user: Record<string, unknown>, requestedRole: UserRole): UserRole => {
-  const role = String(user.role || user.role_name || user.level || requestedRole).toLowerCase();
+  const roleObject =
+    user.role && typeof user.role === "object" ? (user.role as Record<string, unknown>) : null;
+  const role = String(
+    roleObject?.nama_role ||
+      roleObject?.name ||
+      user.role_name ||
+      user.level ||
+      user.role ||
+      requestedRole,
+  ).toLowerCase();
   if (["umkm", "investor", "admin", "superadmin"].includes(role)) return role as UserRole;
-  const roleId = Number(user.role_id);
+  const roleId = Number(user.role_id ?? roleObject?.id);
   if (roleId === 2) return "investor";
   if (roleId === 1) return "umkm";
   return requestedRole;
@@ -42,7 +51,11 @@ const normalizeUser = (
   nama: String(rawUser.nama || rawUser.name || mockUsers[requestedRole].nama),
   email: String(rawUser.email || mockUsers[requestedRole].email),
   role: normalizeRole(rawUser, requestedRole),
-  role_id: rawUser.role_id as number | undefined,
+  role_id:
+    (rawUser.role_id as number | undefined) ??
+    ((rawUser.role && typeof rawUser.role === "object"
+      ? (rawUser.role as Record<string, unknown>).id
+      : undefined) as number | undefined),
   level: rawUser.level as "admin" | "superadmin" | undefined,
   no_telp: rawUser.no_telp as string | undefined,
 });

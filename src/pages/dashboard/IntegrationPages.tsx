@@ -78,7 +78,6 @@ export function ProfilePage() {
   const { user, updateUser } = useAuth();
   const queryClient = useQueryClient();
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-  const canPersistAdminProfile = user?.role === "superadmin" && Boolean(user?.id);
   const [saveMessage, setSaveMessage] = useState("");
   const [form, setForm] = useState<{
     nama: string;
@@ -94,7 +93,10 @@ export function ProfilePage() {
 
   const meQuery = useQuery({
     queryKey: ["profile", "me", user?.role],
-    queryFn: () => directApi.post(isAdmin ? "/admin/me" : "/user/me", undefined, user),
+    queryFn: () =>
+      isAdmin
+        ? directApi.post("/admin/me", undefined, user)
+        : directApi.get(user?.role === "investor" ? "/user/profile/investor" : "/user/profile", user),
   });
 
   const adminDetailQuery = useQuery({
@@ -112,21 +114,16 @@ export function ProfilePage() {
         ...(isAdmin ? { level: form.level as "admin" | "superadmin" } : {}),
       };
 
-      if (canPersistAdminProfile) {
-        await directApi.put(`/admin/${user?.id}`, form, {
-          ...user,
-          ...localUpdates,
-        });
+      if (isAdmin && user?.id) {
+        await directApi.put(`/admin/${user.id}`, form, { ...user, ...localUpdates });
+      } else {
+        await directApi.put("/user/profile", localUpdates, { ...user, ...localUpdates });
       }
 
       return updateUser(localUpdates);
     },
     onSuccess: async () => {
-      setSaveMessage(
-        canPersistAdminProfile
-          ? "Profile berhasil disimpan."
-          : "Profile tersimpan di sesi frontend. Sinkronisasi server belum tersedia untuk role ini.",
-      );
+      setSaveMessage("Profile berhasil disimpan.");
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
@@ -254,13 +251,13 @@ export function BusinessProfilePage() {
 
   const profileQuery = useQuery({
     queryKey: ["business-profile", bisnisId],
-    queryFn: () => directApi.get(`/bisnis/${bisnisId}/profile`, form),
+    queryFn: () => directApi.get(`/businesses/${bisnisId}/profile`, form),
     enabled: Boolean(bisnisId),
   });
 
   const upsertMutation = useMutation({
     mutationFn: () =>
-      directApi.post(`/bisnis/${bisnisId}/profile`, {
+      directApi.post(`/businesses/${bisnisId}/profile`, {
         net_profit_margin: form.net_profit_margin,
         kepuasan_pelanggan: form.kepuasan_pelanggan,
         peak_hour_latency: form.peak_hour_latency,
@@ -276,7 +273,7 @@ export function BusinessProfilePage() {
   });
 
   const classMutation = useMutation({
-    mutationFn: () => directApi.put(`/bisnis/${bisnisId}/profile`, { class: form.class }),
+    mutationFn: () => directApi.put(`/businesses/${bisnisId}/profile/class`, { class: form.class }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["business-profile", bisnisId] });
     },
@@ -414,16 +411,12 @@ export function ApiStatusPage() {
     queryFn: () => directApi.get("/", { status: "offline" }),
   });
   const userClassesQuery = useQuery({
-    queryKey: ["api-status", "user-classes"],
-    queryFn: () => directApi.get("/user/kelas?page=1&limit=10", []),
+    queryKey: ["api-status", "bisnis-kelas"],
+    queryFn: () => directApi.get("/businesses/classes?page=1&limit=10", []),
   });
   const userClassDetailQuery = useQuery({
-    queryKey: ["api-status", "user-class-detail"],
-    queryFn: () => directApi.get("/user/kelas/1", null),
-  });
-  const adminDashboardQuery = useQuery({
-    queryKey: ["api-status", "dashboard-admin"],
-    queryFn: () => directApi.get("/dashboard/admin", null),
+    queryKey: ["api-status", "bisnis-kelas-detail"],
+    queryFn: () => directApi.get("/businesses/classes/1", null),
   });
 
   return (
@@ -450,12 +443,6 @@ export function ApiStatusPage() {
             isLoading={userClassDetailQuery.isLoading}
             isError={userClassDetailQuery.isError}
             hasData={Boolean(userClassDetailQuery.data)}
-          />
-          <SyncStatus
-            label="Dashboard admin"
-            isLoading={adminDashboardQuery.isLoading}
-            isError={adminDashboardQuery.isError}
-            hasData={Boolean(adminDashboardQuery.data)}
           />
         </div>
       </Panel>

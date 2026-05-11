@@ -1,6 +1,10 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Filter } from "lucide-react";
 import { ResourcePage } from "../../components/ResourcePage";
+import { resourceApi } from "../../lib/api/resources";
+import { directApi } from "../../lib/api/direct";
+import { useAuth } from "../../lib/auth/AuthProvider";
 import {
   adminConfig,
   adminBusinessConfig,
@@ -14,7 +18,9 @@ import {
   negotiationConfig,
   notificationConfig,
   profitConfig,
+  publishedSubmissionConfig,
   salesConfig,
+  salesByPengajuanConfig,
   submissionConfig,
   myBusinessConfig,
   myNegotiationConfig,
@@ -22,15 +28,31 @@ import {
 } from "../../lib/resourceConfigs";
 import { currency, dateShort, percent, readPath, statusTone, textValue } from "../../lib/format";
 import type { Entity, ResourceAction, ResourceColumn, ResourceConfig, ResourceField } from "../../types";
-import { mockSubmissions } from "../../lib/mockData";
 
 const badge = (status: unknown) => (
   <span className={`badge ${statusTone(status)}`}>{textValue(status)}</span>
 );
 
 const businessFields: ResourceField<Entity>[] = [
-  { name: "nama", label: "Nama Bisnis", required: true },
-  { name: "sektor", label: "Sektor", required: true },
+  { name: "nama_bisnis", label: "Nama Bisnis", required: true },
+  {
+    name: "tipe_usaha",
+    label: "Tipe Usaha",
+    type: "select",
+    required: true,
+    options: [
+      { value: "kuliner", label: "Kuliner" },
+      { value: "fashion", label: "Fashion" },
+      { value: "kesehatan_kecantikan", label: "Kesehatan & Kecantikan" },
+      { value: "teknologi", label: "Teknologi" },
+      { value: "pendidikan", label: "Pendidikan" },
+      { value: "pertanian", label: "Pertanian" },
+      { value: "perdagangan", label: "Perdagangan" },
+      { value: "jasa", label: "Jasa" },
+      { value: "kerajinan", label: "Kerajinan" },
+      { value: "lainnya", label: "Lainnya" },
+    ],
+  },
   { name: "alamat", label: "Alamat", required: true },
   { name: "no_telp", label: "No. Telp", required: true },
   { name: "email", label: "Email", type: "email", required: true },
@@ -53,12 +75,12 @@ const businessColumns: ResourceColumn<Entity>[] = [
     label: "Bisnis",
     render: (item) => (
       <div>
-        <p className="font-black">{textValue(item.nama)}</p>
+        <p className="font-black">{textValue(item.nama_bisnis || item.nama)}</p>
         <p className="mt-1 max-w-sm text-sm text-neutral/55">{textValue(item.deskripsi)}</p>
       </div>
     ),
   },
-  { label: "Sektor", render: (item) => textValue(item.sektor) },
+  { label: "Tipe Usaha", render: (item) => textValue(item.tipe_usaha) },
   { label: "Kelas", render: (item) => textValue(readPath(item, ["kelas.nama_kelas", "kelas_id"])) },
   {
     label: "Kontak",
@@ -104,7 +126,9 @@ const submissionColumns: ResourceColumn<Entity>[] = [
     label: "Pengajuan",
     render: (item) => (
       <div>
-        <p className="font-black">{textValue(readPath(item, ["bisnis.nama", "nama", "bisnis_id"]))}</p>
+        <p className="font-black">
+          {textValue(readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "nama", "bisnis_id"]))}
+        </p>
         <p className="mt-1 text-sm text-neutral/55">ID #{textValue(item.id)}</p>
       </div>
     ),
@@ -112,8 +136,8 @@ const submissionColumns: ResourceColumn<Entity>[] = [
   { label: "Target", render: (item) => currency(item.target_pendanaan) },
   { label: "Terkumpul", render: (item) => currency(item.total_pendanaan) },
   { label: "Return", render: (item) => percent(item.per_anual_return) },
-  { label: "Status", render: (item) => badge(item.approval_status || item.status) },
-  { label: "Match", render: (item) => <span className="font-black text-secondary">{percent(item.match_score)}</span> },
+  { label: "Status", render: (item) => badge(readPath(item, ["approval.status", "approval_status", "status"])) },
+  { label: "Match", render: (item) => <span className="font-black text-secondary">{percent(item.match_score || item.skor_kecocokan)}</span> },
 ];
 
 const salesFields: ResourceField<Entity>[] = [
@@ -137,16 +161,6 @@ const negotiationFields: ResourceField<Entity>[] = [
   { name: "pengajuans_id", label: "ID Pengajuan", type: "number", required: true },
   { name: "penawaran_nominal", label: "Penawaran Nominal", type: "number", required: true },
   { name: "penawaran_return", label: "Penawaran Return", type: "number", required: true },
-  {
-    name: "status",
-    label: "Status",
-    type: "select",
-    options: [
-      { value: "active", label: "Active" },
-      { value: "deal", label: "Deal" },
-      { value: "rejected", label: "Rejected" },
-    ],
-  },
   { name: "catatan", label: "Catatan", type: "textarea" },
 ];
 
@@ -156,17 +170,19 @@ const negotiationColumns: ResourceColumn<Entity>[] = [
     render: (item) => (
       <div>
         <p className="font-black">{textValue(readPath(item, ["investor.nama", "investor"]))}</p>
-        <p className="mt-1 text-sm text-neutral/55">{textValue(readPath(item, ["bisnis_owner.nama", "bisnis"]))}</p>
+        <p className="mt-1 text-sm text-neutral/55">
+          {textValue(readPath(item, ["bisnis.nama", "bisnis.nama_bisnis", "bisnis_owner.nama", "bisnis"]))}
+        </p>
       </div>
     ),
   },
-  { label: "Nominal", render: (item) => currency(item.penawaran_nominal) },
-  { label: "Return", render: (item) => percent(item.penawaran_return) },
+  { label: "Nominal", render: (item) => currency(readPath(item, ["negosiasi_terakhir.penawaran_nominal", "penawaran_nominal"])) },
+  { label: "Return", render: (item) => percent(readPath(item, ["negosiasi_terakhir.penawaran_return", "penawaran_return"])) },
   { label: "Status", render: (item) => badge(item.status) },
   { label: "Update", render: (item) => dateShort(item.updated_at || item.created_at) },
 ];
 
-const invoiceFields: ResourceField<Entity>[] = [
+const _invoiceFields: ResourceField<Entity>[] = [
   { name: "nominal_tagihan", label: "Nominal Tagihan", type: "number", required: true },
   {
     name: "status",
@@ -181,18 +197,18 @@ const invoiceFields: ResourceField<Entity>[] = [
 ];
 
 const invoiceColumns: ResourceColumn<Entity>[] = [
-  { label: "Invoice", render: (item) => <span className="font-black">#{textValue(item.id)}</span> },
-  { label: "Pengajuan", render: (item) => `#${textValue(item.pengajuans_id)}` },
-  { label: "Nominal", render: (item) => currency(item.nominal_tagihan) },
-  { label: "Due", render: (item) => dateShort(item.due_date) },
+  { label: "Invoice", render: (item) => <span className="font-black">{textValue(item.kode_pembayaran || `#${item.id}`)}</span> },
+  { label: "Pengajuan", render: (item) => `#${textValue(readPath(item, ["detail_pengajuan.id", "pengajuans_id"]))}` },
+  { label: "Nominal", render: (item) => currency(item.total_nominal || item.nominal_tagihan) },
+  { label: "Due", render: (item) => dateShort(item.tenggat_waktu || item.due_date) },
   { label: "Status", render: (item) => badge(item.status) },
 ];
 
 const investmentColumns: ResourceColumn<Entity>[] = [
-  { label: "Bisnis", render: (item) => <span className="font-black">{textValue(item.bisnis || readPath(item, ["pengajuan.bisnis.nama"]))}</span> },
+  { label: "Bisnis", render: (item) => <span className="font-black">{textValue(readPath(item, ["bisnis.nama_bisnis", "bisnis", "pengajuan.bisnis.nama"]))}</span> },
   { label: "Nominal", render: (item) => currency(item.nominal_investasi) },
   { label: "Return", render: (item) => percent(item.return_investasi) },
-  { label: "Status", render: (item) => badge(item.status) },
+  { label: "Status", render: (item) => badge(readPath(item, ["negosiasi.status", "status"])) },
   { label: "Tanggal", render: (item) => dateShort(item.created_at) },
 ];
 
@@ -203,16 +219,16 @@ const profitFields: ResourceField<Entity>[] = [
     type: "select",
     options: [
       { value: "pending", label: "Pending" },
-      { value: "completed", label: "Completed" },
+      { value: "distributed", label: "Distributed" },
     ],
   },
 ];
 
 const profitColumns: ResourceColumn<Entity>[] = [
-  { label: "Bisnis", render: (item) => <span className="font-black">{textValue(item.bisnis)}</span> },
+  { label: "Bisnis", render: (item) => <span className="font-black">{textValue(readPath(item, ["penjualan.nama_bisnis", "bisnis"]))}</span> },
   { label: "Periode", render: (item) => textValue(item.periode) },
   { label: "Nominal Profit", render: (item) => currency(item.nominal_profit) },
-  { label: "Investasi", render: (item) => `#${textValue(item.investasi_id)}` },
+  { label: "Investasi", render: (item) => `#${textValue(readPath(item, ["investasi.id", "investasi_id"]))}` },
   { label: "Status", render: (item) => badge(item.status) },
 ];
 
@@ -249,7 +265,7 @@ const adminColumns: ResourceColumn<Entity>[] = [
   { label: "Level", render: (item) => badge(item.level) },
 ];
 
-const notificationFields: ResourceField<Entity>[] = [
+const _notificationFields: ResourceField<Entity>[] = [
   { name: "title", label: "Title", required: true },
   { name: "message", label: "Message", type: "textarea", required: true },
   {
@@ -274,14 +290,14 @@ const notificationColumns: ResourceColumn<Entity>[] = [
     ),
   },
   { label: "Tanggal", render: (item) => dateShort(item.created_at) },
-  { label: "Status", render: (item) => badge(item.status) },
+  { label: "Status", render: (item) => badge(item.is_read ? "read" : item.status || "unread") },
 ];
 
 const submissionActions: ResourceAction<Entity>[] = [
   {
     label: "Approve",
     method: "PUT",
-    path: (item) => `/bisnis/pengajuan/${item.id}/status`,
+    path: (item) => `/businesses/proposals/${item.id}/status`,
     body: { status: "approved", catatan: "Pengajuan disetujui dari dashboard." },
     confirm: "Setujui pengajuan ini?",
     className: "btn btn-success btn-xs rounded-md text-white",
@@ -289,7 +305,7 @@ const submissionActions: ResourceAction<Entity>[] = [
   {
     label: "Reject",
     method: "PUT",
-    path: (item) => `/bisnis/pengajuan/${item.id}/status`,
+    path: (item) => `/businesses/proposals/${item.id}/status`,
     body: { status: "rejected", catatan: "Pengajuan ditolak dari dashboard." },
     confirm: "Tolak pengajuan ini?",
     className: "btn btn-error btn-xs rounded-md text-white",
@@ -300,7 +316,7 @@ const salesActions: ResourceAction<Entity>[] = [
   {
     label: "By Pengajuan",
     method: "GET",
-    path: (item) => `/bisnis/pengajuan/penjualan/pengajuan/${item.pengajuans_id}`,
+    path: (item) => `/businesses/proposals/sales/pengajuan?pengajuans_id=${item.pengajuans_id}`,
     className: "btn btn-outline btn-xs rounded-md",
   },
 ];
@@ -309,7 +325,7 @@ const negotiationActions: ResourceAction<Entity>[] = [
   {
     label: "Accept",
     method: "POST",
-    path: (item) => `/bisnis/pengajuan/negosiasi/accept/${item.id}`,
+    path: (item) => `/businesses/proposals/negotiations/accept/${item.id}`,
     body: { catatan: "Negosiasi disetujui dari dashboard." },
     confirm: "Setujui negosiasi ini?",
     className: "btn btn-success btn-xs rounded-md text-white",
@@ -317,7 +333,7 @@ const negotiationActions: ResourceAction<Entity>[] = [
   {
     label: "Reject",
     method: "POST",
-    path: (item) => `/bisnis/pengajuan/negosiasi/reject/${item.id}`,
+    path: (item) => `/businesses/proposals/negotiations/reject/${item.id}`,
     body: { catatan: "Negosiasi ditolak dari dashboard." },
     confirm: "Tolak negosiasi ini?",
     className: "btn btn-error btn-xs rounded-md text-white",
@@ -328,7 +344,7 @@ const invoiceActions: ResourceAction<Entity>[] = [
   {
     label: "Pay",
     method: "PUT",
-    path: (item) => `/invoices/${item.id}/pay`,
+    path: (item) => `/invoices/${item.kode_pembayaran || item.id}/pay`,
     confirm: "Bayar invoice ini?",
     className: "btn btn-success btn-xs rounded-md text-white",
   },
@@ -338,7 +354,7 @@ const investmentActions: ResourceAction<Entity>[] = [
   {
     label: "By Pengajuan",
     method: "GET",
-    path: (item) => `/investasi/pengajuan/${item.pengajuans_id || item.pengajuan_id || item.id}`,
+    path: (item) => `/investasi/proposals?pengajuans_id=${item.pengajuans_id || item.pengajuan_id || item.id}`,
     className: "btn btn-outline btn-xs rounded-md",
   },
 ];
@@ -347,7 +363,7 @@ const profitActions: ResourceAction<Entity>[] = [
   {
     label: "By Penjualan",
     method: "GET",
-    path: (item) => `/distribusi-profit/penjualan/${item.penjualans_id || item.penjualan_id || item.id}`,
+    path: (item) => `/profit-distributions/sales?penjualans_id=${item.penjualans_id || item.penjualan_id || readPath(item, ["penjualan.id"]) || item.id}`,
     className: "btn btn-outline btn-xs rounded-md",
   },
 ];
@@ -366,8 +382,11 @@ export function BusinessesPage({
 }: {
   scope?: "all" | "mine" | "admin";
 }) {
+  const { user } = useAuth();
   const config: ResourceConfig<Entity> =
     scope === "mine" ? myBusinessConfig : scope === "admin" ? adminBusinessConfig : businessConfig;
+  const isAdminScope = scope === "admin";
+  const isUmkmOwner = user?.role === "umkm" && !isAdminScope;
 
   return (
     <ResourcePage
@@ -377,6 +396,9 @@ export function BusinessesPage({
       columns={businessColumns}
       fields={businessFields}
       createLabel="Tambah Bisnis"
+      allowCreate={isUmkmOwner}
+      allowEdit={isUmkmOwner}
+      allowDelete={isUmkmOwner || user?.role === "superadmin"}
     />
   );
 }
@@ -391,21 +413,63 @@ export function SubmissionsPage({ admin = false }: { admin?: boolean }) {
       fields={submissionFields}
       createLabel="Tambah Pengajuan"
       actions={admin ? submissionActions : []}
+      allowCreate={!admin}
+      allowDelete={admin}
     />
   );
 }
 
 export function SalesPage() {
+  const { user } = useAuth();
+  const [pengajuanId, setPengajuanId] = useState("");
+
+  if (user?.role === "umkm" && !pengajuanId.trim()) {
+    return (
+      <section className="space-y-5">
+        <div>
+          <h2 className="text-2xl font-black tracking-normal text-neutral">Laporan Penjualan</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">
+            Masukkan ID pengajuan untuk melihat laporan penjualan yang tersedia di backend.
+          </p>
+        </div>
+        <label className="form-control max-w-sm">
+          <span className="label-text mb-2 font-semibold">ID Pengajuan</span>
+          <input
+            className="input input-bordered rounded-md bg-white"
+            value={pengajuanId}
+            onChange={(event) => setPengajuanId(event.target.value)}
+            placeholder="Contoh: 101"
+          />
+        </label>
+      </section>
+    );
+  }
+
   return (
-    <ResourcePage
-      title="Laporan Penjualan"
-      description="Catat periode penjualan, laba, dan transaksi untuk kebutuhan distribusi profit."
-      config={salesConfig}
-      columns={salesColumns}
-      fields={salesFields}
-      createLabel="Tambah Laporan"
-      actions={salesActions}
-    />
+    <div className="space-y-5">
+      {user?.role === "umkm" ? (
+        <label className="form-control max-w-sm">
+          <span className="label-text mb-2 font-semibold">ID Pengajuan</span>
+          <input
+            className="input input-bordered rounded-md bg-white"
+            value={pengajuanId}
+            onChange={(event) => setPengajuanId(event.target.value)}
+          />
+        </label>
+      ) : null}
+      <ResourcePage
+        title="Laporan Penjualan"
+        description="Catat periode penjualan, laba, dan transaksi untuk kebutuhan distribusi profit."
+        config={user?.role === "umkm" ? salesByPengajuanConfig(pengajuanId) : salesConfig}
+        columns={salesColumns}
+        fields={salesFields}
+        createLabel="Tambah Laporan"
+        actions={user?.role === "umkm" ? [] : salesActions}
+        allowCreate={user?.role === "umkm"}
+        allowEdit={user?.role === "umkm"}
+        allowDelete={false}
+      />
+    </div>
   );
 }
 
@@ -427,8 +491,8 @@ export function OpportunitiesPage() {
   return (
     <ResourcePage
       title="Peluang Pendanaan"
-      description="Daftar pengajuan UMKM yang bisa dianalisis investor sebelum memulai negosiasi."
-      config={submissionConfig}
+      description="Daftar pengajuan UMKM yang sudah dipublikasikan dan siap untuk investasi."
+      config={publishedSubmissionConfig}
       columns={submissionColumns}
       readonly
     />
@@ -437,14 +501,33 @@ export function OpportunitiesPage() {
 
 export function AiRecommendationsPage() {
   const [risk, setRisk] = useState("all");
-  const [minScore, setMinScore] = useState(80);
+  const [minScore, setMinScore] = useState(0);
+  const { data: recommendationsPayload = null } = useQuery({
+    queryKey: ["ai-recommendations", "backend"],
+    queryFn: () => directApi.get("/user/investor/recommendations", null),
+  });
+  const backendRecommendations = useMemo(() => {
+    if (Array.isArray(recommendationsPayload)) return recommendationsPayload as Entity[];
+    if (recommendationsPayload && typeof recommendationsPayload === "object") {
+      const payload = recommendationsPayload as Record<string, unknown>;
+      if (Array.isArray(payload.rekomendasi)) return payload.rekomendasi as Entity[];
+    }
+    return [];
+  }, [recommendationsPayload]);
+  const { data: allSubmissions = [] } = useQuery({
+    queryKey: ["ai-recommendations", "fallback"],
+    queryFn: () => resourceApi.list(publishedSubmissionConfig),
+    enabled: backendRecommendations.length === 0,
+  });
+  const sourceData = backendRecommendations.length > 0 ? backendRecommendations : allSubmissions;
   const data = useMemo(
     () =>
-      mockSubmissions.filter((item) => {
-        const riskMatch = risk === "all" || String(item.risk_level).toLowerCase() === risk;
-        return riskMatch && Number(item.match_score || 0) >= minScore;
+      sourceData.filter((item) => {
+        const riskValue = textValue(readPath(item, ["risk_level", "matched_class", "bisnis.kelas.nama_kelas"])).toLowerCase();
+        const riskMatch = risk === "all" || riskValue === risk;
+        return riskMatch && Number(item.match_score || item.skor_kecocokan || 0) >= minScore;
       }),
-    [minScore, risk],
+    [minScore, risk, sourceData],
   );
 
   return (
@@ -490,17 +573,21 @@ export function AiRecommendationsPage() {
           <article key={item.id} className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-xl font-black">{textValue(readPath(item, ["bisnis.nama", "bisnis_id"]))}</h3>
+                <h3 className="text-xl font-black">
+                  {textValue(readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "bisnis_id"]))}
+                </h3>
                 <p className="mt-1 text-sm text-neutral/55">
-                  {textValue(readPath(item, ["bisnis.sektor", "risk_level"]))}
+                  {textValue(readPath(item, ["bisnis.kelas.nama_kelas", "matched_class", "risk_level"]))}
                 </p>
               </div>
-              <span className="badge badge-secondary badge-lg text-white">{percent(item.match_score)}</span>
+              <span className="badge badge-secondary badge-lg text-white">
+                {percent(item.match_score || item.skor_kecocokan)}
+              </span>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
               <div className="rounded-md bg-base-200 p-3">
                 <p className="text-neutral/50">Target</p>
-                <p className="font-black">{currency(item.target_pendanaan)}</p>
+                <p className="font-black">{currency(item.target_pendanaan || readPath(item, ["bisnis.target_pendanaan"]))}</p>
               </div>
               <div className="rounded-md bg-base-200 p-3">
                 <p className="text-neutral/50">Return</p>
@@ -526,9 +613,10 @@ export function InvoicesPage({ investor = false }: { investor?: boolean }) {
       description="Pantau tagihan investasi dan status pembayaran invoice."
       config={investor ? investorInvoiceConfig : invoiceConfig}
       columns={invoiceColumns}
-      fields={invoiceFields}
+      fields={[]}
       createLabel="Update Invoice"
       actions={investor ? invoiceActions : []}
+      readonly
     />
   );
 }
@@ -540,7 +628,7 @@ export function InvestmentsPage({ investor = false }: { investor?: boolean }) {
       description="Daftar investasi aktif berdasarkan invoice yang telah dibayar."
       config={investor ? investorInvestmentConfig : investmentConfig}
       columns={investmentColumns}
-      actions={investmentActions}
+      actions={investor ? [] : investmentActions}
       readonly
     />
   );
@@ -557,6 +645,8 @@ export function ProfitsPage({ investor = false }: { investor?: boolean }) {
       readonly={investor}
       createLabel="Update Profit"
       actions={profitActions}
+      allowCreate={false}
+      allowDelete={false}
     />
   );
 }
@@ -577,11 +667,11 @@ export function ClassesPage() {
 const userColumns: ResourceColumn<Entity>[] = [
   { label: "Nama", render: (item) => <span className="font-black">{textValue(item.nama)}</span> },
   { label: "Email", render: (item) => textValue(item.email) },
-  { label: "Role", render: (item) => textValue(item.role || item.role_name || item.level || item.role_id) },
+  { label: "Role", render: (item) => textValue(readPath(item, ["role.nama_role", "role_name", "level", "role_id"])) },
   { label: "No. Telp", render: (item) => textValue(item.no_telp) },
 ];
 
-const userFields: ResourceField<Entity>[] = [
+const _userFields: ResourceField<Entity>[] = [
   { name: "nama", label: "Nama", required: true },
   { name: "email", label: "Email", type: "email", required: true },
   { name: "no_telp", label: "No. Telp" },
@@ -594,13 +684,17 @@ export function UsersPage() {
       description="Kelola data user, role, dan informasi kontak akun platform."
       config={userManagementConfig}
       columns={userColumns}
-      fields={userFields}
+      fields={[]}
       createLabel="Update User"
+      readonly
     />
   );
 }
 
 export function AdminsPage() {
+  const { user } = useAuth();
+  const canMutate = user?.role === "superadmin";
+
   return (
     <ResourcePage
       title="Admin Management"
@@ -609,6 +703,9 @@ export function AdminsPage() {
       columns={adminColumns}
       fields={adminFields}
       createLabel="Tambah Admin"
+      allowCreate={canMutate}
+      allowEdit={canMutate}
+      allowDelete={canMutate}
     />
   );
 }
@@ -620,9 +717,11 @@ export function NotificationsPage() {
       description="Kelola notifikasi operasional dan tandai status baca."
       config={notificationConfig}
       columns={notificationColumns}
-      fields={notificationFields}
+      fields={[]}
       createLabel="Tambah Notifikasi"
       actions={notificationActions}
+      allowCreate={false}
+      allowEdit={false}
     />
   );
 }
