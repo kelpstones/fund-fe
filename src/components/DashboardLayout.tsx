@@ -17,6 +17,7 @@ import {
   Users,
   UserRound,
   Activity,
+  ClipboardList,
 } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { Logo } from "./Logo";
@@ -83,6 +84,7 @@ const navByRole: Record<UserRole, NavGroup[]> = {
       items: [
         { to: "/dashboard/investor/profile", labelKey: "dashboardProfile", icon: UserRound },
         { to: "/dashboard/investor/preferensi", labelKey: "dashboardPreferences", icon: SlidersHorizontal },
+        { to: "/dashboard/investor/survey", labelKey: "dashboardSurvey", icon: ClipboardList },
         { to: "/dashboard/investor/notifikasi", labelKey: "dashboardNotifications", icon: Bell },
       ],
     },

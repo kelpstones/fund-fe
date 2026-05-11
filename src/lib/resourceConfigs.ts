@@ -1,20 +1,9 @@
 import type { Entity, ResourceConfig } from "../types";
-import {
-  mockAdmins,
-  mockBusinesses,
-  mockClasses,
-  mockInvoices,
-  mockInvestments,
-  mockNegotiations,
-  mockNotifications,
-  mockProfits,
-  mockSales,
-  mockSubmissions,
-  mockUsers,
-} from "./mockData";
 
 const asObject = (value: unknown) =>
   value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+
+const emptyFallback: Entity[] = [];
 
 export const businessConfig: ResourceConfig<Entity> = {
   key: "businesses",
@@ -41,7 +30,7 @@ export const businessConfig: ResourceConfig<Entity> = {
     kelas_id: item.kelas_id ?? asObject(item.kelas).id,
     deskripsi: item.deskripsi,
   }),
-  fallback: mockBusinesses,
+  fallback: emptyFallback,
 };
 
 export const myBusinessConfig: ResourceConfig<Entity> = {
@@ -73,7 +62,7 @@ export const submissionConfig: ResourceConfig<Entity> = {
     total_pendanaan: item.total_pendanaan,
     per_anual_return: item.per_anual_return,
   }),
-  fallback: mockSubmissions,
+  fallback: emptyFallback,
 };
 
 export const publishedSubmissionConfig: ResourceConfig<Entity> = {
@@ -88,7 +77,7 @@ export const salesConfig: ResourceConfig<Entity> = {
   createPath: "/businesses/proposals/sales",
   updatePath: "/businesses/proposals/sales/:id",
   detailPath: "/businesses/proposals/sales/:id",
-  fallback: mockSales,
+  fallback: emptyFallback,
 };
 
 export const salesByPengajuanConfig = (pengajuansId: string): ResourceConfig<Entity> => ({
@@ -119,7 +108,7 @@ export const negotiationConfig: ResourceConfig<Entity> = {
       catatan: item.catatan ?? last.catatan,
     };
   },
-  fallback: mockNegotiations,
+  fallback: emptyFallback,
 };
 
 export const myNegotiationConfig: ResourceConfig<Entity> = {
@@ -133,7 +122,7 @@ export const invoiceConfig: ResourceConfig<Entity> = {
   listPath: "/invoices",
   updatePath: (item) => `/invoices/${item.id}/pay`,
   detailPath: "/invoices/:id",
-  fallback: mockInvoices,
+  fallback: emptyFallback,
 };
 
 export const investorInvoiceConfig: ResourceConfig<Entity> = {
@@ -145,7 +134,7 @@ export const investmentConfig: ResourceConfig<Entity> = {
   key: "investments",
   listPath: "/investasi",
   detailPath: "/investasi/:id",
-  fallback: mockInvestments,
+  fallback: emptyFallback,
 };
 
 export const investmentByPengajuanConfig = (pengajuansId: string): ResourceConfig<Entity> => ({
@@ -167,7 +156,7 @@ export const profitConfig: ResourceConfig<Entity> = {
   updatePath: "/profit-distributions/:id/status",
   detailPath: "/profit-distributions/:id",
   updateBody: (item) => ({ status: item.status }),
-  fallback: mockProfits,
+  fallback: emptyFallback,
 };
 
 export const investorProfitConfig: ResourceConfig<Entity> = {
@@ -189,7 +178,7 @@ export const classConfig: ResourceConfig<Entity> = {
   updatePath: "/businesses/classes/:id",
   deletePath: "/businesses/classes/:id",
   detailPath: "/businesses/classes/:id",
-  fallback: mockClasses,
+  fallback: emptyFallback,
 };
 
 export const userClassConfig: ResourceConfig<Entity> = {
@@ -204,13 +193,13 @@ export const adminConfig: ResourceConfig<Entity> = {
   updatePath: "/admin/:id",
   deletePath: "/admin/:id",
   detailPath: "/admin/:id",
-  fallback: mockAdmins,
+  fallback: emptyFallback,
 };
 
 export const userManagementConfig: ResourceConfig<Entity> = {
   key: "users",
   listPath: "/user/users?page=1&limit=50",
-  fallback: Object.values(mockUsers),
+  fallback: emptyFallback,
 };
 
 export const notificationConfig: ResourceConfig<Entity> = {
@@ -218,5 +207,5 @@ export const notificationConfig: ResourceConfig<Entity> = {
   listPath: "/notifications",
   updatePath: "/notifications/:id",
   deletePath: "/notifications/:id",
-  fallback: mockNotifications,
+  fallback: emptyFallback,
 };

@@ -8,7 +8,6 @@ import {
 } from "react";
 import axios from "axios";
 import type { AuthUser, LoginPayload, RegisterPayload, UserRole } from "../../types";
-import { mockUsers } from "../mockData";
 import { apiClient, unwrapToken } from "../api/client";
 
 type AuthContextValue = {
@@ -43,13 +42,20 @@ const normalizeRole = (user: Record<string, unknown>, requestedRole: UserRole): 
   return requestedRole;
 };
 
+const fallbackName = (role: UserRole) => {
+  if (role === "superadmin") return "Superadmin";
+  if (role === "admin") return "Admin";
+  if (role === "investor") return "Investor";
+  return "UMKM";
+};
+
 const normalizeUser = (
   rawUser: Record<string, unknown>,
   requestedRole: UserRole,
 ): AuthUser => ({
   id: (rawUser.id as number | string | undefined) ?? Date.now(),
-  nama: String(rawUser.nama || rawUser.name || mockUsers[requestedRole].nama),
-  email: String(rawUser.email || mockUsers[requestedRole].email),
+  nama: String(rawUser.nama || rawUser.name || fallbackName(requestedRole)),
+  email: String(rawUser.email || ""),
   role: normalizeRole(rawUser, requestedRole),
   role_id:
     (rawUser.role_id as number | undefined) ??

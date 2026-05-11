@@ -1,12 +1,4 @@
 import type { Entity, ResourceConfig } from "../../types";
-import axios from "axios";
-import {
-  createLocal,
-  getLocalList,
-  removeLocal,
-  syncLocalList,
-  updateLocal,
-} from "../mockData";
 import { apiClient, unwrap } from "./client";
 
 export const pathFrom = <T extends Entity>(
@@ -34,69 +26,44 @@ const normalizeItem = <T extends Entity>(value: unknown, fallback: T) => {
   return fallback;
 };
 
+const unavailableEndpoint = (key: string) =>
+  new Error(`Endpoint untuk resource "${key}" belum tersedia.`);
+
 export const resourceApi = {
   async list<T extends Entity>(config: ResourceConfig<T>) {
-    try {
-      const response = await apiClient.get(config.listPath);
-      const data = normalizeList<T>(unwrap<unknown>(response.data));
-      if (data.length > 0) syncLocalList(config.key, data);
-      return data.length > 0 ? data : getLocalList(config.key, config.fallback);
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response) throw error;
-      return getLocalList(config.key, config.fallback);
-    }
+    const response = await apiClient.get(config.listPath);
+    return normalizeList<T>(unwrap<unknown>(response.data));
   },
 
   async create<T extends Entity>(config: ResourceConfig<T>, values: Partial<T>) {
     const apiPath = pathFrom(config.createPath, values);
-    if (!apiPath) return createLocal(config.key, config.fallback, values);
+    if (!apiPath) throw unavailableEndpoint(config.key);
 
-    try {
-      const response = await apiClient.post(
-        apiPath,
-        config.createBody ? config.createBody(values) : values,
-      );
-      return normalizeItem<T>(
-        unwrap<unknown>(response.data),
-        createLocal(config.key, config.fallback, values),
-      );
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response) throw error;
-      return createLocal(config.key, config.fallback, values);
-    }
+    const response = await apiClient.post(
+      apiPath,
+      config.createBody ? config.createBody(values) : values,
+    );
+    return normalizeItem<T>(unwrap<unknown>(response.data), { ...values, id: Date.now() } as T);
   },
 
   async update<T extends Entity>(config: ResourceConfig<T>, item: T) {
     const apiPath = pathFrom(config.updatePath as string | ((item: Partial<T> | T) => string) | undefined, item);
-    if (!apiPath) return updateLocal(config.key, config.fallback, item);
+    if (!apiPath) throw unavailableEndpoint(config.key);
 
-    try {
-      const response = await apiClient.request({
-        method: config.updateMethod ?? "PUT",
-        url: apiPath,
-        data: config.updateBody ? config.updateBody(item) : item,
-      });
-      return normalizeItem<T>(
-        unwrap<unknown>(response.data),
-        updateLocal(config.key, config.fallback, item),
-      );
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response) throw error;
-      return updateLocal(config.key, config.fallback, item);
-    }
+    const response = await apiClient.request({
+      method: config.updateMethod ?? "PUT",
+      url: apiPath,
+      data: config.updateBody ? config.updateBody(item) : item,
+    });
+    return normalizeItem<T>(unwrap<unknown>(response.data), item);
   },
 
   async remove<T extends Entity>(config: ResourceConfig<T>, item: T) {
     const apiPath = pathFrom(config.deletePath as string | ((item: Partial<T> | T) => string) | undefined, item);
-    if (!apiPath) return removeLocal(config.key, config.fallback, item);
+    if (!apiPath) throw unavailableEndpoint(config.key);
 
-    try {
-      await apiClient.delete(apiPath);
-      return removeLocal(config.key, config.fallback, item);
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response) throw error;
-      return removeLocal(config.key, config.fallback, item);
-    }
+    await apiClient.delete(apiPath);
+    return item;
   },
 
   async detail<T extends Entity>(config: ResourceConfig<T>, item: T) {
@@ -106,13 +73,8 @@ export const resourceApi = {
     );
     if (!apiPath) return item;
 
-    try {
-      const response = await apiClient.get(apiPath);
-      return unwrap<unknown>(response.data);
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response) throw error;
-      return item;
-    }
+    const response = await apiClient.get(apiPath);
+    return unwrap<unknown>(response.data);
   },
 
   async request<T extends Entity>(
@@ -121,17 +83,12 @@ export const resourceApi = {
     body?: Record<string, unknown>,
     fallback?: T,
   ) {
-    try {
-      const response = await apiClient.request({
-        method,
-        url: path,
-        data: body,
-      });
-      return unwrap<unknown>(response.data);
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response) throw error;
-      return fallback ?? { status: "offline", path, method, body };
-    }
+    const response = await apiClient.request({
+      method,
+      url: path,
+      data: body,
+    });
+    return unwrap<unknown>(response.data) ?? fallback;
   },
 
   async action<T extends Entity>(
@@ -140,12 +97,7 @@ export const resourceApi = {
     path: string,
     body?: Record<string, unknown>,
   ) {
-    try {
-      const response = await apiClient.put(path.replace(":id", String(item.id)), body);
-      return normalizeItem<T>(unwrap<unknown>(response.data), item);
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response) throw error;
-      return updateLocal(config.key, config.fallback, { ...item, ...body });
-    }
+    const response = await apiClient.put(path.replace(":id", String(item.id)), body);
+    return normalizeItem<T>(unwrap<unknown>(response.data), item);
   },
 };

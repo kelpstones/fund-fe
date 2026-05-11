@@ -51,6 +51,7 @@ export type TranslationKey =
   | "dashboardOpportunities"
   | "dashboardRecommendations"
   | "dashboardPreferences"
+  | "dashboardSurvey"
   | "dashboardInvoices"
   | "dashboardPortfolio"
   | "dashboardProfit"
@@ -113,6 +114,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     dashboardOpportunities: "Peluang",
     dashboardRecommendations: "AI Match",
     dashboardPreferences: "Preferensi",
+    dashboardSurvey: "Survey",
     dashboardInvoices: "Invoice",
     dashboardPortfolio: "Portfolio",
     dashboardProfit: "Profit",
@@ -169,6 +171,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     dashboardOpportunities: "Opportunities",
     dashboardRecommendations: "AI Match",
     dashboardPreferences: "Preferences",
+    dashboardSurvey: "Survey",
     dashboardInvoices: "Invoices",
     dashboardPortfolio: "Portfolio",
     dashboardProfit: "Profit",

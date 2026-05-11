@@ -39,6 +39,7 @@ type ResourcePageProps<T extends Entity> = {
   emptyDescription?: string;
   searchableFields?: Array<keyof T & string | ((item: T) => unknown)>;
   pageSize?: number;
+  staticData?: T[];
 };
 
 type ConfirmDialog = {
@@ -223,6 +224,7 @@ export function ResourcePage<T extends Entity>({
   emptyDescription = "Belum ada data yang bisa ditampilkan untuk halaman ini.",
   searchableFields,
   pageSize = 10,
+  staticData,
 }: ResourcePageProps<T>) {
   const { language } = useLanguage();
   const copy = uiCopy[language];
@@ -243,6 +245,7 @@ export function ResourcePage<T extends Entity>({
   const query = useQuery({
     queryKey: ["resource", config.key],
     queryFn: () => resourceApi.list(config),
+    enabled: !staticData,
   });
 
   const invalidate = async () => {
@@ -304,7 +307,7 @@ export function ResourcePage<T extends Entity>({
   };
 
   const rows = useMemo(() => {
-    const data = query.data ?? [];
+    const data = staticData ?? query.data ?? [];
     const byStatus =
       statusFilter === "all"
         ? data
@@ -321,18 +324,18 @@ export function ResourcePage<T extends Entity>({
         .toLowerCase()
         .includes(needle);
     });
-  }, [query.data, search, searchableFields, statusFilter]);
+  }, [query.data, search, searchableFields, staticData, statusFilter]);
 
   const statusOptions = useMemo(() => {
     const values = new Set<string>();
-    (query.data ?? []).forEach((item) => {
+    (staticData ?? query.data ?? []).forEach((item) => {
       const value = genericStatus(item);
       if (value !== undefined && value !== null && value !== "") {
         values.add(String(value).toLowerCase());
       }
     });
     return Array.from(values).sort();
-  }, [query.data]);
+  }, [query.data, staticData]);
 
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -635,7 +638,7 @@ export function ResourcePage<T extends Entity>({
               </tr>
             </thead>
             <tbody>
-              {query.isLoading ? (
+              {query.isLoading && !staticData ? (
                 <tr>
                   <td colSpan={colSpan}>
                     <div className="flex h-28 items-center justify-center gap-2 text-neutral/50">
@@ -644,7 +647,7 @@ export function ResourcePage<T extends Entity>({
                     </div>
                   </td>
                 </tr>
-              ) : query.isError ? (
+              ) : query.isError && !staticData ? (
                 <tr>
                   <td colSpan={colSpan}>
                     <div className="flex h-28 items-center justify-center px-6 text-center text-error">
@@ -688,12 +691,12 @@ export function ResourcePage<T extends Entity>({
         </div>
 
         <div className="grid gap-3 p-3 md:hidden">
-          {query.isLoading ? (
+          {query.isLoading && !staticData ? (
             <div className="flex h-28 items-center justify-center gap-2 text-neutral/50">
               <Loader2 className="animate-spin" size={18} />
               {copy.loading}
             </div>
-          ) : query.isError ? (
+          ) : query.isError && !staticData ? (
             <div className="flex min-h-28 items-center justify-center rounded-md border border-error/20 bg-error/10 p-4 text-center text-sm font-semibold text-error">
               {apiErrorMessage(query.error, copy.loadError)}
             </div>
@@ -733,7 +736,7 @@ export function ResourcePage<T extends Entity>({
         </div>
       </div>
 
-      {!query.isLoading && !query.isError && rows.length > pageSize ? (
+      {!(query.isLoading && !staticData) && !(query.isError && !staticData) && rows.length > pageSize ? (
         <div className="flex flex-col gap-3 rounded-md border border-base-300 bg-white p-3 text-sm font-semibold text-neutral/60 sm:flex-row sm:items-center sm:justify-between">
           <span>
             {copy.showing} {(currentPage - 1) * pageSize + 1}-

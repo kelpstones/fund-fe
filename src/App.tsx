@@ -41,6 +41,7 @@ import {
   InvestorPreferencesPage,
   ProfilePage,
 } from "./pages/dashboard/IntegrationPages";
+import { InvestorSurveyPage } from "./pages/dashboard/InvestorSurveyPage";
 
 function RoleRedirect() {
   const { user } = useAuth();
@@ -89,6 +90,7 @@ export default function App() {
           <Route index element={<InvestorOverviewPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="preferensi" element={<InvestorPreferencesPage />} />
+          <Route path="survey" element={<InvestorSurveyPage />} />
           <Route path="peluang" element={<OpportunitiesPage />} />
           <Route path="rekomendasi" element={<AiRecommendationsPage />} />
           <Route path="negosiasi" element={<NegotiationsPage mine />} />
