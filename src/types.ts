@@ -82,4 +82,7 @@ export type ResourceAction<T extends Entity> = {
   confirm?: string | ((item: T) => string);
   className?: string;
   invalidate?: boolean;
+  isVisible?: (item: T) => boolean;
+  isDisabled?: (item: T) => boolean;
+  disabledReason?: string | ((item: T) => string);
 };

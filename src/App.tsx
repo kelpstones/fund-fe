@@ -18,26 +18,38 @@ import {
   InvestorOverviewPage,
   UmkmOverviewPage,
 } from "./pages/dashboard/OverviewPages";
+import { UmkmOnboardingPage } from "./pages/dashboard/UmkmOnboardingPage";
 import {
   AdminsPage,
-  AiRecommendationsPage,
   BusinessesPage,
   ClassesPage,
   InvoicesPage,
+  InvestmentsByProposalPage,
   InvestmentsPage,
   NegotiationsPage,
   NotificationsPage,
-  OpportunitiesPage,
+  ProfitsBySalesPage,
   ProfitsPage,
   SalesPage,
   SubmissionsPage,
   UsersPage,
 } from "./pages/dashboard/ResourcePages";
 import {
+  AdminReviewQueuePage,
+  AiRecommendationsPage,
+  CompareOpportunitiesPage,
+  DealRoomPage,
+  OpportunitiesPage,
+  OpportunityDetailPage,
+  SavedOpportunitiesPage,
+} from "./pages/dashboard/MarketplacePages";
+import {
   ApiStatusPage,
   BusinessProfilePage,
+  InvestorPreferencesPage,
   ProfilePage,
 } from "./pages/dashboard/IntegrationPages";
+import { InvestorSurveyPage } from "./pages/dashboard/InvestorSurveyPage";
 
 function RoleRedirect() {
   const { user } = useAuth();
@@ -68,12 +80,16 @@ export default function App() {
       <Route element={<ProtectedRoute roles={["umkm"]} />}>
         <Route path="/dashboard/umkm" element={<DashboardLayout />}>
           <Route index element={<UmkmOverviewPage />} />
+          <Route path="onboarding" element={<UmkmOnboardingPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="bisnis" element={<BusinessesPage scope="mine" />} />
           <Route path="bisnis-profile" element={<BusinessProfilePage />} />
           <Route path="pengajuan" element={<SubmissionsPage />} />
           <Route path="penjualan" element={<SalesPage />} />
+          <Route path="investasi" element={<InvestmentsByProposalPage />} />
+          <Route path="profit" element={<ProfitsBySalesPage />} />
           <Route path="negosiasi" element={<NegotiationsPage mine />} />
+          <Route path="kelas" element={<ClassesPage />} />
           <Route path="notifikasi" element={<NotificationsPage />} />
         </Route>
       </Route>
@@ -82,12 +98,20 @@ export default function App() {
         <Route path="/dashboard/investor" element={<DashboardLayout />}>
           <Route index element={<InvestorOverviewPage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="preferensi" element={<InvestorPreferencesPage />} />
+          <Route path="survey" element={<InvestorSurveyPage />} />
           <Route path="peluang" element={<OpportunitiesPage />} />
+          <Route path="peluang/:id" element={<OpportunityDetailPage />} />
+          <Route path="saved" element={<SavedOpportunitiesPage />} />
+          <Route path="compare" element={<CompareOpportunitiesPage />} />
           <Route path="rekomendasi" element={<AiRecommendationsPage />} />
           <Route path="negosiasi" element={<NegotiationsPage mine />} />
+          <Route path="deal-room/:id" element={<DealRoomPage />} />
+          <Route path="kelas" element={<ClassesPage />} />
           <Route path="invoice" element={<InvoicesPage investor />} />
           <Route path="portfolio" element={<InvestmentsPage investor />} />
           <Route path="profit" element={<ProfitsPage investor />} />
+          <Route path="notifikasi" element={<NotificationsPage />} />
         </Route>
       </Route>
 
@@ -96,6 +120,7 @@ export default function App() {
           <Route index element={<AdminOverviewPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="api-status" element={<ApiStatusPage />} />
+          <Route path="review" element={<AdminReviewQueuePage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="bisnis" element={<BusinessesPage scope="admin" />} />
           <Route path="bisnis-profile" element={<BusinessProfilePage />} />

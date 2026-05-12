@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import type { LucideIcon } from "lucide-react";
 import { Building2, Image as ImageIcon } from "lucide-react";
+import { useLanguage } from "../lib/i18n/LanguageProvider";
 
 type PhotoPlaceholderProps = {
   title: string;
@@ -27,6 +28,7 @@ export function PhotoPlaceholder({
   dense = false,
   ratio,
 }: PhotoPlaceholderProps) {
+  const { t } = useLanguage();
   const displayedRatio = ratio ?? (dense ? "16:10" : "4:3");
 
   return (
@@ -48,9 +50,9 @@ export function PhotoPlaceholder({
 
       <div className="absolute inset-x-8 top-1/2 -translate-y-1/2">
         <div className="mx-auto grid max-w-xs place-items-center rounded-md border border-base-300 bg-white/70 px-4 py-5 text-center">
-          <p className="text-xs font-bold uppercase tracking-wide text-neutral/45">Placeholder foto</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-neutral/45">{t("photoPlaceholder")}</p>
           <p className="mt-2 text-2xl font-black text-neutral/55">{displayedRatio}</p>
-          <p className="mt-1 text-xs leading-5 text-neutral/45">Ganti area ini dengan foto asli</p>
+          <p className="mt-1 text-xs leading-5 text-neutral/45">{t("photoPlaceholderBody")}</p>
         </div>
       </div>
 

@@ -1,44 +1,46 @@
-import { BarChart3, FileCheck2, Handshake, LineChart, Receipt, Scale } from "lucide-react";
+import { ArrowRight, BarChart3, FileCheck2, Handshake, LineChart, Receipt, Scale } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useLanguage } from "../../lib/i18n/LanguageProvider";
 
 const services = [
   {
-    title: "Profil Bisnis UMKM",
-    body: "Data bisnis, kelas, performa tahunan, dan indikator operasional.",
+    title: "servicesBusinessTitle",
+    body: "servicesBusinessBody",
     icon: FileCheck2,
     cardClass: "border-emerald-200 bg-emerald-500 text-white",
     iconClass: "bg-white text-emerald-600",
   },
   {
-    title: "Pengajuan Pendanaan",
-    body: "Target modal, progress pendanaan, return tahunan, dan approval admin.",
+    title: "servicesSubmissionTitle",
+    body: "servicesSubmissionBody",
     icon: BarChart3,
     cardClass: "border-blue-200 bg-blue-600 text-white",
     iconClass: "bg-white text-blue-600",
   },
   {
-    title: "AI Matchmaking",
-    body: "Skor kecocokan investor dan UMKM berdasarkan preferensi dan risiko.",
+    title: "servicesAiTitle",
+    body: "servicesAiBody",
     icon: Scale,
     cardClass: "border-cyan-200 bg-cyan-500 text-white",
     iconClass: "bg-white text-cyan-600",
   },
   {
-    title: "Negosiasi",
-    body: "Penawaran nominal, return, catatan, accept, reject, dan riwayat interaksi.",
+    title: "servicesNegotiationTitle",
+    body: "servicesNegotiationBody",
     icon: Handshake,
     cardClass: "border-amber-200 bg-amber-400 text-neutral",
     iconClass: "bg-white text-amber-600",
   },
   {
-    title: "Invoice & Investasi",
-    body: "Invoice investor, pembayaran, pencatatan investasi, dan portfolio.",
+    title: "servicesInvoiceTitle",
+    body: "servicesInvoiceBody",
     icon: Receipt,
     cardClass: "border-rose-200 bg-rose-500 text-white",
     iconClass: "bg-white text-rose-600",
   },
   {
-    title: "Distribusi Profit",
-    body: "Profit dari laporan penjualan dipantau untuk investor dan admin.",
+    title: "servicesProfitTitle",
+    body: "servicesProfitBody",
     icon: LineChart,
     cardClass: "border-lime-200 bg-lime-400 text-neutral",
     iconClass: "bg-white text-lime-700",
@@ -46,24 +48,24 @@ const services = [
 ];
 
 export function ServicesPage() {
+  const { t } = useLanguage();
+
   return (
     <main className="bg-white">
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div className="max-w-3xl">
             <h1 className="font-display text-5xl font-black leading-tight tracking-normal">
-              Satu sistem untuk alur pendanaan UMKM
+              {t("servicesHeroTitle")}
             </h1>
             <p className="mt-6 text-lg leading-8 text-neutral/65">
-              Semua modul utama MVP disusun untuk mendukung alur dari registrasi,
-              profil bisnis, pengajuan, matching, negosiasi, invoice, sampai
-              distribusi profit.
+              {t("servicesHeroBody")}
             </p>
           </div>
           <div className="aspect-video overflow-hidden rounded-md border border-base-300 bg-base-200 shadow-sm">
             <img
               src="/images/services.png"
-              alt="Operasional pendanaan FundRaise"
+              alt={t("servicesImageAlt")}
               className="h-full w-full object-cover"
             />
           </div>
@@ -78,11 +80,58 @@ export function ServicesPage() {
                 <Icon size={22} />
               </div>
               <div className="min-w-0 md:mt-5">
-                <h2 className="text-lg font-black">{title}</h2>
-                <p className="mt-2 text-sm font-medium leading-6 opacity-82 md:mt-3">{body}</p>
+                <h2 className="text-lg font-black">{t(title)}</h2>
+                <p className="mt-2 text-sm font-medium leading-6 opacity-82 md:mt-3">{t(body)}</p>
+                <div className="mt-5 grid grid-cols-3 gap-2">
+                  {[55, 78, 92].map((width) => (
+                    <div key={width} className="h-2 rounded-full bg-white/35">
+                      <div className="h-2 rounded-full bg-white" style={{ width: `${width}%` }} />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           ))}
+        </div>
+      </section>
+      <section className="border-y border-base-300 bg-base-200">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="max-w-3xl">
+            <h2 className="text-4xl font-black tracking-normal">{t("servicesComparisonTitle")}</h2>
+            <p className="mt-4 text-sm leading-6 text-neutral/60">{t("servicesComparisonBody")}</p>
+          </div>
+          <div className="mt-8 grid gap-5 lg:grid-cols-2">
+            {[
+              ["roleUmkm", ["servicesUmkmFeature1", "servicesUmkmFeature2", "servicesUmkmFeature3"]],
+              ["roleInvestor", ["servicesInvestorFeature1", "servicesInvestorFeature2", "servicesInvestorFeature3"]],
+            ].map(([title, items]) => (
+              <div key={String(title)} className="rounded-md border border-base-300 bg-white p-6 shadow-sm">
+                <h3 className="text-2xl font-black">{t(String(title))}</h3>
+                <div className="mt-5 grid gap-3">
+                  {(items as string[]).map((item) => (
+                    <div key={item} className="flex items-start gap-3 rounded-md bg-base-200 p-3">
+                      <FileCheck2 className="mt-0.5 shrink-0 text-primary" size={18} />
+                      <span className="text-sm font-semibold leading-5 text-neutral/70">{t(item)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+      <section className="bg-white px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl rounded-md bg-neutral p-8 text-white lg:p-10">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="text-3xl font-black tracking-normal">{t("servicesBottomCtaTitle")}</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65">{t("servicesBottomCtaBody")}</p>
+            </div>
+            <Link to="/register" className="btn btn-primary rounded-md text-white">
+              {t("getStarted")}
+              <ArrowRight size={18} />
+            </Link>
+          </div>
         </div>
       </section>
     </main>

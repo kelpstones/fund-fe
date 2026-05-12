@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { ArrowUpRight, Menu, X } from "lucide-react";
+import { ArrowUpRight, Instagram, Linkedin, Mail, Menu, X } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuth } from "../lib/auth/AuthProvider";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -14,10 +14,17 @@ const links = [
   { to: "/kontak", labelKey: "navContact" },
 ] as const;
 
+const socialLinks = [
+  { labelKey: "socialInstagram", href: "https://www.instagram.com/fundraise.id", icon: Instagram },
+  { labelKey: "socialLinkedin", href: "https://www.linkedin.com/company/fundraise-id", icon: Linkedin },
+  { labelKey: "socialEmail", href: "mailto:hello@fundraise.id", icon: Mail },
+] as const;
+
 export function PublicLayout() {
   const { isAuthenticated, user } = useAuth();
   const { t } = useLanguage();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const currentYear = new Date().getFullYear();
   const dashboardPath =
     user?.role === "investor"
       ? "/dashboard/investor"
@@ -62,7 +69,7 @@ export function PublicLayout() {
           <div className="lg:hidden">
             <button
               className="btn btn-square btn-ghost"
-              aria-label="Buka menu"
+              aria-label={t("openMenu")}
               onClick={() => setIsMobileMenuOpen(true)}
             >
               <Menu size={22} />
@@ -86,7 +93,7 @@ export function PublicLayout() {
           <Logo />
           <button
             className="btn btn-square btn-ghost"
-            aria-label="Tutup menu"
+            aria-label={t("closeMenu")}
             onClick={() => setIsMobileMenuOpen(false)}
           >
             <X size={22} />
@@ -142,8 +149,7 @@ export function PublicLayout() {
           <div>
             <Logo variant="white" />
             <p className="mt-4 max-w-md text-sm leading-6 text-white/60">
-              Platform pendanaan UMKM dengan rekomendasi investasi yang lebih
-              relevan melalui AI-based matchmaking.
+              {t("footerBody")}
             </p>
           </div>
           <div>
@@ -159,9 +165,28 @@ export function PublicLayout() {
           <div>
             <h3 className="text-sm font-bold text-white">FundRaise</h3>
             <p className="mt-4 text-sm leading-6 text-white/65">
-              Matching UMKM, investor, negosiasi, invoice, investasi, dan
-              distribusi profit dalam satu workspace.
+              {t("footerWorkspaceBody")}
             </p>
+            <div className="mt-5 flex gap-2">
+              {socialLinks.map(({ labelKey, href, icon: Icon }) => (
+                <a
+                  key={labelKey}
+                  href={href}
+                  aria-label={t(labelKey)}
+                  className="grid h-9 w-9 place-items-center rounded-md border border-white/10 bg-white/10 text-white/70 transition hover:border-accent hover:text-accent"
+                  rel="noreferrer"
+                  target={href.startsWith("mailto:") ? undefined : "_blank"}
+                >
+                  <Icon size={17} />
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="border-t border-white/10">
+          <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-sm text-white/55 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+            <p>{t("footerCopyright", { year: currentYear })}</p>
+            <p>{t("footerBuiltBy")}</p>
           </div>
         </div>
       </footer>

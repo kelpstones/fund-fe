@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
+import axios from "axios";
 import { dashboardPathFor, useAuth } from "../../lib/auth/AuthProvider";
 import { Logo } from "../../components/Logo";
 import { LanguageSwitcher } from "../../components/LanguageSwitcher";
@@ -26,8 +27,12 @@ export function LoginPage() {
       const user = await login({ email, password });
       const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
       navigate(from || dashboardPathFor(user.role), { replace: true });
-    } catch {
-      setError(t("loginError"));
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.data?.message) {
+        setError(String(err.response.data.message));
+      } else {
+        setError(t("loginError"));
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -73,7 +78,7 @@ export function LoginPage() {
           {error ? <p className="text-sm font-semibold text-error">{error}</p> : null}
           <div className="flex justify-end">
             <Link className="text-sm font-semibold text-primary" to="/forgot-password">
-              Lupa password?
+              {t("forgotPasswordLink")}
             </Link>
           </div>
           <button className="btn btn-primary h-12 rounded-md text-white" disabled={isSubmitting}>
