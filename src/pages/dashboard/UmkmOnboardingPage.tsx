@@ -17,6 +17,7 @@ import { Link } from "react-router-dom";
 import { directApi } from "../../lib/api/direct";
 import { resourceApi } from "../../lib/api/resources";
 import { useAuth } from "../../lib/auth/AuthProvider";
+import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import {
   myBusinessConfig,
   myNegotiationConfig,
@@ -35,17 +36,18 @@ type OnboardingStep = {
   done: boolean;
   locked?: boolean;
   helper: string;
+  helperParams?: Record<string, string | number>;
 };
 
 const docsStorageKey = "fundraise_umkm_onboarding_docs";
 
 const documentChecklist = [
-  "KTP pemilik dan NIK sesuai akun",
-  "Nomor telepon dan email aktif",
-  "Deskripsi bisnis dan alamat operasional",
-  "Target pendanaan dan estimasi return",
-  "Ringkasan penjualan atau omzet terakhir",
-  "Foto produk, toko, atau aktivitas usaha",
+  "onboardingDocIdentity",
+  "onboardingDocContact",
+  "onboardingDocBusiness",
+  "onboardingDocFunding",
+  "onboardingDocSales",
+  "onboardingDocPhoto",
 ];
 
 const approvalStatus = (item: Entity) =>
@@ -57,12 +59,14 @@ const isApprovedSubmission = (item: Entity) =>
 const isPendingSubmission = (item: Entity) => approvalStatus(item) === "pending";
 
 function ProgressRing({ value }: { value: number }) {
+  const { t } = useLanguage();
+
   return (
     <div
       className="radial-progress text-primary"
       style={{ "--value": value, "--size": "7rem", "--thickness": "0.7rem" } as CSSProperties}
       role="progressbar"
-      aria-label="Progress onboarding UMKM"
+      aria-label={t("umkmOnboardingProgress")}
     >
       <span className="text-xl font-black text-neutral">{value}%</span>
     </div>
@@ -70,11 +74,13 @@ function ProgressRing({ value }: { value: number }) {
 }
 
 function StepStatus({ done, locked }: { done: boolean; locked?: boolean }) {
+  const { t } = useLanguage();
+
   if (done) {
     return (
       <span className="badge badge-success gap-1 text-white">
         <CheckCircle2 size={14} />
-        Selesai
+        {t("done")}
       </span>
     );
   }
@@ -83,7 +89,7 @@ function StepStatus({ done, locked }: { done: boolean; locked?: boolean }) {
     return (
       <span className="badge badge-neutral gap-1">
         <Lock size={14} />
-        Terkunci
+        {t("locked")}
       </span>
     );
   }
@@ -91,12 +97,13 @@ function StepStatus({ done, locked }: { done: boolean; locked?: boolean }) {
   return (
     <span className="badge badge-warning gap-1">
       <AlertCircle size={14} />
-      Berikutnya
+      {t("next")}
     </span>
   );
 }
 
 function StepCard({ step, index }: { step: OnboardingStep; index: number }) {
+  const { t } = useLanguage();
   const Icon = step.icon;
 
   return (
@@ -117,15 +124,15 @@ function StepCard({ step, index }: { step: OnboardingStep; index: number }) {
             <Icon size={21} />
           </div>
           <div>
-            <p className="text-xs font-black uppercase tracking-wide text-neutral/40">Step {index + 1}</p>
-            <h3 className="mt-1 text-lg font-black text-neutral">{step.title}</h3>
+            <p className="text-xs font-black uppercase tracking-wide text-neutral/40">{t("step")} {index + 1}</p>
+            <h3 className="mt-1 text-lg font-black text-neutral">{t(step.title)}</h3>
           </div>
         </div>
         <StepStatus done={step.done} locked={step.locked} />
       </div>
-      <p className="mt-4 text-sm leading-6 text-neutral/60">{step.description}</p>
+      <p className="mt-4 text-sm leading-6 text-neutral/60">{t(step.description)}</p>
       <p className="mt-3 rounded-md bg-base-200 px-3 py-2 text-xs font-semibold text-neutral/60">
-        {step.helper}
+        {t(step.helper, step.helperParams)}
       </p>
       <div className="mt-5">
         <Link
@@ -136,7 +143,7 @@ function StepCard({ step, index }: { step: OnboardingStep; index: number }) {
           ].join(" ")}
           aria-disabled={step.locked}
         >
-          {step.action}
+          {t(step.action)}
         </Link>
       </div>
     </article>
@@ -144,6 +151,7 @@ function StepCard({ step, index }: { step: OnboardingStep; index: number }) {
 }
 
 function DocumentChecklist() {
+  const { t } = useLanguage();
   const [checkedDocs, setCheckedDocs] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem(docsStorageKey);
@@ -167,8 +175,8 @@ function DocumentChecklist() {
     <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h3 className="text-xl font-black">Checklist persiapan</h3>
-          <p className="mt-1 text-sm text-neutral/55">Checklist lokal untuk menyiapkan materi sebelum review admin.</p>
+          <h3 className="text-xl font-black">{t("preparationChecklist")}</h3>
+          <p className="mt-1 text-sm text-neutral/55">{t("preparationChecklistBody")}</p>
         </div>
         <span className="badge badge-primary badge-lg text-white">
           {checkedDocs.length}/{documentChecklist.length}
@@ -186,7 +194,7 @@ function DocumentChecklist() {
               checked={checkedDocs.includes(item)}
               onChange={() => toggle(item)}
             />
-            <span className="text-sm font-semibold leading-5 text-neutral/70">{item}</span>
+            <span className="text-sm font-semibold leading-5 text-neutral/70">{t(item)}</span>
           </label>
         ))}
       </div>
@@ -195,19 +203,21 @@ function DocumentChecklist() {
 }
 
 function SubmissionSnapshot({ submissions }: { submissions: Entity[] }) {
+  const { t } = useLanguage();
+
   return (
     <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-xl font-black">Status pengajuan</h3>
-          <p className="mt-1 text-sm text-neutral/55">Ringkasan kesiapan proposal untuk investor.</p>
+          <h3 className="text-xl font-black">{t("submissionStatus")}</h3>
+          <p className="mt-1 text-sm text-neutral/55">{t("submissionSnapshotBody")}</p>
         </div>
         <FileCheck2 className="text-primary" size={24} />
       </div>
       <div className="mt-5 grid gap-3">
         {submissions.length === 0 ? (
           <div className="rounded-md border border-base-300 p-4 text-sm font-semibold text-neutral/55">
-            Belum ada pengajuan dana.
+            {t("noFundingSubmissions")}
           </div>
         ) : null}
         {submissions.slice(0, 4).map((item) => {
@@ -243,6 +253,7 @@ function SubmissionSnapshot({ submissions }: { submissions: Entity[] }) {
 }
 
 export function UmkmOnboardingPage() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const businessesQuery = useQuery({
     queryKey: ["umkm-onboarding", "businesses"],
@@ -296,92 +307,95 @@ export function UmkmOnboardingPage() {
     () => [
       {
         key: "account",
-        title: "Lengkapi identitas akun",
-        description: "Pastikan nama, email, dan nomor telepon UMKM sudah benar agar admin dan investor bisa menghubungi kamu.",
+        title: "onboardingAccountTitle",
+        description: "onboardingAccountBody",
         href: "/dashboard/umkm/profile",
-        action: accountReady ? "Review Profile" : "Lengkapi Profile",
+        action: accountReady ? "reviewProfile" : "completeProfile",
         icon: IdCard,
         done: accountReady,
-        helper: accountReady ? "Identitas dasar akun sudah tersedia." : "Nomor telepon atau data akun belum lengkap.",
+        helper: accountReady ? "onboardingAccountDone" : "onboardingAccountTodo",
       },
       {
         key: "business",
-        title: "Daftarkan profil bisnis",
-        description: "Buat data bisnis utama berisi nama usaha, tipe usaha, alamat, kontak, kelas, dan deskripsi.",
+        title: "onboardingBusinessTitle",
+        description: "onboardingBusinessBody",
         href: "/dashboard/umkm/bisnis",
-        action: hasBusiness ? "Kelola Bisnis" : "Tambah Bisnis",
+        action: hasBusiness ? "manageBusiness" : "addBusiness",
         icon: Building2,
         done: hasBusiness,
         helper: hasBusiness
-          ? `${businesses.length} bisnis terhubung ke akun ini.`
-          : "Profil bisnis wajib dibuat sebelum pengajuan dana.",
+          ? "onboardingBusinessDone"
+          : "onboardingBusinessTodo",
+        helperParams: { count: businesses.length },
       },
       {
         key: "model",
-        title: "Isi profil model bisnis",
-        description: "Lengkapi margin, omzet, repeat order, adopsi digital, dan tenure agar scoring bisnis lebih kuat.",
+        title: "onboardingModelTitle",
+        description: "onboardingModelBody",
         href: "/dashboard/umkm/bisnis-profile",
-        action: hasModelProfile ? "Review Model" : "Isi Model",
+        action: hasModelProfile ? "reviewModel" : "fillModel",
         icon: LineChart,
         done: hasModelProfile,
         locked: !hasBusiness,
         helper: hasBusiness
           ? hasModelProfile
-            ? "Data model bisnis sudah tersimpan untuk scoring."
-            : "Data model belum lengkap, investor belum mendapat sinyal kualitas yang cukup."
-          : "Buat profil bisnis terlebih dahulu.",
+            ? "onboardingModelDone"
+            : "onboardingModelTodo"
+          : "createBusinessFirst",
       },
       {
         key: "submission",
-        title: "Buat pengajuan pendanaan",
-        description: "Masukkan target pendanaan dan return tahunan agar peluang bisa direview admin.",
+        title: "onboardingSubmissionTitle",
+        description: "onboardingSubmissionBody",
         href: "/dashboard/umkm/pengajuan",
-        action: hasSubmission ? "Kelola Pengajuan" : "Buat Pengajuan",
+        action: hasSubmission ? "manageSubmission" : "createSubmission",
         icon: FileCheck2,
         done: hasSubmission,
         locked: !hasBusiness,
         helper: hasSubmission
-          ? `${submissions.length} pengajuan sudah dibuat.`
-          : "Pengajuan menjadi pintu masuk ke marketplace investor.",
+          ? "onboardingSubmissionDone"
+          : "onboardingSubmissionTodo",
+        helperParams: { count: submissions.length },
       },
       {
         key: "review",
-        title: "Siap review admin",
-        description: "Pantau status approval. Setelah disetujui atau dipublikasikan, peluang mulai layak muncul di katalog investor.",
+        title: "onboardingReviewTitle",
+        description: "onboardingReviewBody",
         href: "/dashboard/umkm/pengajuan",
-        action: "Cek Status",
+        action: "checkStatus",
         icon: ClipboardCheck,
         done: hasReviewedSubmission,
         locked: !hasSubmission,
         helper: hasReviewedSubmission
-          ? "Ada pengajuan yang sudah approved, published, atau funded."
+          ? "onboardingReviewDone"
           : hasPendingSubmission
-            ? "Ada pengajuan pending. Tunggu keputusan admin."
-            : "Belum ada pengajuan yang masuk tahap review.",
+            ? "onboardingReviewPending"
+            : "onboardingReviewTodo",
       },
       {
         key: "negotiation",
-        title: "Kelola negosiasi investor",
-        description: "Balas penawaran investor dan jaga semua percakapan deal di satu tempat.",
+        title: "onboardingNegotiationTitle",
+        description: "onboardingNegotiationBody",
         href: "/dashboard/umkm/negosiasi",
-        action: "Buka Negosiasi",
+        action: "openNegotiations",
         icon: Handshake,
         done: hasNegotiation,
         locked: !hasReviewedSubmission,
         helper: hasNegotiation
-          ? `${negotiations.length} negosiasi tercatat.`
-          : "Negosiasi akan muncul setelah investor tertarik pada peluang bisnis.",
+          ? "onboardingNegotiationDone"
+          : "onboardingNegotiationTodo",
+        helperParams: { count: negotiations.length },
       },
       {
         key: "sales",
-        title: "Siapkan laporan penjualan",
-        description: "Setelah ada investasi berjalan, laporan penjualan menjadi dasar distribusi profit.",
+        title: "onboardingSalesTitle",
+        description: "onboardingSalesBody",
         href: "/dashboard/umkm/penjualan",
-        action: "Input Penjualan",
+        action: "inputSales",
         icon: BarChart3,
         done: false,
         locked: !hasReviewedSubmission,
-        helper: "Laporan penjualan dipakai untuk transparansi performa dan profit sharing.",
+        helper: "onboardingSalesTodo",
       },
     ],
     [
@@ -413,24 +427,23 @@ export function UmkmOnboardingPage() {
           <div>
             <div className="mb-4 inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1 text-xs font-black uppercase tracking-wide text-primary">
               <Rocket size={15} />
-              UMKM Onboarding
+              {t("umkmOnboarding")}
             </div>
             <h2 className="text-3xl font-black tracking-normal text-neutral">
-              Siapkan bisnis sampai layak tampil ke investor
+              {t("umkmOnboardingTitle")}
             </h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-neutral/60">
-              Halaman ini menyatukan urutan kerja UMKM: profil akun, profil bisnis, scoring model, pengajuan dana,
-              review admin, negosiasi, sampai laporan penjualan.
+              {t("umkmOnboardingBody")}
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
               <Link
                 to={nextStep?.href ?? "/dashboard/umkm/pengajuan"}
                 className="btn btn-primary rounded-md text-white"
               >
-                {nextStep?.action ?? "Review Pengajuan"}
+                {t(nextStep?.action ?? "reviewSubmission")}
               </Link>
               <Link to="/dashboard/umkm" className="btn btn-outline rounded-md">
-                Kembali ke Overview
+                {t("backToOverview")}
               </Link>
             </div>
           </div>
@@ -442,24 +455,24 @@ export function UmkmOnboardingPage() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-neutral/50">Bisnis</p>
+          <p className="text-sm font-semibold text-neutral/50">{t("business")}</p>
           <p className="mt-2 text-3xl font-black">{businessesQuery.isLoading ? "-" : businesses.length}</p>
-          <p className="mt-1 text-sm text-neutral/55">Profil terdaftar</p>
+          <p className="mt-1 text-sm text-neutral/55">{t("registeredProfiles")}</p>
         </div>
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-neutral/50">Pengajuan</p>
+          <p className="text-sm font-semibold text-neutral/50">{t("submissions")}</p>
           <p className="mt-2 text-3xl font-black">{submissionsQuery.isLoading ? "-" : submissions.length}</p>
-          <p className="mt-1 text-sm text-neutral/55">Proposal pendanaan</p>
+          <p className="mt-1 text-sm text-neutral/55">{t("fundingProposals")}</p>
         </div>
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-neutral/50">Target Dana</p>
+          <p className="text-sm font-semibold text-neutral/50">{t("fundingTarget")}</p>
           <p className="mt-2 text-3xl font-black">{compactCurrency(activeFundingTarget)}</p>
-          <p className="mt-1 text-sm text-neutral/55">Total kebutuhan modal</p>
+          <p className="mt-1 text-sm text-neutral/55">{t("totalCapitalNeeds")}</p>
         </div>
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-neutral/50">Negosiasi</p>
+          <p className="text-sm font-semibold text-neutral/50">{t("negotiation")}</p>
           <p className="mt-2 text-3xl font-black">{negotiationsQuery.isLoading ? "-" : negotiations.length}</p>
-          <p className="mt-1 text-sm text-neutral/55">Interaksi investor</p>
+          <p className="mt-1 text-sm text-neutral/55">{t("investorInteractions")}</p>
         </div>
       </div>
 

@@ -7,6 +7,7 @@ import { directApi } from "../../lib/api/direct";
 import { apiClient, unwrap } from "../../lib/api/client";
 import { resourceApi } from "../../lib/api/resources";
 import { businessConfig, myBusinessConfig } from "../../lib/resourceConfigs";
+import { useLanguage } from "../../lib/i18n/LanguageProvider";
 
 function Panel({
   title,
@@ -17,11 +18,13 @@ function Panel({
   description?: string;
   children: ReactNode;
 }) {
+  const { t } = useLanguage();
+
   return (
     <section className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
       <div className="mb-5">
-        <h2 className="text-xl font-black">{title}</h2>
-        {description ? <p className="mt-2 text-sm leading-6 text-neutral/60">{description}</p> : null}
+        <h2 className="text-xl font-black">{t(title)}</h2>
+        {description ? <p className="mt-2 text-sm leading-6 text-neutral/60">{t(description)}</p> : null}
       </div>
       {children}
     </section>
@@ -44,6 +47,8 @@ const apiErrorMessage = (error: unknown, fallback: string) => {
 };
 
 function DetailRows({ rows }: { rows: Array<[string, unknown]> }) {
+  const { t } = useLanguage();
+
   return (
     <div className="overflow-hidden rounded-md border border-base-300">
       {rows.map(([label, value]) => (
@@ -51,7 +56,7 @@ function DetailRows({ rows }: { rows: Array<[string, unknown]> }) {
           key={label}
           className="grid gap-1 border-b border-base-300 px-4 py-3 last:border-b-0 sm:grid-cols-[0.45fr_0.55fr]"
         >
-          <span className="text-sm font-semibold text-neutral/55">{label}</span>
+          <span className="text-sm font-semibold text-neutral/55">{t(label)}</span>
           <span className="text-sm font-bold text-neutral">{displayValue(value)}</span>
         </div>
       ))}
@@ -70,22 +75,24 @@ function SyncStatus({
   isError: boolean;
   hasData: boolean;
 }) {
+  const { t } = useLanguage();
   const tone = isLoading
     ? "badge-warning"
     : isError || !hasData
       ? "badge-error"
       : "badge-success";
-  const text = isLoading ? "Memuat" : isError || !hasData ? "Belum tersedia" : "Tersedia";
+  const text = isLoading ? "loading" : isError || !hasData ? "unavailable" : "available";
 
   return (
     <div className="flex items-center justify-between gap-4 rounded-md border border-base-300 p-4">
-      <span className="text-sm font-bold">{label}</span>
-      <span className={`badge ${tone} text-white`}>{text}</span>
+      <span className="text-sm font-bold">{t(label)}</span>
+      <span className={`badge ${tone} text-white`}>{t(text)}</span>
     </div>
   );
 }
 
 export function ProfilePage() {
+  const { t } = useLanguage();
   const { user, updateUser } = useAuth();
   const queryClient = useQueryClient();
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
@@ -138,13 +145,13 @@ export function ProfilePage() {
       return updateUser(localUpdates);
     },
     onSuccess: async () => {
-      setSaveMessage("Profile berhasil disimpan.");
+      setSaveMessage(t("profileSaveSuccess"));
       setSaveError("");
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
     onError: (err) => {
       setSaveMessage("");
-      setSaveError(apiErrorMessage(err, "Profile belum berhasil disimpan."));
+      setSaveError(apiErrorMessage(err, t("profileSaveError")));
     },
   });
 
@@ -169,11 +176,11 @@ export function ProfilePage() {
     <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
       <Panel
         title="Profile"
-        description="Kelola informasi akun yang dipakai di seluruh workspace FundRaise."
+        description="profilePanelDescription"
       >
         <form className="grid gap-4" onSubmit={submit}>
           <label className="form-control">
-            <span className="label-text mb-2 font-semibold">Nama</span>
+            <span className="label-text mb-2 font-semibold">{t("name")}</span>
             <input
               className="input input-bordered rounded-md"
               value={form.nama}
@@ -182,7 +189,7 @@ export function ProfilePage() {
             />
           </label>
           <label className="form-control">
-            <span className="label-text mb-2 font-semibold">Email</span>
+            <span className="label-text mb-2 font-semibold">{t("email")}</span>
             <input
               type="email"
               className="input input-bordered rounded-md"
@@ -192,7 +199,7 @@ export function ProfilePage() {
             />
           </label>
           <label className="form-control">
-            <span className="label-text mb-2 font-semibold">No. Telp</span>
+            <span className="label-text mb-2 font-semibold">{t("phone")}</span>
             <input
               className="input input-bordered rounded-md"
               value={form.no_telp}
@@ -202,7 +209,7 @@ export function ProfilePage() {
           </label>
           {isAdmin ? (
             <label className="form-control">
-              <span className="label-text mb-2 font-semibold">Level</span>
+              <span className="label-text mb-2 font-semibold">{t("level")}</span>
               <select
                 className="select select-bordered rounded-md"
                 value={form.level}
@@ -217,11 +224,11 @@ export function ProfilePage() {
           {canEditProfile ? (
             <button className="btn btn-primary rounded-md text-white" disabled={updateMutation.isPending}>
               {updateMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-              Simpan Profile
+              {t("saveProfile")}
             </button>
           ) : (
             <div className="rounded-md border border-info/20 bg-info/10 px-4 py-3 text-sm font-semibold text-info">
-              Admin biasa hanya dapat melihat profile. Update admin hanya tersedia untuk superadmin.
+              {t("adminProfileReadonly")}
             </div>
           )}
           {saveMessage ? (
@@ -237,27 +244,27 @@ export function ProfilePage() {
         </form>
       </Panel>
       <div className="grid gap-5">
-        <Panel title="Ringkasan Akun" description="Informasi akun aktif yang tersambung ke dashboard.">
+        <Panel title="accountSummary" description="accountSummaryDescription">
           <DetailRows
             rows={[
-              ["Nama", profileRecord.nama],
+              ["name", profileRecord.nama],
               ["Email", profileRecord.email],
               ["Role", profileRecord.role || profileRecord.role_name || profileRecord.level || profileRecord.role_id],
-              ["No. Telp", profileRecord.no_telp],
-              ["Dibuat", profileRecord.created_at],
+              ["phone", profileRecord.no_telp],
+              ["createdAt", profileRecord.created_at],
             ]}
           />
         </Panel>
-        <Panel title="Status Data">
+        <Panel title="dataStatus">
           <div className="grid gap-3">
             <SyncStatus
-              label="Data sesi"
+              label="sessionData"
               isLoading={meQuery.isLoading}
               isError={meQuery.isError}
               hasData={Boolean(meQuery.data)}
             />
             <SyncStatus
-              label={isAdmin ? "Data admin" : "Profile lokal"}
+              label={isAdmin ? "adminData" : "localProfile"}
               isLoading={isAdmin ? adminDetailQuery.isLoading : false}
               isError={isAdmin ? adminDetailQuery.isError : false}
               hasData={isAdmin ? Boolean(adminDetailQuery.data) : Boolean(user)}
@@ -300,6 +307,7 @@ const investorPreferenceFields: Array<{
 ];
 
 export function InvestorPreferencesPage() {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<InvestorPreferenceForm>(defaultInvestorPreference);
   const [isDirty, setIsDirty] = useState(false);
@@ -338,14 +346,14 @@ export function InvestorPreferencesPage() {
     onSuccess: async () => {
       setForm(activeForm);
       setIsDirty(false);
-      setMessage("Preferensi berhasil disimpan.");
+      setMessage(t("preferencesSaveSuccess"));
       setError("");
       await queryClient.invalidateQueries({ queryKey: ["investor-preferences"] });
       await queryClient.invalidateQueries({ queryKey: ["ai-recommendations"] });
     },
     onError: (err) => {
       setMessage("");
-      setError(apiErrorMessage(err, "Preferensi belum berhasil disimpan."));
+      setError(apiErrorMessage(err, t("preferencesSaveError")));
     },
   });
 
@@ -355,13 +363,13 @@ export function InvestorPreferencesPage() {
       return unwrap<unknown>(response.data);
     },
     onSuccess: async () => {
-      setMessage("Rekomendasi berhasil diperbarui.");
+      setMessage(t("recommendationsRefreshSuccess"));
       setError("");
       await queryClient.invalidateQueries({ queryKey: ["ai-recommendations"] });
     },
     onError: (err) => {
       setMessage("");
-      setError(apiErrorMessage(err, "Rekomendasi belum bisa diperbarui."));
+      setError(apiErrorMessage(err, t("recommendationsRefreshError")));
     },
   });
 
@@ -373,8 +381,8 @@ export function InvestorPreferencesPage() {
   return (
     <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
       <Panel
-        title="Preferensi Investor"
-        description="Preferensi ini dipakai backend untuk menghasilkan rekomendasi UMKM."
+        title="investorPreferencesTitle"
+        description="investorPreferencesBody"
       >
         <form
           className="grid gap-4"
@@ -386,7 +394,7 @@ export function InvestorPreferencesPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             {investorPreferenceFields.map((field) => (
               <label className="form-control" key={field.key}>
-                <span className="label-text mb-2 font-semibold">{field.label}</span>
+                <span className="label-text mb-2 font-semibold">{t(field.label)}</span>
                 <input
                   type="number"
                   min={field.min}
@@ -403,7 +411,7 @@ export function InvestorPreferencesPage() {
           <div className="flex flex-col gap-2 sm:flex-row">
             <button className="btn btn-primary rounded-md text-white" disabled={saveMutation.isPending}>
               {saveMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-              Simpan Preferensi
+              {t("savePreferences")}
             </button>
             <button
               type="button"
@@ -412,7 +420,7 @@ export function InvestorPreferencesPage() {
               disabled={refreshMutation.isPending}
             >
               {refreshMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} />}
-              Refresh Rekomendasi
+              {t("refreshRecommendations")}
             </button>
           </div>
           {message ? (
@@ -428,10 +436,10 @@ export function InvestorPreferencesPage() {
         </form>
       </Panel>
       <div className="grid gap-5">
-        <Panel title="Preferensi Aktif" description="Data yang tersimpan di backend untuk akun investor.">
+        <Panel title="activePreferences" description="activePreferencesBody">
           <div className="mb-4">
             <SyncStatus
-              label="Preferensi investor"
+              label="investorPreferences"
               isLoading={preferenceQuery.isLoading}
               isError={preferenceQuery.isError}
               hasData={Boolean(preferenceQuery.data)}
@@ -466,6 +474,7 @@ const defaultBusinessProfileForm = {
 };
 
 export function BusinessProfilePage() {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [bisnisId, setBisnisId] = useState("");
@@ -519,13 +528,13 @@ export function BusinessProfilePage() {
     onSuccess: async () => {
       setForm(activeBusinessProfile);
       setIsDirty(false);
-      setProfileMessage("Profil bisnis berhasil disimpan.");
+      setProfileMessage(t("businessProfileSaveSuccess"));
       setProfileError("");
       await queryClient.invalidateQueries({ queryKey: ["business-profile", activeBisnisId] });
     },
     onError: (err) => {
       setProfileMessage("");
-      setProfileError(apiErrorMessage(err, "Profil bisnis belum berhasil disimpan."));
+      setProfileError(apiErrorMessage(err, t("businessProfileSaveError")));
     },
   });
 
@@ -539,13 +548,13 @@ export function BusinessProfilePage() {
     onSuccess: async () => {
       setForm(activeBusinessProfile);
       setIsDirty(false);
-      setProfileMessage("Class bisnis berhasil diperbarui.");
+      setProfileMessage(t("businessClassUpdateSuccess"));
       setProfileError("");
       await queryClient.invalidateQueries({ queryKey: ["business-profile", activeBisnisId] });
     },
     onError: (err) => {
       setProfileMessage("");
-      setProfileError(apiErrorMessage(err, "Class bisnis belum berhasil diperbarui."));
+      setProfileError(apiErrorMessage(err, t("businessClassUpdateError")));
     },
   });
 
@@ -583,12 +592,12 @@ export function BusinessProfilePage() {
     <div className="space-y-5">
       <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
         <Panel
-          title="Profil Model Bisnis"
-          description="Kelola variabel kesehatan bisnis, performa digital, dan kelas risiko usaha."
+          title="businessModelProfileTitle"
+          description="businessModelProfileBody"
         >
           <div className="grid gap-4">
             <label className="form-control">
-              <span className="label-text mb-2 font-semibold">Bisnis</span>
+              <span className="label-text mb-2 font-semibold">{t("business")}</span>
               <div className="flex gap-2">
                 {businessOptions.length > 0 ? (
                   <select
@@ -613,7 +622,7 @@ export function BusinessProfilePage() {
                       setBisnisId(event.target.value);
                       setIsDirty(false);
                     }}
-                    placeholder="Masukkan ID bisnis"
+                    placeholder={t("enterBusinessId")}
                   />
                 )}
                 <button
@@ -626,7 +635,7 @@ export function BusinessProfilePage() {
               </div>
               {!businessOptionsQuery.isLoading && businessOptions.length === 0 ? (
                 <span className="mt-2 text-xs font-semibold text-warning">
-                  Belum ada bisnis yang bisa dipilih. Buat profil bisnis terlebih dahulu.
+                  {t("noBusinessOptions")}
                 </span>
               ) : null}
             </label>
@@ -641,7 +650,7 @@ export function BusinessProfilePage() {
                 ["business_tenure_years", "Business Tenure"],
               ].map(([key, label]) => (
                 <label className="form-control" key={key}>
-                  <span className="label-text mb-2 font-semibold">{label}</span>
+                  <span className="label-text mb-2 font-semibold">{t(label)}</span>
                   <input
                     type="number"
                     className="input input-bordered rounded-md"
@@ -652,7 +661,7 @@ export function BusinessProfilePage() {
                 </label>
               ))}
               <label className="form-control">
-                <span className="label-text mb-2 font-semibold">Peak Hour Latency</span>
+                <span className="label-text mb-2 font-semibold">{t("Peak Hour Latency")}</span>
                 <select
                   className="select select-bordered rounded-md"
                   value={activeBusinessProfile.peak_hour_latency}
@@ -668,7 +677,7 @@ export function BusinessProfilePage() {
                 </select>
               </label>
               <label className="form-control">
-                <span className="label-text mb-2 font-semibold">Class</span>
+                <span className="label-text mb-2 font-semibold">{t("Class")}</span>
                 <select
                   className="select select-bordered rounded-md"
                   value={activeBusinessProfile.class}
@@ -690,19 +699,19 @@ export function BusinessProfilePage() {
                   disabled={!activeBisnisId || upsertMutation.isPending}
                 >
                   {upsertMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-                  Simpan Profil
+                  {t("saveProfile")}
                 </button>
                 <button
                   className="btn btn-secondary rounded-md text-white"
                   onClick={() => classMutation.mutate()}
                   disabled={!activeBisnisId || classMutation.isPending}
                 >
-                  Update Class
+                  {t("updateClass")}
                 </button>
               </div>
             ) : (
               <div className="rounded-md border border-info/20 bg-info/10 px-4 py-3 text-sm font-semibold text-info">
-                Role ini hanya dapat melihat profil model bisnis.
+                {t("businessModelReadonly")}
               </div>
             )}
             {profileMessage ? (
@@ -717,10 +726,10 @@ export function BusinessProfilePage() {
             ) : null}
           </div>
         </Panel>
-        <Panel title="Ringkasan Profil Bisnis" description="Nilai model bisnis yang sedang aktif untuk proses scoring.">
+        <Panel title="businessProfileSummary" description="businessProfileSummaryBody">
           <div className="mb-4">
             <SyncStatus
-              label="Profil bisnis"
+              label="businessProfile"
               isLoading={profileQuery.isLoading}
               isError={profileQuery.isError}
               hasData={Boolean(profileQuery.data)}
@@ -742,10 +751,10 @@ export function BusinessProfilePage() {
         </Panel>
       </div>
       {canSeeMlProfiles ? (
-        <Panel title="Semua Profil Model" description="Data profil bisnis yang tersedia untuk proses ML.">
+        <Panel title="allModelProfiles" description="allModelProfilesBody">
           <div className="mb-4">
             <SyncStatus
-              label="Profil ML"
+              label="mlProfile"
               isLoading={mlProfilesQuery.isLoading}
               isError={mlProfilesQuery.isError}
               hasData={mlProfiles.length > 0}
@@ -755,7 +764,7 @@ export function BusinessProfilePage() {
             <table className="table">
               <thead>
                 <tr className="bg-base-200 text-xs uppercase tracking-wide text-neutral/60">
-                  <th>Bisnis</th>
+                  <th>{t("business")}</th>
                   <th>Class</th>
                   <th>Margin</th>
                   <th>Revenue</th>
@@ -766,7 +775,7 @@ export function BusinessProfilePage() {
                 {mlProfiles.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center text-neutral/55">
-                      Data belum tersedia
+                      {t("dataUnavailable")}
                     </td>
                   </tr>
                 ) : (
@@ -817,36 +826,36 @@ export function ApiStatusPage() {
   return (
     <div className="grid gap-5">
       <Panel
-        title="Status Sistem"
-        description="Pantau kesiapan layanan utama dan status data operasional."
+        title="systemStatusTitle"
+        description="systemStatusBody"
       >
         <div className="grid gap-3 md:grid-cols-2">
           <SyncStatus
-            label="Aplikasi"
+            label="application"
             isLoading={rootQuery.isLoading}
             isError={rootQuery.isError}
             hasData={Boolean(rootQuery.data)}
           />
           <SyncStatus
-            label="Kelas bisnis"
+            label="businessClasses"
             isLoading={userClassesQuery.isLoading}
             isError={userClassesQuery.isError}
             hasData={Boolean(userClassesQuery.data)}
           />
           <SyncStatus
-            label="Detail kelas"
+            label="classDetail"
             isLoading={userClassDetailQuery.isLoading}
             isError={userClassDetailQuery.isError}
             hasData={Boolean(userClassDetailQuery.data)}
           />
           <SyncStatus
-            label="Dashboard admin"
+            label="adminDashboard"
             isLoading={adminDashboardQuery.isLoading}
             isError={adminDashboardQuery.isError}
             hasData={Boolean(adminDashboardQuery.data)}
           />
           <SyncStatus
-            label="Profil ML"
+            label="mlProfile"
             isLoading={mlProfilesQuery.isLoading}
             isError={mlProfilesQuery.isError}
             hasData={Boolean(mlProfilesQuery.data)}

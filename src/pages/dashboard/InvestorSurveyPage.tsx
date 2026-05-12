@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { BrainCircuit, CheckCircle2, ClipboardList, RefreshCw, Sparkles } from "lucide-react";
 import { ResourcePage } from "../../components/ResourcePage";
 import { resourceApi } from "../../lib/api/resources";
+import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import { publishedSubmissionConfig } from "../../lib/resourceConfigs";
 import { currency, percent, readPath, textValue } from "../../lib/format";
 import type { Entity } from "../../types";
@@ -32,13 +33,13 @@ const defaultSurvey: SurveyAnswer = {
 };
 
 const sectorOptions = [
-  { value: "kuliner", label: "Kuliner" },
+  { value: "kuliner", label: "sectorCulinary" },
   { value: "fashion", label: "Fashion" },
-  { value: "teknologi", label: "Teknologi" },
-  { value: "pendidikan", label: "Pendidikan" },
-  { value: "pertanian", label: "Pertanian" },
-  { value: "jasa", label: "Jasa" },
-  { value: "lainnya", label: "Lainnya" },
+  { value: "teknologi", label: "sectorTechnology" },
+  { value: "pendidikan", label: "sectorEducation" },
+  { value: "pertanian", label: "sectorAgriculture" },
+  { value: "jasa", label: "sectorServices" },
+  { value: "lainnya", label: "sectorOther" },
 ];
 
 const mockUmkm: Entity[] = [
@@ -83,7 +84,7 @@ const riskValue = (item: Entity) =>
 const sectorValue = (item: Entity) =>
   textValue(readPath(item, ["tipe_usaha", "bisnis.tipe_usaha", "sektor"]), "").toLowerCase();
 
-const scoreItem = (item: Entity, answer: SurveyAnswer): MatchResult => {
+const scoreItem = (item: Entity, answer: SurveyAnswer, t: (key: string, params?: Record<string, string | number>) => string): MatchResult => {
   const sectorScore =
     answer.sektor === "lainnya" || sectorValue(item).includes(answer.sektor) ? 24 : 8;
   const nominal = Number(item.target_pendanaan || readPath(item, ["bisnis.target_pendanaan"], "0"));
@@ -99,9 +100,11 @@ const scoreItem = (item: Entity, answer: SurveyAnswer): MatchResult => {
     ...item,
     match_score: total,
     risk_level: riskValue(item),
-    match_reason: `Cocok karena sektor ${textValue(sectorValue(item), "bisnis")} mendekati preferensi, target ${currency(
-      nominal,
-    )}, dan return ${percent(item.per_anual_return)}.`,
+    match_reason: t("surveyMatchReason", {
+      sector: textValue(sectorValue(item), t("business")),
+      target: currency(nominal),
+      return: percent(item.per_anual_return),
+    }),
   };
 };
 
@@ -140,6 +143,7 @@ const matchConfig = (items: MatchResult[]) => ({
 });
 
 export function InvestorSurveyPage() {
+  const { t } = useLanguage();
   const [form, setForm] = useState<SurveyAnswer>(defaultSurvey);
   const [submitted, setSubmitted] = useState(false);
   const opportunitiesQuery = useQuery({
@@ -155,9 +159,9 @@ export function InvestorSurveyPage() {
   const matches = useMemo(
     () =>
       sourceItems
-        .map((item) => scoreItem(item, form))
+        .map((item) => scoreItem(item, form, t))
         .sort((a, b) => b.match_score - a.match_score),
-    [form, sourceItems],
+    [form, sourceItems, t],
   );
 
   const update = <K extends keyof SurveyAnswer>(key: K, value: SurveyAnswer[K]) => {
@@ -177,14 +181,13 @@ export function InvestorSurveyPage() {
             <div className="mb-4 grid h-12 w-12 place-items-center rounded-md bg-primary/10 text-primary">
               <ClipboardList size={24} />
             </div>
-            <h2 className="text-2xl font-black tracking-normal text-neutral">Survey Investor</h2>
+            <h2 className="text-2xl font-black tracking-normal text-neutral">{t("investorSurveyTitle")}</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral/60">
-              Mock survey untuk menangkap preferensi investor sebelum sistem menampilkan UMKM yang paling cocok.
-              Flow ini disiapkan agar nanti mudah disambungkan ke backend matchmaking.
+              {t("investorSurveyBody")}
             </p>
           </div>
           <div className="rounded-md border border-info/20 bg-info/10 px-4 py-3 text-sm font-semibold text-info">
-            Mode mock: memakai data peluang backend jika tersedia, lalu contoh UMKM lokal jika backend masih kosong.
+            {t("investorSurveyMockMode")}
           </div>
         </div>
       </div>
@@ -192,7 +195,7 @@ export function InvestorSurveyPage() {
       <form className="rounded-md border border-base-300 bg-white p-6 shadow-sm" onSubmit={submit}>
         <div className="grid gap-5 lg:grid-cols-2">
           <label className="form-control">
-            <span className="label-text mb-2 font-semibold">Sektor yang paling diminati</span>
+            <span className="label-text mb-2 font-semibold">{t("favoriteSector")}</span>
             <select
               className="select select-bordered rounded-md"
               value={form.sektor}
@@ -200,14 +203,14 @@ export function InvestorSurveyPage() {
             >
               {sectorOptions.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {t(option.label)}
                 </option>
               ))}
             </select>
           </label>
 
           <label className="form-control">
-            <span className="label-text mb-2 font-semibold">Nominal investasi ideal</span>
+            <span className="label-text mb-2 font-semibold">{t("idealInvestmentNominal")}</span>
             <input
               className="input input-bordered rounded-md"
               type="number"
@@ -219,7 +222,7 @@ export function InvestorSurveyPage() {
           </label>
 
           <label className="form-control">
-            <span className="label-text mb-2 font-semibold">Minimum return tahunan</span>
+            <span className="label-text mb-2 font-semibold">{t("minimumAnnualReturn")}</span>
             <input
               className="range range-primary"
               type="range"
@@ -232,33 +235,33 @@ export function InvestorSurveyPage() {
           </label>
 
           <label className="form-control">
-            <span className="label-text mb-2 font-semibold">Toleransi risiko</span>
+            <span className="label-text mb-2 font-semibold">{t("riskTolerance")}</span>
             <select
               className="select select-bordered rounded-md"
               value={form.risiko}
               onChange={(event) => update("risiko", event.target.value as SurveyAnswer["risiko"])}
             >
-              <option value="low">Konservatif</option>
-              <option value="moderate">Seimbang</option>
-              <option value="high">Agresif</option>
+              <option value="low">{t("conservative")}</option>
+              <option value="moderate">{t("balanced")}</option>
+              <option value="high">{t("aggressive")}</option>
             </select>
           </label>
 
           <label className="form-control">
-            <span className="label-text mb-2 font-semibold">Horizon investasi</span>
+            <span className="label-text mb-2 font-semibold">{t("investmentHorizon")}</span>
             <select
               className="select select-bordered rounded-md"
               value={form.tenor}
               onChange={(event) => update("tenor", event.target.value as SurveyAnswer["tenor"])}
             >
-              <option value="short">Kurang dari 1 tahun</option>
-              <option value="medium">1-3 tahun</option>
-              <option value="long">Lebih dari 3 tahun</option>
+              <option value="short">{t("lessThanOneYear")}</option>
+              <option value="medium">{t("oneToThreeYears")}</option>
+              <option value="long">{t("moreThanThreeYears")}</option>
             </select>
           </label>
 
           <label className="form-control">
-            <span className="label-text mb-2 font-semibold">Preferensi adopsi digital UMKM</span>
+            <span className="label-text mb-2 font-semibold">{t("digitalAdoptionPreference")}</span>
             <input
               className="range range-secondary"
               type="range"
@@ -274,7 +277,7 @@ export function InvestorSurveyPage() {
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <button className="btn btn-primary rounded-md text-white">
             <BrainCircuit size={18} />
-            Lihat Match
+            {t("viewMatch")}
           </button>
           <button
             className="btn btn-outline rounded-md"
@@ -285,12 +288,12 @@ export function InvestorSurveyPage() {
             }}
           >
             <RefreshCw size={18} />
-            Reset
+            {t("reset")}
           </button>
           {submitted ? (
             <span className="flex items-center gap-2 text-sm font-semibold text-success">
               <CheckCircle2 size={18} />
-              Survey tersimpan sementara di halaman ini.
+              {t("surveySavedTemporary")}
             </span>
           ) : null}
         </div>
@@ -301,7 +304,7 @@ export function InvestorSurveyPage() {
           <article key={item.id} className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-black uppercase tracking-wide text-neutral/40">Match #{index + 1}</p>
+                <p className="text-xs font-black uppercase tracking-wide text-neutral/40">{t("match")} #{index + 1}</p>
                 <h3 className="mt-2 text-xl font-black">
                   {textValue(readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "nama"]))}
                 </h3>
@@ -310,7 +313,7 @@ export function InvestorSurveyPage() {
             </div>
             <div className="mt-5 flex items-end justify-between gap-4">
               <div>
-                <p className="text-sm text-neutral/55">Skor kecocokan</p>
+                <p className="text-sm text-neutral/55">{t("matchScore")}</p>
                 <p className="text-3xl font-black text-secondary">{percent(item.match_score)}</p>
               </div>
               <span className="badge badge-outline">{textValue(item.risk_level)}</span>
@@ -322,14 +325,14 @@ export function InvestorSurveyPage() {
 
       {submitted ? (
         <ResourcePage
-          title="Hasil Matching Survey"
-          description="Ranking UMKM berdasarkan jawaban survey investor. Data ini masih mock dan siap disambungkan ke endpoint backend matchmaking."
+          title="surveyMatchResultsTitle"
+          description="surveyMatchResultsBody"
           config={matchConfig(matches)}
           columns={matchColumns}
           readonly
           staticData={matches}
-          emptyTitle="Belum ada hasil matching"
-          emptyDescription="Isi survey terlebih dahulu untuk melihat rekomendasi UMKM."
+          emptyTitle="noMatchResults"
+          emptyDescription="fillSurveyFirst"
           searchableFields={["match_reason", "risk_level", (item) => readPath(item, ["bisnis.nama_bisnis", "bisnis.nama"])]}
         />
       ) : null}

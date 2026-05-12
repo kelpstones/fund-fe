@@ -328,7 +328,7 @@ export function DashboardLayout() {
         </main>
       </div>
       <div className="drawer-side z-40">
-        <label htmlFor="dashboard-drawer" aria-label="Tutup menu" className="drawer-overlay" />
+        <label htmlFor="dashboard-drawer" aria-label={t("closeMenu")} className="drawer-overlay" />
         <Sidebar />
       </div>
     </div>

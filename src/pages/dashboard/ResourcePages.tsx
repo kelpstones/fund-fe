@@ -7,6 +7,7 @@ import { ResourcePage } from "../../components/ResourcePage";
 import { resourceApi } from "../../lib/api/resources";
 import { apiClient, unwrap } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/AuthProvider";
+import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import {
   adminConfig,
   adminBusinessConfig,
@@ -498,6 +499,7 @@ export function SalesPage() {
 }
 
 function UmkmSalesPage() {
+  const { t } = useLanguage();
   const [form, setForm] = useState({
     pengajuans_id: "",
     periode: "",
@@ -532,7 +534,7 @@ function UmkmSalesPage() {
       return unwrap<unknown>(response.data);
     },
     onSuccess: () => {
-      setMessage("Laporan penjualan berhasil dikirim.");
+      setMessage(t("salesReportSubmitSuccess"));
       setError("");
       setForm({
         pengajuans_id: "",
@@ -545,7 +547,7 @@ function UmkmSalesPage() {
     },
     onError: (err) => {
       setMessage("");
-      setError(apiErrorMessage(err, "Laporan penjualan belum berhasil dikirim."));
+      setError(apiErrorMessage(err, t("salesReportSubmitError")));
     },
   });
 
@@ -560,16 +562,16 @@ function UmkmSalesPage() {
   return (
     <section className="space-y-5">
       <div>
-        <h2 className="text-2xl font-black tracking-normal text-neutral">Laporan Penjualan</h2>
+        <h2 className="text-2xl font-black tracking-normal text-neutral">{t("Laporan Penjualan")}</h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">
-          Kirim laporan penjualan ke backend. Daftar laporan per pengajuan belum ditampilkan karena endpoint list BE masih perlu perbaikan.
+          {t("umkmSalesDescription")}
         </p>
       </div>
       <form className="rounded-md border border-base-300 bg-white p-5 shadow-sm" onSubmit={submit}>
         <div className="grid gap-4 sm:grid-cols-2">
           {salesFields.map((field) => (
             <label key={field.name} className="form-control">
-              <span className="label-text mb-2 font-semibold">{field.label}</span>
+              <span className="label-text mb-2 font-semibold">{t(field.label)}</span>
               {field.name === "pengajuans_id" && submissionOptions.length > 0 ? (
                 <select
                   className="select select-bordered rounded-md"
@@ -577,7 +579,7 @@ function UmkmSalesPage() {
                   onChange={(event) => update("pengajuans_id", event.target.value)}
                   required
                 >
-                  <option value="">Pilih pengajuan</option>
+                  <option value="">{t("chooseSubmission")}</option>
                   {submissionOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -591,7 +593,7 @@ function UmkmSalesPage() {
                   value={form[field.name as keyof typeof form] ?? ""}
                   onChange={(event) => update(field.name as keyof typeof form, event.target.value)}
                   required={field.required}
-                  placeholder={field.name === "periode" ? "Contoh: 2026-05" : undefined}
+                  placeholder={field.name === "periode" ? t("periodPlaceholder") : undefined}
                 />
               )}
             </label>
@@ -600,7 +602,7 @@ function UmkmSalesPage() {
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
           <button className="btn btn-primary rounded-md text-white" disabled={mutation.isPending}>
             {mutation.isPending ? <Loader2 className="animate-spin" size={18} /> : null}
-            Tambah Laporan
+            {t("Tambah Laporan")}
           </button>
           {message ? <span className="text-sm font-semibold text-success">{message}</span> : null}
           {error ? <span className="text-sm font-semibold text-error">{error}</span> : null}
@@ -879,6 +881,7 @@ export function InvestmentsPage({ investor = false }: { investor?: boolean }) {
 }
 
 export function InvestmentsByProposalPage() {
+  const { t } = useLanguage();
   const [pengajuanId, setPengajuanId] = useState("");
   const submissionsQuery = useQuery({
     queryKey: ["investments-submission-options"],
@@ -894,20 +897,20 @@ export function InvestmentsByProposalPage() {
     return (
       <section className="space-y-5">
         <div>
-          <h2 className="text-2xl font-black tracking-normal text-neutral">Investasi Pengajuan</h2>
+          <h2 className="text-2xl font-black tracking-normal text-neutral">{t("Investasi Pengajuan")}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">
-            Masukkan ID pengajuan untuk melihat investasi yang masuk ke proposal bisnis.
+            {t("investmentBySubmissionPrompt")}
           </p>
         </div>
         <label className="form-control max-w-sm">
-          <span className="label-text mb-2 font-semibold">Pengajuan</span>
+          <span className="label-text mb-2 font-semibold">{t("Pengajuan")}</span>
           {submissionOptions.length > 0 ? (
             <select
               className="select select-bordered rounded-md bg-white"
               value={pengajuanId}
               onChange={(event) => setPengajuanId(event.target.value)}
             >
-              <option value="">Pilih pengajuan</option>
+              <option value="">{t("chooseSubmission")}</option>
               {submissionOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -919,7 +922,7 @@ export function InvestmentsByProposalPage() {
               className="input input-bordered rounded-md bg-white"
               value={pengajuanId}
               onChange={(event) => setPengajuanId(event.target.value)}
-              placeholder="Contoh: 101"
+              placeholder={t("example101")}
             />
           )}
         </label>
@@ -930,14 +933,14 @@ export function InvestmentsByProposalPage() {
   return (
     <div className="space-y-5">
       <label className="form-control max-w-sm">
-        <span className="label-text mb-2 font-semibold">Pengajuan</span>
+        <span className="label-text mb-2 font-semibold">{t("Pengajuan")}</span>
         {submissionOptions.length > 0 ? (
           <select
             className="select select-bordered rounded-md bg-white"
             value={pengajuanId}
             onChange={(event) => setPengajuanId(event.target.value)}
           >
-            <option value="">Pilih pengajuan</option>
+            <option value="">{t("chooseSubmission")}</option>
             {submissionOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -986,6 +989,7 @@ export function ProfitsPage({ investor = false }: { investor?: boolean }) {
 }
 
 export function ProfitsBySalesPage() {
+  const { t } = useLanguage();
   const [penjualanId, setPenjualanId] = useState("");
   const salesQuery = useQuery({
     queryKey: ["profit-sales-options"],
@@ -997,20 +1001,20 @@ export function ProfitsBySalesPage() {
     return (
       <section className="space-y-5">
         <div>
-          <h2 className="text-2xl font-black tracking-normal text-neutral">Profit Penjualan</h2>
+          <h2 className="text-2xl font-black tracking-normal text-neutral">{t("Profit Penjualan")}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">
-            Masukkan ID penjualan untuk melihat distribusi profit yang dibuat backend.
+            {t("profitBySalesPrompt")}
           </p>
         </div>
         <label className="form-control max-w-sm">
-          <span className="label-text mb-2 font-semibold">Penjualan</span>
+          <span className="label-text mb-2 font-semibold">{t("Penjualan")}</span>
           {salesOptions.length > 0 ? (
             <select
               className="select select-bordered rounded-md bg-white"
               value={penjualanId}
               onChange={(event) => setPenjualanId(event.target.value)}
             >
-              <option value="">Pilih laporan penjualan</option>
+              <option value="">{t("chooseSalesReport")}</option>
               {salesOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -1022,7 +1026,7 @@ export function ProfitsBySalesPage() {
               className="input input-bordered rounded-md bg-white"
               value={penjualanId}
               onChange={(event) => setPenjualanId(event.target.value)}
-              placeholder="Contoh: 201"
+              placeholder={t("example201")}
             />
           )}
         </label>
@@ -1033,14 +1037,14 @@ export function ProfitsBySalesPage() {
   return (
     <div className="space-y-5">
       <label className="form-control max-w-sm">
-        <span className="label-text mb-2 font-semibold">Penjualan</span>
+        <span className="label-text mb-2 font-semibold">{t("Penjualan")}</span>
         {salesOptions.length > 0 ? (
           <select
             className="select select-bordered rounded-md bg-white"
             value={penjualanId}
             onChange={(event) => setPenjualanId(event.target.value)}
           >
-            <option value="">Pilih laporan penjualan</option>
+            <option value="">{t("chooseSalesReport")}</option>
             {salesOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Bookmark, Scale, Search, Store } from "lucide-react";
 import { compactCurrency, percent } from "../../lib/format";
 import { PhotoPlaceholder } from "../../components/PhotoPlaceholder";
+import { useLanguage } from "../../lib/i18n/LanguageProvider";
 
 const portfolios = [
   {
@@ -37,21 +38,22 @@ const portfolios = [
 ];
 
 export function PortfolioPage() {
+  const { t } = useLanguage();
+
   return (
     <main className="bg-white">
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
             <h1 className="font-display text-5xl font-black leading-tight tracking-normal">
-              Preview marketplace peluang UMKM
+              {t("portfolioHeroTitle")}
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-neutral/65">
-              Investor dapat menelusuri peluang, menyimpan kandidat, membandingkan UMKM,
-              lalu membuka detail sebelum memulai negosiasi.
+              {t("portfolioHeroBody")}
             </p>
           </div>
           <Link to="/register" className="btn btn-primary rounded-md text-white">
-            Mulai Sebagai Investor
+            {t("portfolioCta")}
             <ArrowRight size={18} />
           </Link>
         </div>
@@ -59,16 +61,16 @@ export function PortfolioPage() {
         <div className="mt-10 grid gap-3 rounded-md border border-base-300 bg-base-200 p-4 md:grid-cols-[1fr_0.75fr_0.75fr]">
           <label className="input input-bordered flex items-center gap-2 rounded-md bg-white">
             <Search size={18} className="text-neutral/40" />
-            <input placeholder="Cari sektor, kota, atau nama UMKM" />
+            <input placeholder={t("portfolioSearchPlaceholder")} />
           </label>
           <select className="select select-bordered rounded-md bg-white" defaultValue="all">
-            <option value="all">Semua risiko</option>
+            <option value="all">{t("allRisk")}</option>
             <option>Low</option>
             <option>Moderate</option>
             <option>High</option>
           </select>
           <select className="select select-bordered rounded-md bg-white" defaultValue="all">
-            <option value="all">Semua sektor</option>
+            <option value="all">{t("allSectors")}</option>
             <option>Food & Beverage</option>
             <option>Fashion</option>
             <option>Agribusiness</option>
@@ -95,21 +97,21 @@ export function PortfolioPage() {
                       {item.sector} - {item.city}
                     </p>
                   </div>
-                  <button className="btn btn-square btn-outline btn-sm rounded-md" aria-label="Simpan">
+                  <button className="btn btn-square btn-outline btn-sm rounded-md" aria-label={t("save")}>
                     <Bookmark size={18} />
                   </button>
                 </div>
                 <div className="mt-5 grid grid-cols-3 gap-2 text-sm">
                   <div className="rounded-md bg-base-200 p-3">
-                    <p className="text-neutral/50">Return</p>
+                    <p className="text-neutral/50">{t("metricReturn")}</p>
                     <p className="font-black">{percent(item.returnRate)}</p>
                   </div>
                   <div className="rounded-md bg-base-200 p-3">
-                    <p className="text-neutral/50">Risk</p>
+                    <p className="text-neutral/50">{t("metricRisk")}</p>
                     <p className="font-black">{item.risk}</p>
                   </div>
                   <div className="rounded-md bg-base-200 p-3">
-                    <p className="text-neutral/50">Match</p>
+                    <p className="text-neutral/50">{t("metricMatch")}</p>
                     <p className="font-black text-secondary">{percent(item.score)}</p>
                   </div>
                 </div>
@@ -124,11 +126,11 @@ export function PortfolioPage() {
                 </div>
                 <div className="mt-6 flex gap-2">
                   <Link to="/register" className="btn btn-primary flex-1 rounded-md text-white">
-                    Detail
+                    {t("detail")}
                   </Link>
                   <button className="btn btn-outline rounded-md">
                     <Scale size={18} />
-                    Compare
+                    {t("compare")}
                   </button>
                 </div>
               </article>
@@ -139,17 +141,16 @@ export function PortfolioPage() {
         <section className="mt-16 rounded-md border border-base-300 bg-neutral p-8 text-white">
           <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div>
-              <h2 className="text-3xl font-black tracking-normal">Discovery seperti marketplace, proses seperti deal platform</h2>
+              <h2 className="text-3xl font-black tracking-normal">{t("portfolioMarketplaceTitle")}</h2>
               <p className="mt-4 text-sm leading-6 text-white/65">
-                Public preview ini menunjukkan arah produk: investor dapat menemukan peluang, membandingkan,
-                menyimpan, lalu masuk ke dashboard untuk survey, detail, negosiasi, invoice, dan portfolio.
+                {t("portfolioMarketplaceBody")}
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               {["Save", "Compare", "Negotiate"].map((item) => (
                 <div key={item} className="rounded-md border border-white/10 bg-white/10 p-4">
                   <p className="text-xl font-black">{item}</p>
-                  <p className="mt-2 text-xs leading-5 text-white/60">Investor workflow</p>
+                  <p className="mt-2 text-xs leading-5 text-white/60">{t("investorWorkflow")}</p>
                 </div>
               ))}
             </div>

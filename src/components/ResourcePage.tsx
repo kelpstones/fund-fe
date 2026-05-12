@@ -156,18 +156,20 @@ const uiCopy = {
 };
 
 function DataPreview({ data }: { data: unknown }) {
+  const { t } = useLanguage();
+
   if (Array.isArray(data)) {
     return (
       <div className="grid gap-3">
         {data.length === 0 ? (
           <div className="rounded-md border border-base-300 p-4 text-sm font-semibold text-neutral/55">
-            Data belum tersedia
+            {t("dataUnavailable")}
           </div>
         ) : (
           data.slice(0, 6).map((item, index) => (
             <div key={index} className="rounded-md border border-base-300 p-4">
               <p className="text-xs font-bold uppercase tracking-wide text-neutral/45">
-                Item {index + 1}
+                {t("item")} {index + 1}
               </p>
               <DataPreview data={item} />
             </div>
@@ -183,7 +185,7 @@ function DataPreview({ data }: { data: unknown }) {
     return (
       <div className="overflow-hidden rounded-md border border-base-300">
         {entries.length === 0 ? (
-          <div className="px-4 py-3 text-sm font-semibold text-neutral/55">Data belum tersedia</div>
+          <div className="px-4 py-3 text-sm font-semibold text-neutral/55">{t("dataUnavailable")}</div>
         ) : (
           entries.map(([key, value]) => (
             <div
@@ -226,7 +228,7 @@ export function ResourcePage<T extends Entity>({
   pageSize = 10,
   staticData,
 }: ResourcePageProps<T>) {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const copy = uiCopy[language];
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -295,10 +297,10 @@ export function ResourcePage<T extends Entity>({
     } catch (error) {
       setNotice({
         tone: "error",
-        title: "Aksi gagal",
+        title: t("actionFailed"),
         message: apiErrorMessage(
           error,
-          "Terjadi kendala saat memproses aksi. Coba ulangi beberapa saat lagi.",
+          t("actionFailedMessage"),
         ),
       });
     } finally {
@@ -374,25 +376,25 @@ export function ResourcePage<T extends Entity>({
         await updateMutation.mutateAsync({ ...editing, ...values });
         setNotice({
           tone: "success",
-          title: "Data diperbarui",
-          message: `${title} berhasil diperbarui.`,
+          title: t("dataUpdated"),
+          message: t("resourceUpdateSuccess", { title: t(title) }),
         });
       } else {
         await createMutation.mutateAsync(values);
         setNotice({
           tone: "success",
-          title: "Data ditambahkan",
-          message: `${title} berhasil ditambahkan.`,
+          title: t("dataAdded"),
+          message: t("resourceCreateSuccess", { title: t(title) }),
         });
       }
       closeForm();
     } catch (error) {
       setNotice({
         tone: "error",
-        title: "Gagal menyimpan",
+        title: t("saveFailed"),
         message: apiErrorMessage(
           error,
-          "Perubahan belum berhasil diproses. Coba ulangi beberapa saat lagi.",
+          t("saveFailedMessage"),
         ),
       });
     }
@@ -400,23 +402,23 @@ export function ResourcePage<T extends Entity>({
 
   const remove = async (item: T) => {
     setConfirmDialog({
-      title: "Hapus data?",
-      message: "Data yang dihapus tidak bisa dikembalikan dari tampilan ini.",
-      confirmLabel: "Hapus",
+      title: t("deleteDataTitle"),
+      message: t("deleteDataMessage"),
+      confirmLabel: t("delete"),
       tone: "danger",
       onConfirm: () =>
         runWithLoading(
           {
-            title: "Menghapus data",
-            message: "Mohon tunggu, sistem sedang memproses penghapusan.",
+            title: t("deletingData"),
+            message: t("deletingDataMessage"),
           },
           async () => {
             await deleteMutation.mutateAsync(item);
           },
           {
             tone: "success",
-            title: "Data dihapus",
-            message: `${title} berhasil dihapus.`,
+            title: t("dataDeleted"),
+            message: t("resourceDeleteSuccess", { title: t(title) }),
           },
         ),
     });
@@ -427,19 +429,19 @@ export function ResourcePage<T extends Entity>({
     const execute = async () => {
       await runWithLoading(
         {
-          title: "Memproses aksi",
-          message: `${action.label} sedang diproses. Mohon tunggu sebentar.`,
+          title: t("processingAction"),
+          message: t("processingActionMessage", { action: t(action.label) }),
         },
         async () => {
           const data = await actionMutation.mutateAsync({ action, item });
           if (action.method === "GET" || !message) {
-            setResultModal({ title: action.label, data });
+            setResultModal({ title: t(action.label), data });
           }
         },
         {
           tone: "success",
-          title: "Aksi berhasil",
-          message: `${action.label} berhasil diproses.`,
+          title: t("actionSuccess"),
+          message: t("actionSuccessMessage", { action: t(action.label) }),
         },
       );
     };
@@ -450,9 +452,9 @@ export function ResourcePage<T extends Entity>({
     }
 
     setConfirmDialog({
-      title: "Konfirmasi aksi",
-      message,
-      confirmLabel: action.label,
+      title: t("confirmAction"),
+      message: message ? t(message) : "",
+      confirmLabel: t(action.label),
       tone: action.className?.includes("error") ? "danger" : "primary",
       onConfirm: execute,
     });
@@ -461,17 +463,17 @@ export function ResourcePage<T extends Entity>({
   const showDetail = async (item: T) => {
     await runWithLoading(
       {
-        title: "Mengambil detail",
-        message: "Mohon tunggu, detail data sedang disiapkan.",
+        title: t("loadingDetail"),
+        message: t("loadingDetailMessage"),
       },
       async () => {
         const data = await detailMutation.mutateAsync(item);
-        setResultModal({ title: "Detail Data", data });
+        setResultModal({ title: t("detailData"), data });
       },
       {
         tone: "success",
-        title: "Detail siap",
-        message: "Detail data berhasil dimuat.",
+        title: t("detailReady"),
+        message: t("detailReadyMessage"),
       },
     );
   };
@@ -534,9 +536,9 @@ export function ResourcePage<T extends Entity>({
             className={action.className ?? "btn btn-outline btn-xs rounded-md"}
             onClick={() => runAction(action, item)}
             disabled={disabled}
-            title={disabled ? disabledReason : undefined}
+            title={disabled && disabledReason ? t(disabledReason) : undefined}
           >
-            {action.label}
+            {t(action.label)}
           </button>
         );
       })}
@@ -577,8 +579,8 @@ export function ResourcePage<T extends Entity>({
 
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h2 className="text-2xl font-black tracking-normal text-neutral">{title}</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">{description}</p>
+          <h2 className="text-2xl font-black tracking-normal text-neutral">{t(title)}</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">{t(description)}</p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
           {statusOptions.length > 1 ? (
@@ -594,7 +596,7 @@ export function ResourcePage<T extends Entity>({
               <option value="all">{copy.allStatus}</option>
               {statusOptions.map((status) => (
                 <option key={status} value={status}>
-                  {status}
+                  {t(status)}
                 </option>
               ))}
             </select>
@@ -618,7 +620,7 @@ export function ResourcePage<T extends Entity>({
               disabled={isProcessing}
             >
               <Plus size={18} />
-              {createLabel}
+              {t(createLabel)}
             </button>
           ) : null}
         </div>
@@ -631,7 +633,7 @@ export function ResourcePage<T extends Entity>({
               <tr className="bg-base-200 text-xs uppercase tracking-wide text-neutral/60">
                 {columns.map((column) => (
                   <th key={column.label} className={column.className}>
-                    {column.label}
+                    {t(column.label)}
                   </th>
                 ))}
                 {hasRowActions ? <th className="w-48 text-right">{copy.actions}</th> : null}
@@ -659,11 +661,11 @@ export function ResourcePage<T extends Entity>({
                 <tr>
                   <td colSpan={colSpan}>
                     <div className="flex h-36 flex-col items-center justify-center px-6 text-center">
-                      <p className="font-black text-neutral">{emptyTitle}</p>
+                      <p className="font-black text-neutral">{t(emptyTitle)}</p>
                       <p className="mt-2 max-w-lg text-sm leading-6 text-neutral/55">
                         {search || statusFilter !== "all"
                           ? copy.noFilterMatch
-                          : emptyDescription}
+                          : t(emptyDescription)}
                       </p>
                     </div>
                   </td>
@@ -702,11 +704,11 @@ export function ResourcePage<T extends Entity>({
             </div>
           ) : rows.length === 0 ? (
             <div className="flex min-h-36 flex-col items-center justify-center rounded-md border border-base-300 p-4 text-center">
-              <p className="font-black text-neutral">{emptyTitle}</p>
+              <p className="font-black text-neutral">{t(emptyTitle)}</p>
               <p className="mt-2 text-sm leading-6 text-neutral/55">
                 {search || statusFilter !== "all"
                   ? copy.noFilterMatch
-                  : emptyDescription}
+                  : t(emptyDescription)}
               </p>
             </div>
           ) : (
@@ -719,7 +721,7 @@ export function ResourcePage<T extends Entity>({
                       className={index === 0 ? "" : "border-t border-base-200 pt-3"}
                     >
                       <p className="mb-1 text-xs font-bold uppercase tracking-wide text-neutral/45">
-                        {column.label}
+                        {t(column.label)}
                       </p>
                       <div className="text-sm text-neutral">{column.render(item)}</div>
                     </div>
@@ -769,8 +771,8 @@ export function ResourcePage<T extends Entity>({
           <div className="modal-box max-w-2xl rounded-md">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-xl font-black">{editing ? "Edit Data" : createLabel}</h3>
-                <p className="mt-1 text-sm text-neutral/55">{title}</p>
+                <h3 className="text-xl font-black">{editing ? t("editData") : t(createLabel)}</h3>
+                <p className="mt-1 text-sm text-neutral/55">{t(title)}</p>
               </div>
               <button className="btn btn-square btn-ghost btn-sm" onClick={closeForm}>
                 <X size={18} />
@@ -798,19 +800,19 @@ export function ResourcePage<T extends Entity>({
                       key={field.name}
                       className={field.type === "textarea" ? "form-control sm:col-span-2" : "form-control"}
                     >
-                      <span className="label-text mb-2 font-semibold">{field.label}</span>
+                      <span className="label-text mb-2 font-semibold">{t(field.label)}</span>
                       {field.type === "textarea" ? (
                         <textarea
                           {...commonProps}
                           className="textarea textarea-bordered min-h-28 rounded-md"
-                          placeholder={field.placeholder}
+                          placeholder={field.placeholder ? t(field.placeholder) : undefined}
                         />
                       ) : field.type === "select" ? (
                         <select {...commonProps} className="select select-bordered rounded-md">
                           <option value="">{copy.choose}</option>
                           {field.options?.map((option) => (
                             <option key={option.value} value={option.value}>
-                              {option.label}
+                              {t(option.label)}
                             </option>
                           ))}
                         </select>
@@ -819,7 +821,7 @@ export function ResourcePage<T extends Entity>({
                           {...commonProps}
                           type={field.type ?? "text"}
                           className="input input-bordered rounded-md"
-                          placeholder={field.placeholder}
+                          placeholder={field.placeholder ? t(field.placeholder) : undefined}
                         />
                       )}
                     </label>
@@ -868,7 +870,7 @@ export function ResourcePage<T extends Entity>({
                 onClick={() => setConfirmDialog(null)}
                 disabled={isProcessing}
               >
-                Batal
+                {t("cancel")}
               </button>
               <button
                 className={[

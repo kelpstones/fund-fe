@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import { useLanguage } from "../lib/i18n/LanguageProvider";
 
 type StatCardProps = {
   label: string;
@@ -17,6 +18,8 @@ const toneClass = {
 };
 
 export function StatCard({ label, value, helper, icon: Icon, tone = "primary", loading = false }: StatCardProps) {
+  const { t } = useLanguage();
+
   return (
     <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
@@ -27,7 +30,7 @@ export function StatCard({ label, value, helper, icon: Icon, tone = "primary", l
           ) : (
             <p className="mt-2 text-2xl font-black tracking-normal text-neutral">{value}</p>
           )}
-          {helper ? <p className="mt-2 text-sm text-neutral/55">{loading ? "Memuat data" : helper}</p> : null}
+          {helper ? <p className="mt-2 text-sm text-neutral/55">{loading ? t("loadingData") : helper}</p> : null}
         </div>
         <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-md ${toneClass[tone]}`}>
           <Icon size={20} />

@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { apiClient, unwrap } from "../../lib/api/client";
 import { resourceApi } from "../../lib/api/resources";
+import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import {
   myNegotiationConfig,
   publishedSubmissionConfig,
@@ -104,12 +105,14 @@ function MarketplaceHeader({
   description: string;
   actions?: ReactNode;
 }) {
+  const { t } = useLanguage();
+
   return (
     <div className="rounded-md border border-base-300 bg-white p-6 shadow-sm">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-2xl font-black tracking-normal text-neutral">{title}</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral/60">{description}</p>
+          <h2 className="text-2xl font-black tracking-normal text-neutral">{t(title)}</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral/60">{t(description)}</p>
         </div>
         {actions ? <div className="flex flex-col gap-2 sm:flex-row">{actions}</div> : null}
       </div>
@@ -130,6 +133,7 @@ function OpportunityCard({
   compareSelected?: boolean;
   onToggleCompare?: (item: Entity) => void;
 }) {
+  const { t } = useLanguage();
   const id = opportunityId(item);
   const isSaved = savedIds.has(id);
   const score = matchScore(item);
@@ -145,8 +149,8 @@ function OpportunityCard({
         <button
           className={`btn btn-square btn-sm rounded-md ${isSaved ? "btn-primary text-white" : "btn-outline"}`}
           onClick={() => onToggleSave(item)}
-          aria-label={isSaved ? "Hapus bookmark" : "Simpan peluang"}
-          title={isSaved ? "Hapus bookmark" : "Simpan peluang"}
+          aria-label={isSaved ? t("removeBookmark") : t("saveOpportunity")}
+          title={isSaved ? t("removeBookmark") : t("saveOpportunity")}
         >
           {isSaved ? <BookmarkCheck size={17} /> : <Bookmark size={17} />}
         </button>
@@ -154,15 +158,15 @@ function OpportunityCard({
 
       <div className="mt-5 grid grid-cols-3 gap-2 text-sm">
         <div className="rounded-md bg-base-200 p-3">
-          <p className="text-neutral/50">Target</p>
+          <p className="text-neutral/50">{t("metricTarget")}</p>
           <p className="mt-1 font-black">{currency(target(item))}</p>
         </div>
         <div className="rounded-md bg-base-200 p-3">
-          <p className="text-neutral/50">Return</p>
+          <p className="text-neutral/50">{t("metricReturn")}</p>
           <p className="mt-1 font-black">{percent(returnRate(item))}</p>
         </div>
         <div className="rounded-md bg-base-200 p-3">
-          <p className="text-neutral/50">Risk</p>
+          <p className="text-neutral/50">{t("metricRisk")}</p>
           <p className="mt-1 font-black">{risk(item)}</p>
         </div>
       </div>
@@ -180,13 +184,13 @@ function OpportunityCard({
       <p className="mt-5 flex-1 text-sm leading-6 text-neutral/60">
         {textValue(
           readPath(item, ["reason", "alasan", "explanation", "match_reason"], ""),
-          "Peluang pendanaan UMKM dengan data bisnis, risiko, target modal, dan return yang bisa dibandingkan.",
+          t("opportunityDefaultReason"),
         )}
       </p>
 
       <div className="mt-5 flex flex-col gap-2 sm:flex-row">
         <Link to={`/dashboard/investor/peluang/${id}`} className="btn btn-primary flex-1 rounded-md text-white">
-          Detail
+          {t("detail")}
           <ArrowRight size={17} />
         </Link>
         {onToggleCompare ? (
@@ -194,14 +198,14 @@ function OpportunityCard({
             className={`btn rounded-md ${compareSelected ? "btn-secondary text-white" : "btn-outline"}`}
             onClick={() => onToggleCompare(item)}
           >
-            Compare
+            {t("compare")}
           </button>
         ) : null}
       </div>
 
       {score > 0 ? (
         <div className="mt-4 rounded-md border border-secondary/20 bg-secondary/10 p-3">
-          <p className="text-sm font-bold text-secondary">Match score {percent(score)}</p>
+          <p className="text-sm font-bold text-secondary">{t("matchScoreValue", { score: percent(score) })}</p>
         </div>
       ) : null}
     </article>
@@ -221,12 +225,14 @@ function CatalogGrid({
   compareIds?: Set<string>;
   onToggleCompare?: (item: Entity) => void;
 }) {
+  const { t } = useLanguage();
+
   if (items.length === 0) {
     return (
       <div className="rounded-md border border-base-300 bg-white p-8 text-center shadow-sm">
-        <h3 className="text-xl font-black">Belum ada peluang</h3>
+        <h3 className="text-xl font-black">{t("noOpportunities")}</h3>
         <p className="mt-2 text-sm text-neutral/55">
-          Peluang UMKM akan tampil setelah pengajuan dipublikasikan atau rekomendasi investor tersedia.
+          {t("noOpportunitiesBody")}
         </p>
       </div>
     );
@@ -249,6 +255,7 @@ function CatalogGrid({
 }
 
 export function OpportunitiesPage() {
+  const { t } = useLanguage();
   const { data = [], isLoading, isError, error } = usePublishedOpportunities();
   const { saved, savedIds, toggle } = useSavedOpportunities();
   const [search, setSearch] = useState("");
@@ -291,19 +298,19 @@ export function OpportunitiesPage() {
   return (
     <section className="space-y-5">
       <MarketplaceHeader
-        title="Marketplace Peluang UMKM"
-        description="Telusuri peluang pendanaan seperti katalog investasi: simpan peluang, bandingkan UMKM, lalu buka detail sebelum memulai negosiasi."
+        title="marketplaceOpportunitiesTitle"
+        description="marketplaceOpportunitiesBody"
         actions={
           <>
             <Link to="/dashboard/investor/saved" className="btn btn-outline rounded-md">
               <Bookmark size={17} />
-              Tersimpan ({saved.length})
+              {t("savedCount", { count: saved.length })}
             </Link>
             <Link
               to={compareUrl}
               className={`btn rounded-md ${compareIds.size >= 2 ? "btn-secondary text-white" : "btn-disabled"}`}
             >
-              Compare ({compareIds.size})
+              {t("compareCount", { count: compareIds.size })}
             </Link>
           </>
         }
@@ -313,12 +320,12 @@ export function OpportunitiesPage() {
         <div className="grid gap-3 lg:grid-cols-[1.2fr_0.8fr_0.8fr_0.7fr]">
           <label className="input input-bordered flex items-center gap-2 rounded-md">
             <Search size={17} className="text-neutral/40" />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari UMKM, sektor, kota" />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("searchUmkmSectorCity")} />
           </label>
           <label className="flex h-12 items-center gap-2 rounded-md border border-base-300 px-3">
             <Filter size={17} className="text-neutral/45" />
             <select className="w-full bg-transparent outline-none" value={sectorFilter} onChange={(event) => setSectorFilter(event.target.value)}>
-              <option value="all">Semua sektor</option>
+              <option value="all">{t("allSectors")}</option>
               {sectors.map((item) => (
                 <option key={item} value={item}>
                   {item}
@@ -327,7 +334,7 @@ export function OpportunitiesPage() {
             </select>
           </label>
           <select className="select select-bordered rounded-md" value={riskFilter} onChange={(event) => setRiskFilter(event.target.value)}>
-            <option value="all">Semua risiko</option>
+            <option value="all">{t("allRisk")}</option>
             <option value="low">Low</option>
             <option value="moderate">Moderate</option>
             <option value="high">High</option>
@@ -335,7 +342,7 @@ export function OpportunitiesPage() {
             <option value="elite">Elite</option>
           </select>
           <label className="input input-bordered flex items-center gap-2 rounded-md">
-            <span className="text-sm font-bold">Return</span>
+            <span className="text-sm font-bold">{t("metricReturn")}</span>
             <input className="w-14" type="number" min={0} max={100} value={minReturn} onChange={(event) => setMinReturn(Number(event.target.value))} />
             <span className="text-sm font-bold">%</span>
           </label>
@@ -343,11 +350,11 @@ export function OpportunitiesPage() {
       </div>
 
       {isLoading ? (
-        <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">Memuat peluang</div>
+        <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">{t("loadingOpportunities")}</div>
       ) : null}
       {isError ? (
         <div className="rounded-md border border-error/20 bg-error/10 p-4 text-sm font-semibold text-error">
-          {apiErrorMessage(error, "Gagal memuat peluang dari backend.")}
+          {apiErrorMessage(error, t("loadOpportunitiesError"))}
         </div>
       ) : null}
       {!isLoading && !isError ? (
@@ -364,6 +371,7 @@ export function OpportunitiesPage() {
 }
 
 export function AiRecommendationsPage() {
+  const { t } = useLanguage();
   const [riskFilter, setRiskFilter] = useState("all");
   const [minScore, setMinScore] = useState(0);
   const { saved, savedIds, toggle } = useSavedOpportunities();
@@ -394,13 +402,13 @@ export function AiRecommendationsPage() {
   return (
     <section className="space-y-5">
       <MarketplaceHeader
-        title="AI Match Marketplace"
-        description="Rekomendasi personal dari preferensi investor, disajikan sebagai katalog peluang dengan skor dan alasan match."
+        title="aiMatchMarketplaceTitle"
+        description="aiMatchMarketplaceBody"
         actions={
           <>
             <Link to="/dashboard/investor/survey" className="btn btn-outline rounded-md">
               <Sparkles size={17} />
-              Isi Survey
+              {t("fillSurvey")}
             </Link>
             <button
               className="btn btn-primary rounded-md text-white"
@@ -408,7 +416,7 @@ export function AiRecommendationsPage() {
               disabled={refreshMutation.isPending}
             >
               {refreshMutation.isPending ? <Loader2 className="animate-spin" size={17} /> : <RefreshCw size={17} />}
-              Refresh
+              {t("refresh")}
             </button>
           </>
         }
@@ -417,31 +425,31 @@ export function AiRecommendationsPage() {
       <div className="rounded-md border border-base-300 bg-white p-4 shadow-sm">
         <div className="grid gap-3 sm:grid-cols-2 lg:max-w-xl">
           <select className="select select-bordered rounded-md" value={riskFilter} onChange={(event) => setRiskFilter(event.target.value)}>
-            <option value="all">Semua risiko</option>
+            <option value="all">{t("allRisk")}</option>
             <option value="low">Low</option>
             <option value="moderate">Moderate</option>
             <option value="high">High</option>
           </select>
           <label className="input input-bordered flex items-center gap-2 rounded-md">
-            <span className="text-sm font-bold">Min score</span>
+            <span className="text-sm font-bold">{t("minScore")}</span>
             <input className="w-14" type="number" min={0} max={100} value={minScore} onChange={(event) => setMinScore(Number(event.target.value))} />
             <span className="text-sm font-bold">%</span>
           </label>
         </div>
       </div>
 
-      {isLoading ? <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">Memuat rekomendasi</div> : null}
+      {isLoading ? <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">{t("loadingRecommendations")}</div> : null}
       {isError ? (
         <div className="rounded-md border border-warning/20 bg-warning/10 p-4 text-sm font-semibold text-warning">
-          {apiErrorMessage(error, "Rekomendasi belum tersedia. Isi survey atau preferensi investor terlebih dahulu.")}
+          {apiErrorMessage(error, t("recommendationsUnavailable"))}
         </div>
       ) : null}
       {!isLoading && !isError && filtered.length === 0 ? (
         <div className="rounded-md border border-base-300 bg-white p-8 text-center shadow-sm">
-          <h3 className="text-xl font-black">Belum ada rekomendasi</h3>
-          <p className="mt-2 text-sm text-neutral/55">Isi survey investor untuk menyiapkan preferensi matching.</p>
+          <h3 className="text-xl font-black">{t("noRecommendations")}</h3>
+          <p className="mt-2 text-sm text-neutral/55">{t("noRecommendationsBody")}</p>
           <Link to="/dashboard/investor/survey" className="btn btn-primary mt-5 rounded-md text-white">
-            Mulai Survey
+            {t("startSurvey")}
           </Link>
         </div>
       ) : null}
@@ -450,7 +458,7 @@ export function AiRecommendationsPage() {
       ) : null}
       {saved.length > 0 ? (
         <div className="rounded-md border border-info/20 bg-info/10 p-4 text-sm font-semibold text-info">
-          {saved.length} peluang tersimpan. Buka halaman tersimpan untuk membandingkan pilihan.
+          {t("savedOpportunitiesInfo", { count: saved.length })}
         </div>
       ) : null}
     </section>
@@ -458,16 +466,17 @@ export function AiRecommendationsPage() {
 }
 
 export function SavedOpportunitiesPage() {
+  const { t } = useLanguage();
   const { saved, savedIds, toggle } = useSavedOpportunities();
 
   return (
     <section className="space-y-5">
       <MarketplaceHeader
-        title="Peluang Tersimpan"
-        description="Bookmark peluang UMKM yang ingin kamu review lagi sebelum masuk ke negosiasi."
+        title="savedOpportunitiesTitle"
+        description="savedOpportunitiesBody"
         actions={
           <Link to="/dashboard/investor/compare" className="btn btn-secondary rounded-md text-white">
-            Compare Semua
+            {t("compareAll")}
           </Link>
         }
       />
@@ -477,6 +486,7 @@ export function SavedOpportunitiesPage() {
 }
 
 export function CompareOpportunitiesPage() {
+  const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const ids = searchParams.get("ids")?.split(",").filter(Boolean) ?? [];
   const { data = [] } = usePublishedOpportunities();
@@ -488,36 +498,36 @@ export function CompareOpportunitiesPage() {
   return (
     <section className="space-y-5">
       <MarketplaceHeader
-        title="Compare UMKM"
-        description="Bandingkan peluang berdasarkan target pendanaan, return, risiko, progress, dan skor match sebelum mengambil keputusan."
-        actions={<Link to="/dashboard/investor/peluang" className="btn btn-outline rounded-md">Tambah Peluang</Link>}
+        title="compareUmkmTitle"
+        description="compareUmkmBody"
+        actions={<Link to="/dashboard/investor/peluang" className="btn btn-outline rounded-md">{t("addOpportunity")}</Link>}
       />
       {compared.length === 0 ? (
         <div className="rounded-md border border-base-300 bg-white p-8 text-center shadow-sm">
-          <h3 className="text-xl font-black">Belum ada peluang untuk dibandingkan</h3>
-          <p className="mt-2 text-sm text-neutral/55">Simpan atau pilih minimal dua peluang dari marketplace.</p>
+          <h3 className="text-xl font-black">{t("noCompareItems")}</h3>
+          <p className="mt-2 text-sm text-neutral/55">{t("noCompareItemsBody")}</p>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-md border border-base-300 bg-white shadow-sm">
           <table className="table">
             <thead>
               <tr className="bg-base-200 text-xs uppercase tracking-wide text-neutral/60">
-                <th>Metrik</th>
+                <th>{t("metric")}</th>
                 {compared.map((item) => <th key={opportunityId(item)}>{businessName(item)}</th>)}
               </tr>
             </thead>
             <tbody>
               {[
-                ["Sektor", (item: Entity) => sector(item)],
-                ["Target", (item: Entity) => currency(target(item))],
-                ["Terkumpul", (item: Entity) => currency(funded(item))],
-                ["Progress", (item: Entity) => `${progress(item)}%`],
-                ["Return", (item: Entity) => percent(returnRate(item))],
-                ["Risiko", (item: Entity) => risk(item)],
-                ["Match", (item: Entity) => (matchScore(item) ? percent(matchScore(item)) : "-")],
+                ["sector", (item: Entity) => sector(item)],
+                ["metricTarget", (item: Entity) => currency(target(item))],
+                ["funded", (item: Entity) => currency(funded(item))],
+                ["progress", (item: Entity) => `${progress(item)}%`],
+                ["metricReturn", (item: Entity) => percent(returnRate(item))],
+                ["risk", (item: Entity) => risk(item)],
+                ["metricMatch", (item: Entity) => (matchScore(item) ? percent(matchScore(item)) : "-")],
               ].map(([label, render]) => (
                 <tr key={String(label)}>
-                  <td className="font-black">{String(label)}</td>
+                  <td className="font-black">{t(String(label))}</td>
                   {compared.map((item) => (
                     <td key={`${label}-${opportunityId(item)}`} className="font-semibold">
                       {(render as (item: Entity) => string)(item)}
@@ -526,11 +536,11 @@ export function CompareOpportunitiesPage() {
                 </tr>
               ))}
               <tr>
-                <td className="font-black">Aksi</td>
+                <td className="font-black">{t("actions")}</td>
                 {compared.map((item) => (
                   <td key={`action-${opportunityId(item)}`}>
                     <Link to={`/dashboard/investor/peluang/${opportunityId(item)}`} className="btn btn-primary btn-sm rounded-md text-white">
-                      Detail
+                      {t("detail")}
                     </Link>
                   </td>
                 ))}
@@ -544,6 +554,7 @@ export function CompareOpportunitiesPage() {
 }
 
 export function OpportunityDetailPage() {
+  const { t } = useLanguage();
   const { id = "" } = useParams();
   const queryClient = useQueryClient();
   const { data = [], isLoading } = usePublishedOpportunities();
@@ -568,25 +579,25 @@ export function OpportunityDetailPage() {
       return unwrap<unknown>(response.data);
     },
     onSuccess: async () => {
-      setMessage("Negosiasi berhasil dimulai. Buka Deal Room untuk memantau prosesnya.");
+      setMessage(t("negotiationStartedMessage"));
       setErrorMessage("");
       await queryClient.invalidateQueries({ queryKey: ["resource", myNegotiationConfig.key] });
     },
     onError: (error) => {
       setMessage("");
-      setErrorMessage(apiErrorMessage(error, "Negosiasi belum berhasil dibuat."));
+      setErrorMessage(apiErrorMessage(error, t("negotiationStartError")));
     },
   });
 
   if (isLoading && !opportunity) {
-    return <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">Memuat detail peluang</div>;
+    return <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">{t("loadingOpportunityDetail")}</div>;
   }
 
   if (!opportunity) {
     return (
       <section className="space-y-5">
-        <MarketplaceHeader title="Peluang tidak ditemukan" description="Data peluang tidak tersedia di backend atau bookmark lokal." />
-        <Link to="/dashboard/investor/peluang" className="btn btn-primary rounded-md text-white">Kembali ke Marketplace</Link>
+        <MarketplaceHeader title="opportunityNotFoundTitle" description="opportunityNotFoundBody" />
+        <Link to="/dashboard/investor/peluang" className="btn btn-primary rounded-md text-white">{t("backToMarketplace")}</Link>
       </section>
     );
   }
@@ -597,15 +608,15 @@ export function OpportunityDetailPage() {
     <section className="space-y-5">
       <MarketplaceHeader
         title={businessName(opportunity)}
-        description="Detail peluang UMKM untuk membantu investor memahami profil usaha, kebutuhan modal, risiko, dan langkah negosiasi."
+        description="opportunityDetailBody"
         actions={
           <>
             <button className="btn btn-outline rounded-md" onClick={() => toggle(opportunity)}>
               {isSaved ? <BookmarkCheck size={17} /> : <Bookmark size={17} />}
-              {isSaved ? "Tersimpan" : "Simpan"}
+              {isSaved ? t("saved") : t("save")}
             </button>
             <Link to={`/dashboard/investor/compare?ids=${opportunityId(opportunity)}`} className="btn btn-secondary rounded-md text-white">
-              Compare
+              {t("compare")}
             </Link>
           </>
         }
@@ -616,22 +627,22 @@ export function OpportunityDetailPage() {
           <div className="grid gap-4 md:grid-cols-4">
             <div className="rounded-md bg-base-200 p-4">
               <CircleDollarSign className="text-primary" size={22} />
-              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-neutral/45">Target</p>
+              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-neutral/45">{t("metricTarget")}</p>
               <p className="mt-1 font-black">{currency(target(opportunity))}</p>
             </div>
             <div className="rounded-md bg-base-200 p-4">
               <TrendingUp className="text-primary" size={22} />
-              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-neutral/45">Return</p>
+              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-neutral/45">{t("metricReturn")}</p>
               <p className="mt-1 font-black">{percent(returnRate(opportunity))}</p>
             </div>
             <div className="rounded-md bg-base-200 p-4">
               <Scale className="text-primary" size={22} />
-              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-neutral/45">Risiko</p>
+              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-neutral/45">{t("risk")}</p>
               <p className="mt-1 font-black">{risk(opportunity)}</p>
             </div>
             <div className="rounded-md bg-base-200 p-4">
               <Sparkles className="text-primary" size={22} />
-              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-neutral/45">Match</p>
+              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-neutral/45">{t("metricMatch")}</p>
               <p className="mt-1 font-black">{matchScore(opportunity) ? percent(matchScore(opportunity)) : "-"}</p>
             </div>
           </div>
@@ -648,25 +659,25 @@ export function OpportunityDetailPage() {
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {[
-              ["Sektor", sector(opportunity)],
-              ["Lokasi", city(opportunity)],
-              ["ID Pengajuan", `#${opportunityId(opportunity)}`],
-              ["Status", textValue(readPath(opportunity, ["approval.status", "status", "approval_status"]))],
+              ["sector", sector(opportunity)],
+              ["location", city(opportunity)],
+              ["submissionId", `#${opportunityId(opportunity)}`],
+              ["status", textValue(readPath(opportunity, ["approval.status", "status", "approval_status"]))],
             ].map(([label, value]) => (
               <div key={label} className="rounded-md border border-base-300 p-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-neutral/45">{label}</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-neutral/45">{t(label)}</p>
                 <p className="mt-2 font-black">{value}</p>
               </div>
             ))}
           </div>
 
           <div className="mt-6 rounded-md border border-base-300 p-5">
-            <h3 className="font-black">Dokumen dan sinyal risiko</h3>
+            <h3 className="font-black">{t("documentsAndRiskSignals")}</h3>
             <div className="mt-4 grid gap-3 md:grid-cols-3">
-              {["Profil Bisnis", "Laporan Penjualan", "Risk Memo"].map((item) => (
+              {["businessProfile", "salesReport", "riskMemo"].map((item) => (
                 <div key={item} className="flex items-center gap-3 rounded-md bg-base-200 p-3">
                   <FileText size={18} className="text-primary" />
-                  <span className="text-sm font-bold">{item}</span>
+                  <span className="text-sm font-bold">{t(item)}</span>
                 </div>
               ))}
             </div>
@@ -678,30 +689,30 @@ export function OpportunityDetailPage() {
           negotiationMutation.mutate();
         }}>
           <Handshake className="text-primary" size={28} />
-          <h3 className="mt-4 text-xl font-black">Mulai Negosiasi</h3>
+          <h3 className="mt-4 text-xl font-black">{t("startNegotiation")}</h3>
           <p className="mt-2 text-sm leading-6 text-neutral/60">
-            Ajukan nominal dan return yang kamu tawarkan ke UMKM. Setelah dibuat, lanjutkan proses di Deal Room.
+            {t("startNegotiationBody")}
           </p>
           <div className="mt-5 grid gap-4">
             <label className="form-control">
-              <span className="label-text mb-2 font-semibold">Nominal Penawaran</span>
+              <span className="label-text mb-2 font-semibold">{t("offerNominal")}</span>
               <input className="input input-bordered rounded-md" type="number" required value={form.penawaran_nominal} onChange={(event) => setForm((current) => ({ ...current, penawaran_nominal: event.target.value }))} />
             </label>
             <label className="form-control">
-              <span className="label-text mb-2 font-semibold">Return Penawaran</span>
+              <span className="label-text mb-2 font-semibold">{t("offerReturn")}</span>
               <input className="input input-bordered rounded-md" type="number" required value={form.penawaran_return} onChange={(event) => setForm((current) => ({ ...current, penawaran_return: event.target.value }))} />
             </label>
             <label className="form-control">
-              <span className="label-text mb-2 font-semibold">Catatan</span>
+              <span className="label-text mb-2 font-semibold">{t("notes")}</span>
               <textarea className="textarea textarea-bordered min-h-28 rounded-md" value={form.catatan} onChange={(event) => setForm((current) => ({ ...current, catatan: event.target.value }))} />
             </label>
           </div>
           <button className="btn btn-primary mt-5 w-full rounded-md text-white" disabled={negotiationMutation.isPending}>
             {negotiationMutation.isPending ? <Loader2 className="animate-spin" size={17} /> : <Handshake size={17} />}
-            Kirim Penawaran
+            {t("sendOffer")}
           </button>
           <Link to="/dashboard/investor/negosiasi" className="btn btn-outline mt-3 w-full rounded-md">
-            Lihat Negosiasi
+            {t("viewNegotiations")}
           </Link>
           {message ? <p className="mt-4 rounded-md bg-success/10 p-3 text-sm font-semibold text-success">{message}</p> : null}
           {errorMessage ? <p className="mt-4 rounded-md bg-error/10 p-3 text-sm font-semibold text-error">{errorMessage}</p> : null}
@@ -712,6 +723,7 @@ export function OpportunityDetailPage() {
 }
 
 export function DealRoomPage() {
+  const { t } = useLanguage();
   const { id = "" } = useParams();
   const { data = [], isLoading, isError } = useQuery({
     queryKey: ["deal-room", id],
@@ -724,30 +736,30 @@ export function DealRoomPage() {
   return (
     <section className="space-y-5">
       <MarketplaceHeader
-        title="Deal Room"
-        description="Ruang kerja satu transaksi: negosiasi, invoice, pembayaran, investasi, dan profit distribution dalam satu alur."
-        actions={<Link to="/dashboard/investor/negosiasi" className="btn btn-outline rounded-md">Semua Negosiasi</Link>}
+        title="dealRoomTitle"
+        description="dealRoomBody"
+        actions={<Link to="/dashboard/investor/negosiasi" className="btn btn-outline rounded-md">{t("allNegotiations")}</Link>}
       />
-      {isLoading ? <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">Memuat deal room</div> : null}
+      {isLoading ? <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">{t("loadingDealRoom")}</div> : null}
       {isError || !deal ? (
         <div className="rounded-md border border-base-300 bg-white p-8 text-center shadow-sm">
-          <h3 className="text-xl font-black">Belum ada deal aktif</h3>
-          <p className="mt-2 text-sm text-neutral/55">Mulai negosiasi dari halaman detail peluang untuk membuat deal room.</p>
+          <h3 className="text-xl font-black">{t("noActiveDeal")}</h3>
+          <p className="mt-2 text-sm text-neutral/55">{t("noActiveDealBody")}</p>
         </div>
       ) : (
         <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
           <div className="rounded-md border border-base-300 bg-white p-6 shadow-sm">
             <h3 className="text-xl font-black">{businessName(deal)}</h3>
-            <p className="mt-2 text-sm text-neutral/55">Status saat ini</p>
+            <p className="mt-2 text-sm text-neutral/55">{t("currentStatus")}</p>
             <span className={`badge mt-3 ${statusTone(status)}`}>{status}</span>
             <div className="mt-6 grid gap-3">
               {[
-                ["Nominal", currency(readPath(deal, ["negosiasi_terakhir.penawaran_nominal", "penawaran_nominal"], "0"))],
-                ["Return", percent(readPath(deal, ["negosiasi_terakhir.penawaran_return", "penawaran_return"], "0"))],
-                ["Catatan", textValue(readPath(deal, ["negosiasi_terakhir.catatan", "catatan"]))],
+                ["nominal", currency(readPath(deal, ["negosiasi_terakhir.penawaran_nominal", "penawaran_nominal"], "0"))],
+                ["metricReturn", percent(readPath(deal, ["negosiasi_terakhir.penawaran_return", "penawaran_return"], "0"))],
+                ["notes", textValue(readPath(deal, ["negosiasi_terakhir.catatan", "catatan"]))],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-md border border-base-300 p-4">
-                  <p className="text-xs font-bold uppercase tracking-wide text-neutral/45">{label}</p>
+                  <p className="text-xs font-bold uppercase tracking-wide text-neutral/45">{t(label)}</p>
                   <p className="mt-2 font-black">{value}</p>
                 </div>
               ))}
@@ -755,13 +767,13 @@ export function DealRoomPage() {
           </div>
 
           <div className="rounded-md border border-base-300 bg-white p-6 shadow-sm">
-            <h3 className="text-xl font-black">Pipeline Deal</h3>
+            <h3 className="text-xl font-black">{t("dealPipeline")}</h3>
             <div className="mt-5 grid gap-3">
               {[
-                ["Negosiasi", "Penawaran dan counter offer investor-UMKM.", Handshake, "active"],
-                ["Invoice", "Tagihan dibuat setelah deal disetujui.", Receipt, status === "deal" ? "active" : "pending"],
-                ["Investasi", "Pembayaran invoice mengaktifkan portfolio.", TrendingUp, "pending"],
-                ["Profit", "Distribusi profit berjalan setelah penjualan dilaporkan.", CircleDollarSign, "pending"],
+                ["negotiation", "dealPipelineNegotiation", Handshake, "active"],
+                ["invoice", "dealPipelineInvoice", Receipt, status === "deal" ? "active" : "pending"],
+                ["investment", "dealPipelineInvestment", TrendingUp, "pending"],
+                ["profit", "dealPipelineProfit", CircleDollarSign, "pending"],
               ].map(([title, body, Icon, tone]) => {
                 const StepIcon = Icon as typeof Handshake;
                 return (
@@ -770,8 +782,8 @@ export function DealRoomPage() {
                       <StepIcon size={20} />
                     </div>
                     <div>
-                      <p className="font-black">{String(title)}</p>
-                      <p className="mt-1 text-sm leading-6 text-neutral/55">{String(body)}</p>
+                      <p className="font-black">{t(String(title))}</p>
+                      <p className="mt-1 text-sm leading-6 text-neutral/55">{t(String(body))}</p>
                     </div>
                   </div>
                 );
@@ -785,6 +797,7 @@ export function DealRoomPage() {
 }
 
 export function AdminReviewQueuePage() {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const { data = [], isLoading, isError, error } = useQuery({
     queryKey: ["admin-review-queue"],
@@ -806,21 +819,21 @@ export function AdminReviewQueuePage() {
   return (
     <section className="space-y-5">
       <MarketplaceHeader
-        title="Admin Review Queue"
-        description="Antrian review pengajuan yang membutuhkan keputusan admin. Fokus pada approval, bukan table generic."
-        actions={<Link to="/dashboard/admin/pengajuan" className="btn btn-outline rounded-md">Lihat Semua Pengajuan</Link>}
+        title="adminReviewQueueTitle"
+        description="adminReviewQueueBody"
+        actions={<Link to="/dashboard/admin/pengajuan" className="btn btn-outline rounded-md">{t("viewAllSubmissions")}</Link>}
       />
-      {isLoading ? <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">Memuat review queue</div> : null}
+      {isLoading ? <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">{t("loadingReviewQueue")}</div> : null}
       {isError ? (
         <div className="rounded-md border border-error/20 bg-error/10 p-4 text-sm font-semibold text-error">
-          {apiErrorMessage(error, "Gagal memuat review queue.")}
+          {apiErrorMessage(error, t("loadReviewQueueError"))}
         </div>
       ) : null}
       {!isLoading && !isError && reviewItems.length === 0 ? (
         <div className="rounded-md border border-base-300 bg-white p-8 text-center shadow-sm">
           <ClipboardCheck className="mx-auto text-success" size={34} />
-          <h3 className="mt-4 text-xl font-black">Tidak ada pengajuan pending</h3>
-          <p className="mt-2 text-sm text-neutral/55">Semua pengajuan sudah direview atau belum ada pengajuan baru.</p>
+          <h3 className="mt-4 text-xl font-black">{t("noPendingSubmissions")}</h3>
+          <p className="mt-2 text-sm text-neutral/55">{t("noPendingSubmissionsBody")}</p>
         </div>
       ) : null}
       <div className="grid gap-4">
@@ -830,7 +843,7 @@ export function AdminReviewQueuePage() {
               <div>
                 <h3 className="text-xl font-black">{businessName(item)}</h3>
                 <p className="mt-1 text-sm text-neutral/55">
-                  Target {currency(target(item))} - Return {percent(returnRate(item))} - {sector(item)}
+                  {t("metricTarget")} {currency(target(item))} - {t("metricReturn")} {percent(returnRate(item))} - {sector(item)}
                 </p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">

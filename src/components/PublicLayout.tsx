@@ -62,7 +62,7 @@ export function PublicLayout() {
           <div className="lg:hidden">
             <button
               className="btn btn-square btn-ghost"
-              aria-label="Buka menu"
+              aria-label={t("openMenu")}
               onClick={() => setIsMobileMenuOpen(true)}
             >
               <Menu size={22} />
@@ -86,7 +86,7 @@ export function PublicLayout() {
           <Logo />
           <button
             className="btn btn-square btn-ghost"
-            aria-label="Tutup menu"
+            aria-label={t("closeMenu")}
             onClick={() => setIsMobileMenuOpen(false)}
           >
             <X size={22} />
@@ -142,8 +142,7 @@ export function PublicLayout() {
           <div>
             <Logo variant="white" />
             <p className="mt-4 max-w-md text-sm leading-6 text-white/60">
-              Platform pendanaan UMKM dengan rekomendasi investasi yang lebih
-              relevan melalui AI-based matchmaking.
+              {t("footerBody")}
             </p>
           </div>
           <div>
@@ -159,8 +158,7 @@ export function PublicLayout() {
           <div>
             <h3 className="text-sm font-bold text-white">FundRaise</h3>
             <p className="mt-4 text-sm leading-6 text-white/65">
-              Matching UMKM, investor, negosiasi, invoice, investasi, dan
-              distribusi profit dalam satu workspace.
+              {t("footerWorkspaceBody")}
             </p>
           </div>
         </div>

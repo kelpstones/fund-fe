@@ -78,7 +78,7 @@ export function LoginPage() {
           {error ? <p className="text-sm font-semibold text-error">{error}</p> : null}
           <div className="flex justify-end">
             <Link className="text-sm font-semibold text-primary" to="/forgot-password">
-              Lupa password?
+              {t("forgotPasswordLink")}
             </Link>
           </div>
           <button className="btn btn-primary h-12 rounded-md text-white" disabled={isSubmitting}>

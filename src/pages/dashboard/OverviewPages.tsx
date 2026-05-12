@@ -16,6 +16,7 @@ import {
 import { StatCard } from "../../components/StatCard";
 import { directApi } from "../../lib/api/direct";
 import { resourceApi } from "../../lib/api/resources";
+import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import {
   adminConfig,
   businessConfig,
@@ -57,12 +58,14 @@ function PageHeader({
   title: string;
   body: string;
 }) {
+  const { t } = useLanguage();
+
   return (
     <div className="rounded-md border border-base-300 bg-white p-6 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-3xl font-black tracking-normal text-neutral">{title}</h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-neutral/60">{body}</p>
+          <h2 className="text-3xl font-black tracking-normal text-neutral">{t(title)}</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-neutral/60">{t(body)}</p>
         </div>
       </div>
     </div>
@@ -70,6 +73,7 @@ function PageHeader({
 }
 
 function MatchList({ submissions }: { submissions: Entity[] }) {
+  const { t } = useLanguage();
   const sorted = [...submissions].sort(
     (a, b) =>
       Number(b.match_score || b.skor_kecocokan || 0) -
@@ -80,14 +84,14 @@ function MatchList({ submissions }: { submissions: Entity[] }) {
     <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-xl font-black">AI Match Score</h3>
+          <h3 className="text-xl font-black">{t("aiMatchScore")}</h3>
         </div>
         <Scale className="text-primary" size={24} />
       </div>
       <div className="mt-5 grid gap-3">
         {sorted.length === 0 ? (
           <div className="rounded-md border border-base-300 p-4 text-sm font-semibold text-neutral/55">
-            Belum ada data match. Lengkapi data bisnis atau preferensi investor terlebih dahulu.
+            {t("matchDataEmpty")}
           </div>
         ) : null}
         {sorted.slice(0, 4).map((item) => {
@@ -100,7 +104,7 @@ function MatchList({ submissions }: { submissions: Entity[] }) {
                     {textValue(readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "businessName"]))}
                   </p>
                   <p className="mt-1 text-sm text-neutral/55">
-                    Return {percent(item.per_anual_return)} - Risk {textValue(item.risk_level)}
+                    {t("metricReturn")} {percent(item.per_anual_return)} - {t("metricRisk")} {textValue(item.risk_level)}
                   </p>
                 </div>
                 <span className="badge badge-secondary badge-lg text-white">{score}%</span>
@@ -117,18 +121,20 @@ function MatchList({ submissions }: { submissions: Entity[] }) {
 }
 
 function ActivityPanel({ items }: { items: Entity[] }) {
+  const { t } = useLanguage();
+
   return (
     <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-xl font-black">Update terakhir</h3>
+          <h3 className="text-xl font-black">{t("latestUpdates")}</h3>
         </div>
         <Bell className="text-primary" size={24} />
       </div>
       <div className="mt-5 grid gap-3">
         {items.length === 0 ? (
           <div className="rounded-md border border-base-300 p-4 text-sm font-semibold text-neutral/55">
-            Belum ada update terbaru.
+            {t("latestUpdatesEmpty")}
           </div>
         ) : null}
         {items.slice(0, 4).map((item) => (
@@ -148,6 +154,7 @@ function ActivityPanel({ items }: { items: Entity[] }) {
 }
 
 export function UmkmOverviewPage() {
+  const { t } = useLanguage();
   const dashboardQuery = useDashboard("umkm");
   const dashboard = dashboardQuery.data;
   const d = asRecord(dashboard);
@@ -188,14 +195,14 @@ export function UmkmOverviewPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Pantau bisnis, pengajuan, dan investor yang cocok"
-        body="Workspace UMKM menampilkan kesehatan bisnis, status pengajuan, laporan penjualan, serta interaksi negosiasi dengan investor."
+        title="umkmOverviewTitle"
+        body="umkmOverviewBody"
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Bisnis" value={String(bisnisCount)} helper="Profil aktif" icon={Building2} loading={dashboardQuery.isLoading} />
-        <StatCard label="Total Pendanaan" value={compactCurrency(funded)} helper="Terkumpul" icon={CircleDollarSign} tone="green" loading={dashboardQuery.isLoading} />
-        <StatCard label="Penjualan" value={compactCurrency(totalSales)} helper="Dari laporan" icon={BarChart3} tone="amber" loading={dashboardQuery.isLoading} />
-        <StatCard label="Investor" value={String(investorCount)} helper="Investor terkait" icon={Handshake} loading={dashboardQuery.isLoading} />
+        <StatCard label={t("business")} value={String(bisnisCount)} helper={t("activeProfile")} icon={Building2} loading={dashboardQuery.isLoading} />
+        <StatCard label={t("totalFunding")} value={compactCurrency(funded)} helper={t("collected")} icon={CircleDollarSign} tone="green" loading={dashboardQuery.isLoading} />
+        <StatCard label={t("sales")} value={compactCurrency(totalSales)} helper={t("fromReports")} icon={BarChart3} tone="amber" loading={dashboardQuery.isLoading} />
+        <StatCard label={t("investor")} value={String(investorCount)} helper={t("relatedInvestors")} icon={Handshake} loading={dashboardQuery.isLoading} />
       </div>
       <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -204,16 +211,16 @@ export function UmkmOverviewPage() {
               <Rocket size={24} />
             </div>
             <div>
-              <h3 className="text-xl font-black">UMKM onboarding readiness</h3>
+              <h3 className="text-xl font-black">{t("umkmReadinessTitle")}</h3>
               <p className="mt-1 max-w-2xl text-sm leading-6 text-neutral/60">
-                Ikuti urutan profil bisnis, model scoring, pengajuan dana, review admin, dan negosiasi agar peluang siap masuk marketplace investor.
+                {t("umkmReadinessBody")}
               </p>
             </div>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="min-w-48">
               <div className="mb-2 flex items-center justify-between text-xs font-black text-neutral/55">
-                <span>Progress</span>
+                <span>{t("progress")}</span>
                 <span>{onboardingProgress}%</span>
               </div>
               <div className="h-2 rounded-full bg-base-200">
@@ -221,7 +228,7 @@ export function UmkmOverviewPage() {
               </div>
             </div>
             <Link to="/dashboard/umkm/onboarding" className="btn btn-primary rounded-md text-white">
-              Buka Onboarding
+              {t("openOnboarding")}
             </Link>
           </div>
         </div>
@@ -235,6 +242,7 @@ export function UmkmOverviewPage() {
 }
 
 export function InvestorOverviewPage() {
+  const { t } = useLanguage();
   const dashboardQuery = useDashboard("investor");
   const dashboard = dashboardQuery.data;
   const d = asRecord(dashboard);
@@ -261,20 +269,20 @@ export function InvestorOverviewPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Temukan peluang UMKM yang sesuai preferensi"
-        body="Investor melihat peluang pendanaan, rekomendasi AI, negosiasi, invoice, portfolio investasi, dan distribusi profit."
+        title="investorOverviewTitle"
+        body="investorOverviewBody"
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Peluang" value={String(peluangCount)} helper="Pengajuan tersedia" icon={FileCheck2} loading={dashboardQuery.isLoading} />
-        <StatCard label="Investasi" value={compactCurrency(invested)} helper="Portfolio aktif" icon={TrendingUp} tone="green" loading={dashboardQuery.isLoading} />
-        <StatCard label="Profit" value={compactCurrency(profitTotal)} helper={`${compactCurrency(pendingProfit)} pending`} icon={CircleDollarSign} tone="amber" loading={dashboardQuery.isLoading} />
-        <StatCard label="Invoice" value={String(invoiceCount)} helper="Tagihan investor" icon={Receipt} loading={dashboardQuery.isLoading} />
+        <StatCard label={t("opportunities")} value={String(peluangCount)} helper={t("availableSubmissions")} icon={FileCheck2} loading={dashboardQuery.isLoading} />
+        <StatCard label={t("investments")} value={compactCurrency(invested)} helper={t("activePortfolio")} icon={TrendingUp} tone="green" loading={dashboardQuery.isLoading} />
+        <StatCard label={t("profit")} value={compactCurrency(profitTotal)} helper={t("pendingAmount", { amount: compactCurrency(pendingProfit) })} icon={CircleDollarSign} tone="amber" loading={dashboardQuery.isLoading} />
+        <StatCard label={t("invoice")} value={String(invoiceCount)} helper={t("investorBills")} icon={Receipt} loading={dashboardQuery.isLoading} />
       </div>
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <MatchList submissions={submissions} />
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
-          <h3 className="text-xl font-black">Investasi aktif</h3>
-          <p className="mt-1 text-sm font-semibold text-neutral/55">{investmentCount} investasi aktif</p>
+          <h3 className="text-xl font-black">{t("activeInvestments")}</h3>
+          <p className="mt-1 text-sm font-semibold text-neutral/55">{t("activeInvestmentCount", { count: investmentCount })}</p>
           <div className="mt-5 grid gap-3">
             {(recentDistribution.length > 0 ? recentDistribution : investments).map((item) => (
               <div key={item.id} className="rounded-md border border-base-300 p-4">
@@ -299,6 +307,7 @@ export function InvestorOverviewPage() {
 }
 
 export function AdminOverviewPage() {
+  const { t } = useLanguage();
   const dashboardQuery = useDashboard("admin");
   const dashboard = dashboardQuery.data;
   const d = asRecord(dashboard);
@@ -325,18 +334,18 @@ export function AdminOverviewPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Kontrol kualitas data dan proses pendanaan"
-        body="Admin mengelola bisnis, pengajuan, kelas, invoice, investasi, distribusi profit, admin management, dan notifikasi operasional."
+        title="adminOverviewTitle"
+        body="adminOverviewBody"
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Bisnis" value={String(bisnisCount)} helper="Terdaftar" icon={Building2} loading={dashboardQuery.isLoading} />
-        <StatCard label="Pengajuan" value={String(submissionCount)} helper={`${pending} pending`} icon={FileCheck2} tone="amber" loading={dashboardQuery.isLoading} />
-        <StatCard label="Users" value={String(userCount)} helper="Akun platform" icon={Users} loading={dashboardQuery.isLoading} />
-        <StatCard label="Notifikasi" value={String(notifCount)} helper="Operasional" icon={Bell} tone="green" loading={dashboardQuery.isLoading} />
+        <StatCard label={t("business")} value={String(bisnisCount)} helper={t("registered")} icon={Building2} loading={dashboardQuery.isLoading} />
+        <StatCard label={t("submissions")} value={String(submissionCount)} helper={t("pendingCount", { count: pending })} icon={FileCheck2} tone="amber" loading={dashboardQuery.isLoading} />
+        <StatCard label={t("users")} value={String(userCount)} helper={t("platformAccounts")} icon={Users} loading={dashboardQuery.isLoading} />
+        <StatCard label={t("notifications")} value={String(notifCount)} helper={t("operational")} icon={Bell} tone="green" loading={dashboardQuery.isLoading} />
       </div>
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
-          <h3 className="text-xl font-black">Status pengajuan</h3>
+          <h3 className="text-xl font-black">{t("submissionStatus")}</h3>
           <div className="mt-5 grid gap-3">
             {(recentSubmissions.length > 0 ? recentSubmissions : submissions).map((item) => (
               <div key={item.id} className="flex items-center justify-between gap-4 rounded-md border border-base-300 p-4">

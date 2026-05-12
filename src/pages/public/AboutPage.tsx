@@ -1,24 +1,25 @@
 import { BrainCircuit, Building2, ShieldCheck, Users } from "lucide-react";
+import { useLanguage } from "../../lib/i18n/LanguageProvider";
 
 const values = [
   {
-    title: "Konteks bisnis dibaca utuh",
-    body: "Profil UMKM tidak hanya dilihat dari nominal pendanaan, tapi juga performa, kelas bisnis, dan sinyal risiko.",
+    title: "aboutValueContextTitle",
+    body: "aboutValueContextBody",
     icon: Building2,
   },
   {
-    title: "Preferensi investor dihormati",
-    body: "Investor dapat memprioritaskan sektor, target return, nominal, dan toleransi risiko yang masuk akal.",
+    title: "aboutValuePreferenceTitle",
+    body: "aboutValuePreferenceBody",
     icon: Users,
   },
   {
-    title: "Rekomendasi berbasis skor",
-    body: "Matchmaking menampilkan skor kecocokan agar keputusan investasi lebih transparan.",
+    title: "aboutValueScoreTitle",
+    body: "aboutValueScoreBody",
     icon: BrainCircuit,
   },
   {
-    title: "Proses terkontrol admin",
-    body: "Admin menjaga kualitas data bisnis, approval pengajuan, invoice, investasi, dan profit sharing.",
+    title: "aboutValueAdminTitle",
+    body: "aboutValueAdminBody",
     icon: ShieldCheck,
   },
 ];
@@ -57,24 +58,24 @@ const teamMembers = [
 ];
 
 export function AboutPage() {
+  const { t } = useLanguage();
+
   return (
     <main className="bg-white">
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div className="max-w-3xl">
             <h1 className="font-display text-5xl font-black leading-tight tracking-normal">
-              Infrastruktur pendanaan untuk UMKM dan investor modern
+              {t("aboutHeroTitle")}
             </h1>
             <p className="mt-6 text-lg leading-8 text-neutral/65">
-              FundRaise dibuat untuk mempertemukan pemilik usaha dan investor
-              melalui data bisnis, preferensi investasi, negosiasi yang jelas,
-              dan monitoring investasi yang rapi.
+              {t("aboutHeroBody")}
             </p>
           </div>
           <div className="aspect-[4/3] overflow-hidden rounded-md border border-base-300 bg-base-200 shadow-sm">
             <img
               src="/images/about-new.png"
-              alt="Ekosistem FundRaise"
+              alt={t("aboutImageAlt")}
               className="h-full w-full object-cover"
             />
           </div>
@@ -84,11 +85,10 @@ export function AboutPage() {
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="max-w-3xl">
             <h2 className="text-4xl font-black tracking-normal">
-              Capstone Project Tim Kelpstone
+              {t("aboutTeamTitle")}
             </h2>
             <p className="mt-5 text-base leading-7 text-neutral/65">
-              FundRaise adalah capstone project dari tim Kelpstone. Proyek ini
-              dikembangkan untuk Coding Camp 2026 powered by DBS Foundation.
+              {t("aboutTeamBody")}
             </p>
           </div>
           <div className="mt-10 grid grid-cols-2 gap-5 lg:grid-cols-6">
@@ -100,7 +100,7 @@ export function AboutPage() {
                 <div className="aspect-square bg-base-300">
                   <img
                     src={member.image}
-                    alt={`Foto ${member.name}`}
+                    alt={t("aboutMemberAlt", { name: member.name })}
                     className="h-full w-full object-cover grayscale transition duration-300 group-hover:grayscale-0"
                     loading="lazy"
                   />
@@ -110,7 +110,7 @@ export function AboutPage() {
                     {member.name}
                   </h3>
                   <p className="mt-2 text-sm font-semibold text-primary">
-                    {member.role}
+                    {t(member.role)}
                   </p>
                 </div>
               </article>
@@ -128,9 +128,9 @@ export function AboutPage() {
                 className="rounded-md bg-white p-6 shadow-sm"
               >
                 <Icon className="text-primary" size={24} />
-                <h2 className="mt-5 font-black">{item.title}</h2>
+                <h2 className="mt-5 font-black">{t(item.title)}</h2>
                 <p className="mt-3 text-sm leading-6 text-neutral/60">
-                  {item.body}
+                  {t(item.body)}
                 </p>
               </div>
             );

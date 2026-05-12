@@ -27,7 +27,7 @@ export function RegisterPage() {
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (form.password !== form.password_confirmation) {
-      setError("Konfirmasi password tidak cocok.");
+      setError(t("passwordConfirmationMismatch"));
       return;
     }
     setIsSubmitting(true);
@@ -36,14 +36,14 @@ export function RegisterPage() {
       await register(form);
       navigate("/login", {
         replace: true,
-        state: { message: "Registrasi berhasil. Cek email kamu untuk verifikasi sebelum login." },
+        state: { message: t("registerSuccessVerifyEmail") },
       });
     } catch (err) {
       import("axios").then(({ default: axios }) => {
         if (axios.isAxiosError(err) && err.response?.data?.message) {
           setError(err.response.data.message as string);
         } else {
-          setError("Registrasi gagal. Periksa data kamu dan coba lagi.");
+          setError(t("registerError"));
         }
       });
     } finally {
