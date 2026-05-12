@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   Receipt,
+  Rocket,
   Scale,
   ShieldCheck,
   SlidersHorizontal,
@@ -18,6 +19,8 @@ import {
   UserRound,
   Activity,
   ClipboardList,
+  Bookmark,
+  ClipboardCheck,
 } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { Logo } from "./Logo";
@@ -41,7 +44,10 @@ const navByRole: Record<UserRole, NavGroup[]> = {
   umkm: [
     {
       labelKey: "dashboardGroupMain",
-      items: [{ to: "/dashboard/umkm", labelKey: "dashboardOverview", icon: LayoutDashboard }],
+      items: [
+        { to: "/dashboard/umkm", labelKey: "dashboardOverview", icon: LayoutDashboard },
+        { to: "/dashboard/umkm/onboarding", labelKey: "dashboardOnboarding", icon: Rocket },
+      ],
     },
     {
       labelKey: "dashboardGroupAccount",
@@ -92,8 +98,11 @@ const navByRole: Record<UserRole, NavGroup[]> = {
       labelKey: "dashboardGroupFunding",
       items: [
         { to: "/dashboard/investor/peluang", labelKey: "dashboardOpportunities", icon: BriefcaseBusiness },
+        { to: "/dashboard/investor/saved", labelKey: "dashboardSaved", icon: Bookmark },
+        { to: "/dashboard/investor/compare", labelKey: "dashboardCompare", icon: Scale },
         { to: "/dashboard/investor/rekomendasi", labelKey: "dashboardRecommendations", icon: Scale },
         { to: "/dashboard/investor/negosiasi", labelKey: "dashboardNegotiations", icon: Handshake },
+        { to: "/dashboard/investor/deal-room/active", labelKey: "dashboardDealRoom", icon: Handshake },
         { to: "/dashboard/investor/kelas", labelKey: "dashboardClasses", icon: Scale },
       ],
     },
@@ -131,6 +140,7 @@ const navByRole: Record<UserRole, NavGroup[]> = {
       labelKey: "dashboardGroupFunding",
       items: [
         { to: "/dashboard/admin/pengajuan", labelKey: "dashboardSubmissions", icon: FileCheck2 },
+        { to: "/dashboard/admin/review", labelKey: "dashboardReviewQueue", icon: ClipboardCheck },
         { to: "/dashboard/admin/negosiasi", labelKey: "dashboardNegotiations", icon: Handshake },
         { to: "/dashboard/admin/investasi", labelKey: "dashboardInvestments", icon: TrendingUp },
       ],
@@ -176,6 +186,7 @@ const navByRole: Record<UserRole, NavGroup[]> = {
       labelKey: "dashboardGroupFunding",
       items: [
         { to: "/dashboard/admin/pengajuan", labelKey: "dashboardSubmissions", icon: FileCheck2 },
+        { to: "/dashboard/admin/review", labelKey: "dashboardReviewQueue", icon: ClipboardCheck },
         { to: "/dashboard/admin/negosiasi", labelKey: "dashboardNegotiations", icon: Handshake },
         { to: "/dashboard/admin/investasi", labelKey: "dashboardInvestments", icon: TrendingUp },
       ],

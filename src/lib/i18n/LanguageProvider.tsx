@@ -41,6 +41,7 @@ export type TranslationKey =
   | "getStarted"
   | "navigation"
   | "dashboardOverview"
+  | "dashboardOnboarding"
   | "dashboardProfile"
   | "dashboardBusiness"
   | "dashboardBusinessModel"
@@ -52,6 +53,10 @@ export type TranslationKey =
   | "dashboardRecommendations"
   | "dashboardPreferences"
   | "dashboardSurvey"
+  | "dashboardSaved"
+  | "dashboardCompare"
+  | "dashboardDealRoom"
+  | "dashboardReviewQueue"
   | "dashboardInvoices"
   | "dashboardPortfolio"
   | "dashboardProfit"
@@ -104,6 +109,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     getStarted: "Mulai",
     navigation: "Navigasi",
     dashboardOverview: "Overview",
+    dashboardOnboarding: "Onboarding",
     dashboardProfile: "Profile",
     dashboardBusiness: "Bisnis",
     dashboardBusinessModel: "Profil Model",
@@ -115,6 +121,10 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     dashboardRecommendations: "AI Match",
     dashboardPreferences: "Preferensi",
     dashboardSurvey: "Survey",
+    dashboardSaved: "Tersimpan",
+    dashboardCompare: "Compare",
+    dashboardDealRoom: "Deal Room",
+    dashboardReviewQueue: "Review Queue",
     dashboardInvoices: "Invoice",
     dashboardPortfolio: "Portfolio",
     dashboardProfit: "Profit",
@@ -161,6 +171,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     getStarted: "Get Started",
     navigation: "Navigation",
     dashboardOverview: "Overview",
+    dashboardOnboarding: "Onboarding",
     dashboardProfile: "Profile",
     dashboardBusiness: "Business",
     dashboardBusinessModel: "Model Profile",
@@ -172,6 +183,10 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     dashboardRecommendations: "AI Match",
     dashboardPreferences: "Preferences",
     dashboardSurvey: "Survey",
+    dashboardSaved: "Saved",
+    dashboardCompare: "Compare",
+    dashboardDealRoom: "Deal Room",
+    dashboardReviewQueue: "Review Queue",
     dashboardInvoices: "Invoices",
     dashboardPortfolio: "Portfolio",
     dashboardProfit: "Profit",

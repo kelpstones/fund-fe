@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import {
   BarChart3,
   Bell,
@@ -7,6 +8,7 @@ import {
   FileCheck2,
   Handshake,
   Receipt,
+  Rocket,
   Scale,
   TrendingUp,
   Users,
@@ -20,6 +22,7 @@ import {
   investorInvestmentConfig,
   investorInvoiceConfig,
   investorProfitConfig,
+  myBusinessConfig,
   myNegotiationConfig,
   notificationConfig,
   salesConfig,
@@ -153,7 +156,7 @@ export function UmkmOverviewPage() {
   const dashboardInvestor = asRecord(d.investor);
   const penjualanChart = asEntityArray(d.penjualan_chart);
 
-  const businesses = useResource(businessConfig).data ?? [];
+  const businesses = useResource(myBusinessConfig).data ?? [];
   const submissions = useResource(submissionConfig).data ?? [];
   const sales = useResource(salesConfig).data ?? [];
   const negotiations = useResource(myNegotiationConfig).data ?? [];
@@ -166,6 +169,21 @@ export function UmkmOverviewPage() {
     submissions.reduce((sum, item) => sum + Number(item.total_pendanaan || 0), 0);
   const bisnisCount = dashboardBusiness.id ? 1 : businesses.length;
   const investorCount = Number(dashboardInvestor.total ?? 0) || negotiations.length;
+  const hasApprovedSubmission = submissions.some((item) =>
+    ["approved", "published", "funded"].includes(
+      String(readPath(item, ["approval.status", "approval_status", "status"])).toLowerCase(),
+    ),
+  );
+  const onboardingChecks = [
+    bisnisCount > 0,
+    totalSales > 0,
+    submissions.length > 0,
+    hasApprovedSubmission,
+    negotiations.length > 0,
+  ];
+  const onboardingProgress = Math.round(
+    (onboardingChecks.filter(Boolean).length / onboardingChecks.length) * 100,
+  );
 
   return (
     <div className="space-y-6">
@@ -178,6 +196,35 @@ export function UmkmOverviewPage() {
         <StatCard label="Total Pendanaan" value={compactCurrency(funded)} helper="Terkumpul" icon={CircleDollarSign} tone="green" loading={dashboardQuery.isLoading} />
         <StatCard label="Penjualan" value={compactCurrency(totalSales)} helper="Dari laporan" icon={BarChart3} tone="amber" loading={dashboardQuery.isLoading} />
         <StatCard label="Investor" value={String(investorCount)} helper="Investor terkait" icon={Handshake} loading={dashboardQuery.isLoading} />
+      </div>
+      <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+              <Rocket size={24} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black">UMKM onboarding readiness</h3>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-neutral/60">
+                Ikuti urutan profil bisnis, model scoring, pengajuan dana, review admin, dan negosiasi agar peluang siap masuk marketplace investor.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="min-w-48">
+              <div className="mb-2 flex items-center justify-between text-xs font-black text-neutral/55">
+                <span>Progress</span>
+                <span>{onboardingProgress}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-base-200">
+                <div className="h-2 rounded-full bg-primary" style={{ width: `${onboardingProgress}%` }} />
+              </div>
+            </div>
+            <Link to="/dashboard/umkm/onboarding" className="btn btn-primary rounded-md text-white">
+              Buka Onboarding
+            </Link>
+          </div>
+        </div>
       </div>
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <MatchList submissions={submissions} />
