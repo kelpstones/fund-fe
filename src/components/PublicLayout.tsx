@@ -18,6 +18,7 @@ export function PublicLayout() {
   const { isAuthenticated, user } = useAuth();
   const { t } = useLanguage();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const currentYear = new Date().getFullYear();
   const dashboardPath =
     user?.role === "investor"
       ? "/dashboard/investor"
@@ -160,6 +161,12 @@ export function PublicLayout() {
             <p className="mt-4 text-sm leading-6 text-white/65">
               {t("footerWorkspaceBody")}
             </p>
+          </div>
+        </div>
+        <div className="border-t border-white/10">
+          <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-sm text-white/55 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+            <p>{t("footerCopyright", { year: currentYear })}</p>
+            <p>{t("footerBuiltBy")}</p>
           </div>
         </div>
       </footer>
