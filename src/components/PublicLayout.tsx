@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { ArrowUpRight, Menu, X } from "lucide-react";
+import { ArrowUpRight, Instagram, Linkedin, Mail, Menu, X } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuth } from "../lib/auth/AuthProvider";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -12,6 +12,12 @@ const links = [
   { to: "/layanan", labelKey: "navServices" },
   { to: "/portfolio", labelKey: "navPortfolio" },
   { to: "/kontak", labelKey: "navContact" },
+] as const;
+
+const socialLinks = [
+  { labelKey: "socialInstagram", href: "https://www.instagram.com/fundraise.id", icon: Instagram },
+  { labelKey: "socialLinkedin", href: "https://www.linkedin.com/company/fundraise-id", icon: Linkedin },
+  { labelKey: "socialEmail", href: "mailto:hello@fundraise.id", icon: Mail },
 ] as const;
 
 export function PublicLayout() {
@@ -161,6 +167,20 @@ export function PublicLayout() {
             <p className="mt-4 text-sm leading-6 text-white/65">
               {t("footerWorkspaceBody")}
             </p>
+            <div className="mt-5 flex gap-2">
+              {socialLinks.map(({ labelKey, href, icon: Icon }) => (
+                <a
+                  key={labelKey}
+                  href={href}
+                  aria-label={t(labelKey)}
+                  className="grid h-9 w-9 place-items-center rounded-md border border-white/10 bg-white/10 text-white/70 transition hover:border-accent hover:text-accent"
+                  rel="noreferrer"
+                  target={href.startsWith("mailto:") ? undefined : "_blank"}
+                >
+                  <Icon size={17} />
+                </a>
+              ))}
+            </div>
           </div>
         </div>
         <div className="border-t border-white/10">
