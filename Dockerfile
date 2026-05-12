@@ -1,4 +1,3 @@
-# Build stage
 FROM node:18-alpine AS builder
 WORKDIR /app
 
@@ -7,13 +6,18 @@ RUN npm install
 
 COPY . .
 
-# Pass env saat build
+ARG VITE_APP_NAME
 ARG VITE_API_BASE_URL
+ARG VITE_API_KEY
+ARG VITE_DEFAULT_THEME
+
+ENV VITE_APP_NAME=$VITE_APP_NAME
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_API_KEY=$VITE_API_KEY
+ENV VITE_DEFAULT_THEME=$VITE_DEFAULT_THEME
 
 RUN npm run build
 
-# Production stage
 FROM nginx:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
 EXPOSE 80
