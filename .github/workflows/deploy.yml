@@ -39,7 +39,5 @@ jobs:
           script: |
             cd ~/fund-fe
             git pull origin main
-            docker compose -f docker-compose.prod.yml down
-            docker compose -f docker-compose.prod.yml up -d --build \
-              --build-arg VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
+            docker compose -f docker-compose.prod.yml up -d --build
             docker image prune -f
