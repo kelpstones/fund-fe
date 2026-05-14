@@ -4,7 +4,6 @@ import gsap from "gsap";
 import {
   ArrowRight,
   BarChart3,
-  BriefcaseBusiness,
   CheckCircle2,
   CircleDollarSign,
   Handshake,
@@ -114,18 +113,12 @@ const testimonials = [
 const roleCards = [
   {
     title: "homeRoleUmkmTitle",
-    body: "homeRoleUmkmBody",
-    image: "/images/services.png",
-    points: [
-      "homeRoleUmkmPoint1",
-      "homeRoleUmkmPoint2",
-      "homeRoleUmkmPoint3",
-    ],
+    image: "/images/roles/umkm.png",
+    points: ["homeRoleUmkmPoint1", "homeRoleUmkmPoint2", "homeRoleUmkmPoint3"],
   },
   {
     title: "homeRoleInvestorTitle",
-    body: "homeRoleInvestorBody",
-    image: "/images/contact.png",
+    image: "/images/roles/investor.png",
     points: [
       "homeRoleInvestorPoint1",
       "homeRoleInvestorPoint2",
@@ -391,7 +384,9 @@ export function HomePage() {
                         {t(item.sectorKey)}
                       </p>
                       <h3 className="mt-2 text-xl font-black">{item.name}</h3>
-                      <p className="mt-1 text-sm text-neutral/55">{item.city}</p>
+                      <p className="mt-1 text-sm text-neutral/55">
+                        {item.city}
+                      </p>
                     </div>
                     <div className="grid h-10 w-10 place-items-center rounded-md bg-primary/10 text-primary">
                       <Store size={19} />
@@ -457,31 +452,10 @@ export function HomePage() {
                   />
                 </div>
                 <div className="p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="grid h-10 w-10 place-items-center rounded-md bg-primary/10 text-primary">
-                      {roleCard.title === "homeRoleUmkmTitle" ? (
-                        <BriefcaseBusiness size={18} />
-                      ) : (
-                        <CircleDollarSign size={18} />
-                      )}
-                    </div>
-                    <h3 className="text-xl font-black">{t(roleCard.title)}</h3>
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-neutral/60">
-                    {t(roleCard.body)}
-                  </p>
-                  <ul className="mt-4 grid gap-2">
+                  <h3 className="text-xl font-black">{t(roleCard.title)}</h3>
+                  <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-neutral/70 marker:text-neutral/40">
                     {roleCard.points.map((point) => (
-                      <li
-                        key={point}
-                        className="flex items-start gap-2 text-sm text-neutral/70"
-                      >
-                        <CheckCircle2
-                          size={16}
-                          className="mt-0.5 shrink-0 text-success"
-                        />
-                        <span>{t(point)}</span>
-                      </li>
+                      <li key={point}>{t(point)}</li>
                     ))}
                   </ul>
                 </div>

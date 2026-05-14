@@ -1482,17 +1482,16 @@ Object.assign(translations.id, {
   homeRoleSectionBody:
     "Setiap role mendapatkan workspace yang fokus, tetapi tetap tersambung dalam alur pendanaan yang sama.",
   homeRoleUmkmTitle: "Untuk UMKM",
-  homeRoleUmkmBody:
-    "UMKM mengelola kesiapan bisnis dari profil sampai negosiasi dalam alur yang jelas.",
+
   homeRoleUmkmPoint1: "Lengkapi profil bisnis dan data operasional.",
   homeRoleUmkmPoint2: "Kirim pengajuan pendanaan dan laporan penjualan.",
   homeRoleUmkmPoint3: "Kelola negosiasi dan pantau status deal.",
   homeRoleInvestorTitle: "Untuk Investor",
-  homeRoleInvestorBody:
-    "Investor menemukan peluang relevan, mengevaluasi risiko, lalu mengeksekusi investasi dalam satu dashboard.",
   homeRoleInvestorPoint1: "Dapatkan rekomendasi peluang dari AI matching.",
-  homeRoleInvestorPoint2: "Bandingkan sektor, risiko, return, dan progres pendanaan.",
-  homeRoleInvestorPoint3: "Pantau invoice, investasi aktif, dan distribusi profit.",
+  homeRoleInvestorPoint2:
+    "Bandingkan sektor, risiko, return, dan progres pendanaan.",
+  homeRoleInvestorPoint3:
+    "Pantau invoice, investasi aktif, dan distribusi profit.",
   homeDiagramTitle: "Satu jalur kerja yang mudah dipahami",
   homeDiagramBody:
     "Landing page kini memperlihatkan gambaran proses sebelum pengguna masuk ke dashboard, dari profil bisnis sampai distribusi profit.",
@@ -1595,17 +1594,15 @@ Object.assign(translations.en, {
   homeRoleSectionBody:
     "Each role gets a focused workspace while staying connected in one funding flow.",
   homeRoleUmkmTitle: "For UMKM",
-  homeRoleUmkmBody:
-    "UMKM can manage readiness from business profile to negotiation in a clear workflow.",
+
   homeRoleUmkmPoint1: "Complete business profile and operational data.",
   homeRoleUmkmPoint2: "Submit funding proposals and sales reports.",
   homeRoleUmkmPoint3: "Manage negotiations and monitor deal status.",
   homeRoleInvestorTitle: "For Investors",
-  homeRoleInvestorBody:
-    "Investors discover relevant opportunities, evaluate risk, and execute investments in one dashboard.",
   homeRoleInvestorPoint1: "Get opportunities from AI matching recommendations.",
   homeRoleInvestorPoint2: "Compare sector, risk, return, and funding progress.",
-  homeRoleInvestorPoint3: "Track invoices, active investments, and profit distributions.",
+  homeRoleInvestorPoint3:
+    "Track invoices, active investments, and profit distributions.",
   homeDiagramTitle: "One workflow that is easy to understand",
   homeDiagramBody:
     "The landing page now shows the process before users enter the dashboard, from business profile to profit distribution.",
