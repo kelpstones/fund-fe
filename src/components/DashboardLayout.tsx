@@ -5,6 +5,7 @@ import {
   Building2,
   CircleDollarSign,
   FileCheck2,
+  FileText,
   Handshake,
   LayoutDashboard,
   LogOut,
@@ -53,6 +54,7 @@ const navByRole: Record<UserRole, NavGroup[]> = {
       labelKey: "dashboardGroupAccount",
       items: [
         { to: "/dashboard/umkm/profile", labelKey: "dashboardProfile", icon: UserRound },
+        { to: "/dashboard/umkm/dokumen", labelKey: "dashboardDocuments", icon: FileText },
         { to: "/dashboard/umkm/notifikasi", labelKey: "dashboardNotifications", icon: Bell },
       ],
     },
@@ -89,6 +91,7 @@ const navByRole: Record<UserRole, NavGroup[]> = {
       labelKey: "dashboardGroupAccount",
       items: [
         { to: "/dashboard/investor/profile", labelKey: "dashboardProfile", icon: UserRound },
+        { to: "/dashboard/investor/dokumen", labelKey: "dashboardDocuments", icon: FileText },
         { to: "/dashboard/investor/preferensi", labelKey: "dashboardPreferences", icon: SlidersHorizontal },
         { to: "/dashboard/investor/survey", labelKey: "dashboardSurvey", icon: ClipboardList },
         { to: "/dashboard/investor/notifikasi", labelKey: "dashboardNotifications", icon: Bell },

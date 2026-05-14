@@ -1,176 +1,212 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { BrainCircuit, CheckCircle2, ClipboardList, RefreshCw, Sparkles } from "lucide-react";
-import { ResourcePage } from "../../components/ResourcePage";
-import { resourceApi } from "../../lib/api/resources";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
+import {
+  ArrowRight,
+  BrainCircuit,
+  CheckCircle2,
+  ClipboardList,
+  Loader2,
+  RefreshCw,
+  Sparkles,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import { apiClient, unwrap } from "../../lib/api/client";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
-import { publishedSubmissionConfig } from "../../lib/resourceConfigs";
-import { currency, percent, readPath, textValue } from "../../lib/format";
+import { dateShort, percent, readPath, textValue } from "../../lib/format";
 import type { Entity } from "../../types";
 
-type SurveyAnswer = {
-  sektor: string;
-  targetNominal: number;
-  returnMinimum: number;
-  risiko: "low" | "moderate" | "high";
-  tenor: "short" | "medium" | "long";
-  preferensiDigital: number;
+type InvestorPreferenceForm = {
+  kepuasan_pelanggan: number;
+  digital_adoption_score: number;
+  net_profit_margin: number;
+  year_revenue: number;
+  business_tenure_years: number;
 };
 
-type MatchResult = Entity & {
-  match_score: number;
-  match_reason: string;
-  risk_level: string;
+const defaultSurvey: InvestorPreferenceForm = {
+  kepuasan_pelanggan: 4,
+  digital_adoption_score: 7,
+  net_profit_margin: 15,
+  year_revenue: 500000000,
+  business_tenure_years: 3,
 };
 
-const defaultSurvey: SurveyAnswer = {
-  sektor: "kuliner",
-  targetNominal: 150000000,
-  returnMinimum: 15,
-  risiko: "moderate",
-  tenor: "medium",
-  preferensiDigital: 7,
-};
-
-const sectorOptions = [
-  { value: "kuliner", label: "sectorCulinary" },
-  { value: "fashion", label: "Fashion" },
-  { value: "teknologi", label: "sectorTechnology" },
-  { value: "pendidikan", label: "sectorEducation" },
-  { value: "pertanian", label: "sectorAgriculture" },
-  { value: "jasa", label: "sectorServices" },
-  { value: "lainnya", label: "sectorOther" },
-];
-
-const mockUmkm: Entity[] = [
+const surveyFields: Array<{
+  key: keyof InvestorPreferenceForm;
+  label: string;
+  help: string;
+  min: number;
+  max: number;
+  step: number;
+  unit?: string;
+}> = [
   {
-    id: "mock-1",
-    bisnis: { nama_bisnis: "Kopi Nusa Rasa", kelas: { nama_kelas: "Growth" } },
-    tipe_usaha: "kuliner",
-    target_pendanaan: 180000000,
-    per_anual_return: 17,
-    digital_adoption_score: 8,
-    risk_level: "moderate",
+    key: "kepuasan_pelanggan",
+    label: "surveyCustomerSatisfaction",
+    help: "surveyCustomerSatisfactionHelp",
+    min: 1,
+    max: 5,
+    step: 0.1,
+    unit: "/5",
   },
   {
-    id: "mock-2",
-    bisnis: { nama_bisnis: "Batik Lestari", kelas: { nama_kelas: "Struggling" } },
-    tipe_usaha: "fashion",
-    target_pendanaan: 120000000,
-    per_anual_return: 15,
-    digital_adoption_score: 5,
-    risk_level: "high",
+    key: "digital_adoption_score",
+    label: "surveyDigitalScore",
+    help: "surveyDigitalScoreHelp",
+    min: 1,
+    max: 10,
+    step: 1,
+    unit: "/10",
   },
   {
-    id: "mock-3",
-    bisnis: { nama_bisnis: "Tani Segar Lokal", kelas: { nama_kelas: "Elite" } },
-    tipe_usaha: "pertanian",
-    target_pendanaan: 260000000,
-    per_anual_return: 19,
-    digital_adoption_score: 7,
-    risk_level: "low",
-  },
-];
-
-const riskWeight: Record<SurveyAnswer["risiko"], Record<string, number>> = {
-  low: { low: 28, moderate: 16, high: 4 },
-  moderate: { low: 18, moderate: 28, high: 14 },
-  high: { low: 8, moderate: 18, high: 28 },
-};
-
-const riskValue = (item: Entity) =>
-  textValue(readPath(item, ["risk_level", "matched_class", "bisnis.kelas.nama_kelas"]), "moderate").toLowerCase();
-
-const sectorValue = (item: Entity) =>
-  textValue(readPath(item, ["tipe_usaha", "bisnis.tipe_usaha", "sektor"]), "").toLowerCase();
-
-const scoreItem = (item: Entity, answer: SurveyAnswer, t: (key: string, params?: Record<string, string | number>) => string): MatchResult => {
-  const sectorScore =
-    answer.sektor === "lainnya" || sectorValue(item).includes(answer.sektor) ? 24 : 8;
-  const nominal = Number(item.target_pendanaan || readPath(item, ["bisnis.target_pendanaan"], "0"));
-  const nominalDistance = Math.abs(nominal - answer.targetNominal) / Math.max(answer.targetNominal, 1);
-  const nominalScore = Math.max(4, 22 - Math.round(nominalDistance * 16));
-  const returnScore = Number(item.per_anual_return || 0) >= answer.returnMinimum ? 18 : 8;
-  const riskScore = riskWeight[answer.risiko][riskValue(item)] ?? 12;
-  const digitalScore =
-    Math.abs(Number(item.digital_adoption_score || 6) - answer.preferensiDigital) <= 2 ? 8 : 3;
-  const total = Math.min(100, sectorScore + nominalScore + returnScore + riskScore + digitalScore);
-
-  return {
-    ...item,
-    match_score: total,
-    risk_level: riskValue(item),
-    match_reason: t("surveyMatchReason", {
-      sector: textValue(sectorValue(item), t("business")),
-      target: currency(nominal),
-      return: percent(item.per_anual_return),
-    }),
-  };
-};
-
-const matchColumns = [
-  {
-    label: "UMKM",
-    render: (item: Entity) => (
-      <div>
-        <p className="font-black">
-          {textValue(readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "nama"]))}
-        </p>
-        <p className="mt-1 text-sm text-neutral/55">
-          {textValue(readPath(item, ["bisnis.kelas.nama_kelas", "risk_level"]))}
-        </p>
-      </div>
-    ),
-  },
-  { label: "Target", render: (item: Entity) => currency(item.target_pendanaan) },
-  { label: "Return", render: (item: Entity) => percent(item.per_anual_return) },
-  {
-    label: "Skor",
-    render: (item: Entity) => (
-      <span className="badge badge-secondary badge-lg text-white">{percent(item.match_score)}</span>
-    ),
+    key: "net_profit_margin",
+    label: "surveyNetMargin",
+    help: "surveyNetMarginHelp",
+    min: -35,
+    max: 100,
+    step: 0.1,
+    unit: "%",
   },
   {
-    label: "Alasan",
-    render: (item: Entity) => <span className="text-sm text-neutral/60">{textValue(item.match_reason)}</span>,
+    key: "year_revenue",
+    label: "surveyAnnualRevenue",
+    help: "surveyAnnualRevenueHelp",
+    min: 18000000,
+    max: 50000000000,
+    step: 1000000,
+  },
+  {
+    key: "business_tenure_years",
+    label: "surveyBusinessTenure",
+    help: "surveyBusinessTenureHelp",
+    min: 0,
+    max: 50,
+    step: 0.5,
+    unit: "yearUnit",
   },
 ];
 
-const matchConfig = (items: MatchResult[]) => ({
-  key: "survey-matches",
-  listPath: "/mock-investor-survey",
-  fallback: items,
-});
+const apiErrorMessage = (error: unknown, fallback: string) => {
+  if (axios.isAxiosError(error) && error.response?.data?.message) {
+    return String(error.response.data.message);
+  }
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
+};
+
+const normalizeRecommendations = (value: unknown): Entity[] => {
+  if (Array.isArray(value)) return value as Entity[];
+  if (value && typeof value === "object") {
+    const objectValue = value as Record<string, unknown>;
+    if (Array.isArray(objectValue.rekomendasi)) return objectValue.rekomendasi as Entity[];
+    if (Array.isArray(objectValue.results)) return objectValue.results as Entity[];
+    if (Array.isArray(objectValue.items)) return objectValue.items as Entity[];
+  }
+  return [];
+};
+
+const businessName = (item: Entity) =>
+  textValue(readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "nama", "bisnis_id"]));
+
+const businessClass = (item: Entity) =>
+  textValue(readPath(item, ["bisnis.kelas.nama_kelas", "matched_class", "risk_level"]));
+
+const matchScore = (item: Entity) => Number(readPath(item, ["skor_kecocokan", "match_score"], "0"));
 
 export function InvestorSurveyPage() {
   const { t } = useLanguage();
-  const [form, setForm] = useState<SurveyAnswer>(defaultSurvey);
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState<InvestorPreferenceForm>(defaultSurvey);
+  const [isDirty, setIsDirty] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const opportunitiesQuery = useQuery({
-    queryKey: ["survey-opportunities"],
-    queryFn: () => resourceApi.list(publishedSubmissionConfig),
+  const [message, setMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const preferenceQuery = useQuery({
+    queryKey: ["investor-preferences"],
+    queryFn: async () => {
+      try {
+        const response = await apiClient.get("/user/investor/preferences");
+        return unwrap<Record<string, unknown>>(response.data);
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) return null;
+        throw error;
+      }
+    },
     retry: false,
   });
 
-  const sourceItems = opportunitiesQuery.data && opportunitiesQuery.data.length > 0
-    ? opportunitiesQuery.data
-    : mockUmkm;
+  const recommendationsQuery = useQuery({
+    queryKey: ["ai-recommendations", "survey"],
+    queryFn: async () => {
+      const response = await apiClient.get("/user/investor/recommendations");
+      return unwrap<unknown>(response.data);
+    },
+    retry: false,
+  });
 
-  const matches = useMemo(
-    () =>
-      sourceItems
-        .map((item) => scoreItem(item, form, t))
-        .sort((a, b) => b.match_score - a.match_score),
-    [form, sourceItems, t],
+  const recommendations = useMemo(
+    () => normalizeRecommendations(recommendationsQuery.data),
+    [recommendationsQuery.data],
   );
 
-  const update = <K extends keyof SurveyAnswer>(key: K, value: SurveyAnswer[K]) => {
-    setForm((current) => ({ ...current, [key]: value }));
+  const savedPreference = useMemo<InvestorPreferenceForm>(() => {
+    if (!preferenceQuery.data) return defaultSurvey;
+    return {
+      kepuasan_pelanggan: Number(preferenceQuery.data.kepuasan_pelanggan ?? defaultSurvey.kepuasan_pelanggan),
+      digital_adoption_score: Number(preferenceQuery.data.digital_adoption_score ?? defaultSurvey.digital_adoption_score),
+      net_profit_margin: Number(preferenceQuery.data.net_profit_margin ?? defaultSurvey.net_profit_margin),
+      year_revenue: Number(preferenceQuery.data.year_revenue ?? defaultSurvey.year_revenue),
+      business_tenure_years: Number(preferenceQuery.data.business_tenure_years ?? defaultSurvey.business_tenure_years),
+    };
+  }, [preferenceQuery.data]);
+  const activeForm = isDirty ? form : savedPreference;
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post("/user/investor/preferences", activeForm);
+      return unwrap<unknown>(response.data);
+    },
+    onSuccess: async () => {
+      setSubmitted(true);
+      setIsDirty(false);
+      setMessage(t("surveySubmitSuccess"));
+      setErrorMessage("");
+      await queryClient.invalidateQueries({ queryKey: ["investor-preferences"] });
+      await queryClient.invalidateQueries({ queryKey: ["ai-recommendations"] });
+    },
+    onError: (error) => {
+      setSubmitted(false);
+      setMessage("");
+      setErrorMessage(apiErrorMessage(error, t("surveySubmitError")));
+    },
+  });
+
+  const refreshMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post("/user/investor/preferences/refresh");
+      return unwrap<unknown>(response.data);
+    },
+    onSuccess: async () => {
+      setMessage(t("recommendationsRefreshSuccess"));
+      setErrorMessage("");
+      await queryClient.invalidateQueries({ queryKey: ["ai-recommendations"] });
+    },
+    onError: (error) => {
+      setMessage("");
+      setErrorMessage(apiErrorMessage(error, t("recommendationsRefreshError")));
+    },
+  });
+
+  const update = (key: keyof InvestorPreferenceForm, value: string) => {
+    setIsDirty(true);
+    setForm({ ...activeForm, [key]: Number(value) });
   };
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSubmitted(true);
+    saveMutation.mutate();
   };
 
   return (
@@ -187,155 +223,153 @@ export function InvestorSurveyPage() {
             </p>
           </div>
           <div className="rounded-md border border-info/20 bg-info/10 px-4 py-3 text-sm font-semibold text-info">
-            {t("investorSurveyMockMode")}
+            {t("investorSurveyBackendMode")}
           </div>
         </div>
       </div>
 
-      <form className="rounded-md border border-base-300 bg-white p-6 shadow-sm" onSubmit={submit}>
-        <div className="grid gap-5 lg:grid-cols-2">
-          <label className="form-control">
-            <span className="label-text mb-2 font-semibold">{t("favoriteSector")}</span>
-            <select
-              className="select select-bordered rounded-md"
-              value={form.sektor}
-              onChange={(event) => update("sektor", event.target.value)}
+      <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+        <form className="rounded-md border border-base-300 bg-white p-6 shadow-sm" onSubmit={submit}>
+          <div className="grid gap-5">
+            {surveyFields.map((field) => (
+              <label className="form-control" key={field.key}>
+                <span className="label-text mb-2 font-semibold">{t(field.label)}</span>
+                <div className="grid gap-3 sm:grid-cols-[1fr_8rem] sm:items-center">
+                  <input
+                    className="range range-primary"
+                    type="range"
+                    min={field.min}
+                    max={field.max}
+                    step={field.step}
+                    value={activeForm[field.key]}
+                    onChange={(event) => update(field.key, event.target.value)}
+                  />
+                  <div className="input input-bordered flex items-center gap-1 rounded-md bg-base-100">
+                    <input
+                      className="w-full"
+                      type="number"
+                      min={field.min}
+                      max={field.max}
+                      step={field.step}
+                      value={activeForm[field.key]}
+                      onChange={(event) => update(field.key, event.target.value)}
+                      required
+                    />
+                    {field.unit ? (
+                      <span className="text-xs font-bold text-neutral/45">
+                        {field.unit === "yearUnit" ? t("yearUnit") : field.unit}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+                <span className="mt-2 text-xs font-semibold leading-5 text-neutral/45">{t(field.help)}</span>
+              </label>
+            ))}
+          </div>
+
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <button className="btn btn-primary rounded-md text-white" disabled={saveMutation.isPending}>
+              {saveMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <BrainCircuit size={18} />}
+              {t("saveAndViewMatch")}
+            </button>
+            <button
+              className="btn btn-outline rounded-md"
+              type="button"
+              onClick={() => {
+                setForm(defaultSurvey);
+                setIsDirty(true);
+                setSubmitted(false);
+              }}
             >
-              {sectorOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {t(option.label)}
-                </option>
-              ))}
-            </select>
-          </label>
+              <RefreshCw size={18} />
+              {t("reset")}
+            </button>
+          </div>
 
-          <label className="form-control">
-            <span className="label-text mb-2 font-semibold">{t("idealInvestmentNominal")}</span>
-            <input
-              className="input input-bordered rounded-md"
-              type="number"
-              min={10000000}
-              step={5000000}
-              value={form.targetNominal}
-              onChange={(event) => update("targetNominal", Number(event.target.value))}
-            />
-          </label>
-
-          <label className="form-control">
-            <span className="label-text mb-2 font-semibold">{t("minimumAnnualReturn")}</span>
-            <input
-              className="range range-primary"
-              type="range"
-              min={8}
-              max={30}
-              value={form.returnMinimum}
-              onChange={(event) => update("returnMinimum", Number(event.target.value))}
-            />
-            <span className="mt-2 text-sm font-bold text-primary">{form.returnMinimum}%</span>
-          </label>
-
-          <label className="form-control">
-            <span className="label-text mb-2 font-semibold">{t("riskTolerance")}</span>
-            <select
-              className="select select-bordered rounded-md"
-              value={form.risiko}
-              onChange={(event) => update("risiko", event.target.value as SurveyAnswer["risiko"])}
-            >
-              <option value="low">{t("conservative")}</option>
-              <option value="moderate">{t("balanced")}</option>
-              <option value="high">{t("aggressive")}</option>
-            </select>
-          </label>
-
-          <label className="form-control">
-            <span className="label-text mb-2 font-semibold">{t("investmentHorizon")}</span>
-            <select
-              className="select select-bordered rounded-md"
-              value={form.tenor}
-              onChange={(event) => update("tenor", event.target.value as SurveyAnswer["tenor"])}
-            >
-              <option value="short">{t("lessThanOneYear")}</option>
-              <option value="medium">{t("oneToThreeYears")}</option>
-              <option value="long">{t("moreThanThreeYears")}</option>
-            </select>
-          </label>
-
-          <label className="form-control">
-            <span className="label-text mb-2 font-semibold">{t("digitalAdoptionPreference")}</span>
-            <input
-              className="range range-secondary"
-              type="range"
-              min={1}
-              max={10}
-              value={form.preferensiDigital}
-              onChange={(event) => update("preferensiDigital", Number(event.target.value))}
-            />
-            <span className="mt-2 text-sm font-bold text-secondary">{form.preferensiDigital}/10</span>
-          </label>
-        </div>
-
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <button className="btn btn-primary rounded-md text-white">
-            <BrainCircuit size={18} />
-            {t("viewMatch")}
-          </button>
-          <button
-            className="btn btn-outline rounded-md"
-            type="button"
-            onClick={() => {
-              setForm(defaultSurvey);
-              setSubmitted(false);
-            }}
-          >
-            <RefreshCw size={18} />
-            {t("reset")}
-          </button>
-          {submitted ? (
-            <span className="flex items-center gap-2 text-sm font-semibold text-success">
-              <CheckCircle2 size={18} />
-              {t("surveySavedTemporary")}
-            </span>
+          {message ? (
+            <div className="mt-5 flex gap-3 rounded-md border border-success/20 bg-success/10 p-4 text-success">
+              <CheckCircle2 className="mt-0.5 shrink-0" size={20} />
+              <p className="text-sm font-semibold">{message}</p>
+            </div>
           ) : null}
+          {errorMessage ? (
+            <div className="mt-5 rounded-md border border-error/20 bg-error/10 p-4 text-sm font-semibold text-error">
+              {errorMessage}
+            </div>
+          ) : null}
+          {submitted ? (
+            <p className="mt-4 text-sm font-semibold text-neutral/55">{t("surveySyncedBackend")}</p>
+          ) : null}
+        </form>
+
+        <div className="rounded-md border border-base-300 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h3 className="text-xl font-black">{t("surveyMatchResultsTitle")}</h3>
+              <p className="mt-2 text-sm leading-6 text-neutral/60">{t("surveyMatchResultsBody")}</p>
+            </div>
+            <button
+              className="btn btn-secondary rounded-md text-white"
+              onClick={() => refreshMutation.mutate()}
+              disabled={refreshMutation.isPending}
+            >
+              {refreshMutation.isPending ? <Loader2 className="animate-spin" size={17} /> : <RefreshCw size={17} />}
+              {t("refresh")}
+            </button>
+          </div>
+
+          {recommendationsQuery.isLoading ? (
+            <div className="mt-5 rounded-md border border-base-300 bg-base-200 p-4 text-sm font-semibold text-neutral/55">
+              {t("loadingRecommendations")}
+            </div>
+          ) : null}
+          {recommendationsQuery.isError ? (
+            <div className="mt-5 rounded-md border border-warning/20 bg-warning/10 p-4 text-sm font-semibold text-warning">
+              {apiErrorMessage(recommendationsQuery.error, t("recommendationsUnavailable"))}
+            </div>
+          ) : null}
+
+          <div className="mt-5 grid gap-4">
+            {recommendations.slice(0, 3).map((item, index) => (
+              <article key={String(item.id)} className="rounded-md border border-base-300 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wide text-neutral/40">
+                      {t("match")} #{index + 1}
+                    </p>
+                    <h4 className="mt-2 text-lg font-black">{businessName(item)}</h4>
+                    <p className="mt-1 text-sm text-neutral/55">{businessClass(item)}</p>
+                  </div>
+                  <span className="badge badge-secondary badge-lg text-white">
+                    {percent(matchScore(item))}
+                  </span>
+                </div>
+                <p className="mt-4 text-sm leading-6 text-neutral/60">
+                  {textValue(readPath(item, ["bisnis.deskripsi", "reason", "match_reason"], ""), t("recommendationDefaultReason"))}
+                </p>
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <span className="text-xs font-semibold text-neutral/45">
+                    {t("matchedAt")} {dateShort(readPath(item, ["matched_at"], ""))}
+                  </span>
+                  <Sparkles className="text-secondary" size={18} />
+                </div>
+              </article>
+            ))}
+          </div>
+
+          {!recommendationsQuery.isLoading && !recommendationsQuery.isError && recommendations.length === 0 ? (
+            <div className="mt-5 rounded-md border border-base-300 bg-base-200 p-5 text-center">
+              <h4 className="font-black">{t("noRecommendations")}</h4>
+              <p className="mt-2 text-sm leading-6 text-neutral/55">{t("surveyBackendEmpty")}</p>
+            </div>
+          ) : null}
+
+          <Link to="/dashboard/investor/rekomendasi" className="btn btn-outline mt-5 w-full rounded-md">
+            {t("openRecommendationPage")}
+            <ArrowRight size={17} />
+          </Link>
         </div>
-      </form>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        {matches.slice(0, 3).map((item, index) => (
-          <article key={item.id} className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-black uppercase tracking-wide text-neutral/40">{t("match")} #{index + 1}</p>
-                <h3 className="mt-2 text-xl font-black">
-                  {textValue(readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "nama"]))}
-                </h3>
-              </div>
-              <Sparkles className="text-secondary" size={22} />
-            </div>
-            <div className="mt-5 flex items-end justify-between gap-4">
-              <div>
-                <p className="text-sm text-neutral/55">{t("matchScore")}</p>
-                <p className="text-3xl font-black text-secondary">{percent(item.match_score)}</p>
-              </div>
-              <span className="badge badge-outline">{textValue(item.risk_level)}</span>
-            </div>
-            <p className="mt-4 text-sm leading-6 text-neutral/60">{item.match_reason}</p>
-          </article>
-        ))}
       </div>
-
-      {submitted ? (
-        <ResourcePage
-          title="surveyMatchResultsTitle"
-          description="surveyMatchResultsBody"
-          config={matchConfig(matches)}
-          columns={matchColumns}
-          readonly
-          staticData={matches}
-          emptyTitle="noMatchResults"
-          emptyDescription="fillSurveyFirst"
-          searchableFields={["match_reason", "risk_level", (item) => readPath(item, ["bisnis.nama_bisnis", "bisnis.nama"])]}
-        />
-      ) : null}
     </section>
   );
 }

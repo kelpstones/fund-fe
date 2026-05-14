@@ -11,6 +11,8 @@ const links = [
   { to: "/tentang", labelKey: "navAbout" },
   { to: "/layanan", labelKey: "navServices" },
   { to: "/portfolio", labelKey: "navPortfolio" },
+  { to: "/bantuan", labelKey: "navHelp" },
+  { to: "/keamanan", labelKey: "navTrust" },
   { to: "/kontak", labelKey: "navContact" },
 ] as const;
 
@@ -37,14 +39,14 @@ export function PublicLayout() {
       <header className="sticky top-0 z-40 border-b border-base-300/80 bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Logo />
-          <nav className="hidden items-center gap-4 text-sm font-semibold lg:flex">
+          <nav className="hidden items-center gap-3 text-sm font-semibold lg:flex">
             {links.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}
                 className={({ isActive }) =>
                   [
-                    "inline-flex h-10 w-20 items-center justify-center text-center transition",
+                    "inline-flex h-10 items-center justify-center px-2 text-center transition",
                     isActive ? "text-primary" : "text-neutral hover:text-primary",
                   ].join(" ")
                 }

@@ -538,26 +538,6 @@ export function BusinessProfilePage() {
     },
   });
 
-  const classMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiClient.put(`/businesses/${activeBisnisId}/profile/class`, {
-        class: activeBusinessProfile.class,
-      });
-      return unwrap<unknown>(response.data);
-    },
-    onSuccess: async () => {
-      setForm(activeBusinessProfile);
-      setIsDirty(false);
-      setProfileMessage(t("businessClassUpdateSuccess"));
-      setProfileError("");
-      await queryClient.invalidateQueries({ queryKey: ["business-profile", activeBisnisId] });
-    },
-    onError: (err) => {
-      setProfileMessage("");
-      setProfileError(apiErrorMessage(err, t("businessClassUpdateError")));
-    },
-  });
-
   const profileData = asRecord(profileQuery.data);
   const savedBusinessProfile =
     profileData.net_profit_margin === undefined
@@ -681,14 +661,14 @@ export function BusinessProfilePage() {
                 <select
                   className="select select-bordered rounded-md"
                   value={activeBusinessProfile.class}
-                  onChange={(event) => updateNumber("class", event.target.value)}
-                  disabled={!isUmkm}
+                  disabled
                 >
                   <option value={0}>Critical</option>
                   <option value={1}>Struggling</option>
                   <option value={2}>Growth</option>
                   <option value={3}>Elite</option>
                 </select>
+                <span className="mt-2 text-xs font-semibold leading-5 text-neutral/45">{t("classPredictedByModel")}</span>
               </label>
             </div>
             {isUmkm ? (
@@ -700,13 +680,6 @@ export function BusinessProfilePage() {
                 >
                   {upsertMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                   {t("saveProfile")}
-                </button>
-                <button
-                  className="btn btn-secondary rounded-md text-white"
-                  onClick={() => classMutation.mutate()}
-                  disabled={!activeBisnisId || classMutation.isPending}
-                >
-                  {t("updateClass")}
                 </button>
               </div>
             ) : (

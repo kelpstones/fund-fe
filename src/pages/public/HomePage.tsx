@@ -42,7 +42,12 @@ const steps = [
   },
 ];
 
-const trustBadges = ["homeTrustKominfo", "homeTrustBI", "homeTrustOJK", "homeTrustCommunity"];
+const trustBadges = [
+  "homeTrustKominfo",
+  "homeTrustBI",
+  "homeTrustOJK",
+  "homeTrustCommunity",
+];
 
 const testimonials = [
   {
@@ -76,7 +81,9 @@ function PhoneMockup() {
             <span className="text-xs font-semibold">FundRaise AI</span>
             <Sparkles size={18} />
           </div>
-          <p className="mt-7 text-sm text-white/70">{t("homePhoneAllocation")}</p>
+          <p className="mt-7 text-sm text-white/70">
+            {t("homePhoneAllocation")}
+          </p>
           <p className="mt-1 text-3xl font-black">Rp250jt</p>
           <div className="mt-5 h-2 rounded-full bg-white/20">
             <div className="h-2 w-[66%] rounded-full bg-accent" />
@@ -84,7 +91,9 @@ function PhoneMockup() {
         </div>
         <div className="-mt-4 mx-4 rounded-md bg-white p-4 shadow-soft">
           <h3 className="text-lg font-black">Kopi Nusa Rasa</h3>
-          <p className="mt-1 text-xs text-neutral/55">{t("homePhoneBusinessMeta")}</p>
+          <p className="mt-1 text-xs text-neutral/55">
+            {t("homePhoneBusinessMeta")}
+          </p>
           <div className="mt-4 grid grid-cols-3 gap-2 text-center">
             <div className="rounded-md bg-base-200 p-2">
               <p className="text-[10px] text-neutral/50">{t("metricMatch")}</p>
@@ -101,17 +110,28 @@ function PhoneMockup() {
           </div>
         </div>
         <div className="space-y-3 p-4">
-          {["homePhoneNegotiation", "homePhoneInvoice", "homePhoneProfit"].map((item, index) => (
-            <div key={item} className="flex items-center gap-3 rounded-md border border-base-300 p-3">
-              <div className="grid h-8 w-8 place-items-center rounded-md bg-base-200 text-primary">
-                {index === 0 ? <Handshake size={16} /> : index === 1 ? <CircleDollarSign size={16} /> : <TrendingUp size={16} />}
+          {["homePhoneNegotiation", "homePhoneInvoice", "homePhoneProfit"].map(
+            (item, index) => (
+              <div
+                key={item}
+                className="flex items-center gap-3 rounded-md border border-base-300 p-3"
+              >
+                <div className="grid h-8 w-8 place-items-center rounded-md bg-base-200 text-primary">
+                  {index === 0 ? (
+                    <Handshake size={16} />
+                  ) : index === 1 ? (
+                    <CircleDollarSign size={16} />
+                  ) : (
+                    <TrendingUp size={16} />
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-bold">{t(item)}</p>
+                  <p className="text-xs text-neutral/50">{t("updatedToday")}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-bold">{t(item)}</p>
-                <p className="text-xs text-neutral/50">{t("updatedToday")}</p>
-              </div>
-            </div>
-          ))}
+            ),
+          )}
         </div>
       </div>
     </div>
@@ -149,35 +169,39 @@ export function HomePage() {
               {t("homeHeroBody")}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link to="/register" className="btn btn-primary h-12 rounded-md px-7 text-white">
+              <Link
+                to="/register"
+                className="btn btn-primary h-12 rounded-md px-7 text-white"
+              >
                 {t("homePrimaryCta")}
                 <ArrowRight size={18} />
               </Link>
-              <a href="#features" className="btn btn-outline btn-secondary h-12 rounded-md px-7">
+              <a
+                href="#features"
+                className="btn btn-outline btn-secondary h-12 rounded-md px-7"
+              >
                 <PlayCircle size={18} />
                 {t("homeSecondaryCta")}
               </a>
             </div>
             <div className="mt-10 grid max-w-2xl grid-cols-3 gap-3">
               {proofPoints.map((item) => (
-                <div key={item.label} className="rounded-md border border-base-300 bg-white p-4">
-                  <p className="text-lg font-black text-neutral">{item.value}</p>
-                  <p className="mt-1 text-xs font-semibold leading-5 text-neutral/55">{t(item.label)}</p>
+                <div
+                  key={item.label}
+                  className="rounded-md border border-base-300 bg-white p-4"
+                >
+                  <p className="text-lg font-black text-neutral">
+                    {item.value}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold leading-5 text-neutral/55">
+                    {t(item.label)}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="relative min-h-[620px]">
-            <div className="absolute inset-x-8 top-0 h-[520px] overflow-hidden rounded-md border border-base-300 bg-base-200 shadow-soft">
-              <img
-                src="/images/services.png"
-                alt={t("homeHeroImageAlt")}
-                className="h-full w-full object-cover"
-                loading="eager"
-              />
-              <div className="absolute inset-0 bg-white/45" />
-            </div>
             <div className="hero-float absolute left-0 top-16 z-10 rounded-md border-2 border-neutral bg-accent px-4 py-3 text-sm font-black shadow-soft">
               {t("homeFloatCollected")}
             </div>
@@ -207,18 +231,27 @@ export function HomePage() {
       <section className="border-y border-base-300 bg-white">
         <div className="mx-auto grid max-w-7xl gap-4 px-4 py-8 sm:px-6 md:grid-cols-[0.7fr_1.3fr] md:items-center lg:px-8">
           <div>
-            <p className="text-xs font-black uppercase tracking-wide text-neutral/40">{t("homeTrustEyebrow")}</p>
-            <p className="mt-2 text-sm leading-6 text-neutral/60">{t("homeTrustBody")}</p>
+            <p className="text-xs font-black uppercase tracking-wide text-neutral/40">
+              {t("homeTrustEyebrow")}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-neutral/60">
+              {t("homeTrustBody")}
+            </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {trustBadges.map((item) => (
-              <div key={item} className="flex items-center gap-3 rounded-md border border-base-300 bg-base-200 p-4">
+              <div
+                key={item}
+                className="flex items-center gap-3 rounded-md border border-base-300 bg-base-200 p-4"
+              >
                 <div className="grid h-10 w-10 place-items-center rounded-md bg-white text-primary">
                   <Landmark size={19} />
                 </div>
                 <div>
                   <p className="text-sm font-black">{t(item)}</p>
-                  <p className="text-xs font-semibold text-neutral/45">{t("homeTrustPlaceholder")}</p>
+                  <p className="text-xs font-semibold text-neutral/45">
+                    {t("homeTrustPlaceholder")}
+                  </p>
                 </div>
               </div>
             ))}
@@ -231,12 +264,17 @@ export function HomePage() {
           {steps.map((step) => {
             const Icon = step.icon;
             return (
-              <div key={step.title} className="rounded-md bg-white p-6 shadow-sm">
+              <div
+                key={step.title}
+                className="rounded-md bg-white p-6 shadow-sm"
+              >
                 <div className="grid h-11 w-11 place-items-center rounded-md bg-primary/10 text-primary">
                   <Icon size={20} />
                 </div>
                 <h2 className="mt-5 text-lg font-black">{t(step.title)}</h2>
-                <p className="mt-3 text-sm leading-6 text-neutral/60">{t(step.body)}</p>
+                <p className="mt-3 text-sm leading-6 text-neutral/60">
+                  {t(step.body)}
+                </p>
               </div>
             );
           })}
@@ -246,10 +284,10 @@ export function HomePage() {
       <section className="bg-white">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
           <div>
-            <h2 className="text-4xl font-black tracking-normal">{t("homeWorkflowTitle")}</h2>
-            <p className="mt-5 text-neutral/65">
-              {t("homeWorkflowBody")}
-            </p>
+            <h2 className="text-4xl font-black tracking-normal">
+              {t("homeWorkflowTitle")}
+            </h2>
+            <p className="mt-5 text-neutral/65">{t("homeWorkflowBody")}</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             {[
@@ -258,10 +296,15 @@ export function HomePage() {
               ["Admin", "homeWorkflowAdmin"],
               ["AI Match", "homeWorkflowAi"],
             ].map(([title, body]) => (
-              <div key={title} className="rounded-md border border-base-300 p-5">
+              <div
+                key={title}
+                className="rounded-md border border-base-300 p-5"
+              >
                 <ShieldCheck className="text-primary" size={22} />
                 <h3 className="mt-4 font-black">{t(title)}</h3>
-                <p className="mt-2 text-sm leading-6 text-neutral/60">{t(body)}</p>
+                <p className="mt-2 text-sm leading-6 text-neutral/60">
+                  {t(body)}
+                </p>
               </div>
             ))}
           </div>
@@ -271,9 +314,15 @@ export function HomePage() {
       <section className="border-y border-base-300 bg-base-200">
         <div className="mx-auto grid max-w-7xl gap-8 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
           <div>
-            <p className="text-xs font-black uppercase tracking-wide text-primary">{t("homeDiagramEyebrow")}</p>
-            <h2 className="mt-3 text-4xl font-black tracking-normal">{t("homeDiagramTitle")}</h2>
-            <p className="mt-4 text-sm leading-6 text-neutral/60">{t("homeDiagramBody")}</p>
+            <p className="text-xs font-black uppercase tracking-wide text-primary">
+              {t("homeDiagramEyebrow")}
+            </p>
+            <h2 className="mt-3 text-4xl font-black tracking-normal">
+              {t("homeDiagramTitle")}
+            </h2>
+            <p className="mt-4 text-sm leading-6 text-neutral/60">
+              {t("homeDiagramBody")}
+            </p>
           </div>
           <div className="grid gap-3">
             {[
@@ -284,15 +333,23 @@ export function HomePage() {
             ].map(([number, label, Icon]) => {
               const FlowIcon = Icon as typeof BarChart3;
               return (
-                <div key={String(label)} className="grid gap-3 rounded-md border border-base-300 bg-white p-4 shadow-sm sm:grid-cols-[auto_1fr_auto] sm:items-center">
-                  <span className="text-2xl font-black text-primary">{String(number)}</span>
+                <div
+                  key={String(label)}
+                  className="grid gap-3 rounded-md border border-base-300 bg-white p-4 shadow-sm sm:grid-cols-[auto_1fr_auto] sm:items-center"
+                >
+                  <span className="text-2xl font-black text-primary">
+                    {String(number)}
+                  </span>
                   <div className="flex items-center gap-3">
                     <div className="grid h-10 w-10 place-items-center rounded-md bg-primary/10 text-primary">
                       <FlowIcon size={19} />
                     </div>
                     <p className="font-black">{t(String(label))}</p>
                   </div>
-                  <ArrowRight className="hidden text-neutral/35 sm:block" size={20} />
+                  <ArrowRight
+                    className="hidden text-neutral/35 sm:block"
+                    size={20}
+                  />
                 </div>
               );
             })}
@@ -303,21 +360,32 @@ export function HomePage() {
       <section className="bg-white">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="max-w-3xl">
-            <p className="text-xs font-black uppercase tracking-wide text-primary">{t("homeTestimonialsEyebrow")}</p>
-            <h2 className="mt-3 text-4xl font-black tracking-normal">{t("homeTestimonialsTitle")}</h2>
+            <p className="text-xs font-black uppercase tracking-wide text-primary">
+              {t("homeTestimonialsEyebrow")}
+            </p>
+            <h2 className="mt-3 text-4xl font-black tracking-normal">
+              {t("homeTestimonialsTitle")}
+            </h2>
           </div>
           <div className="mt-8 grid gap-5 md:grid-cols-3">
             {testimonials.map((item) => (
-              <article key={item.name} className="rounded-md border border-base-300 bg-white p-6 shadow-sm">
+              <article
+                key={item.name}
+                className="rounded-md border border-base-300 bg-white p-6 shadow-sm"
+              >
                 <Quote className="text-primary" size={24} />
-                <p className="mt-5 text-sm leading-6 text-neutral/65">{t(item.quote)}</p>
+                <p className="mt-5 text-sm leading-6 text-neutral/65">
+                  {t(item.quote)}
+                </p>
                 <div className="mt-6 flex items-center gap-3">
                   <div className="grid h-11 w-11 place-items-center rounded-md bg-primary text-sm font-black text-white">
                     {item.initials}
                   </div>
                   <div>
                     <p className="font-black">{item.name}</p>
-                    <p className="text-xs font-semibold text-neutral/50">{t(item.role)}</p>
+                    <p className="text-xs font-semibold text-neutral/50">
+                      {t(item.role)}
+                    </p>
                   </div>
                 </div>
               </article>
@@ -330,10 +398,17 @@ export function HomePage() {
         <div className="mx-auto max-w-7xl rounded-md bg-neutral p-8 text-white lg:p-10">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h2 className="text-3xl font-black tracking-normal">{t("homeBottomCtaTitle")}</h2>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65">{t("homeBottomCtaBody")}</p>
+              <h2 className="text-3xl font-black tracking-normal">
+                {t("homeBottomCtaTitle")}
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65">
+                {t("homeBottomCtaBody")}
+              </p>
             </div>
-            <Link to="/register" className="btn btn-primary rounded-md text-white">
+            <Link
+              to="/register"
+              className="btn btn-primary rounded-md text-white"
+            >
               {t("homePrimaryCta")}
               <ArrowRight size={18} />
             </Link>

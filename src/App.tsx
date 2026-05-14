@@ -12,6 +12,8 @@ import { ContactPage } from "./pages/public/ContactPage";
 import { HomePage } from "./pages/public/HomePage";
 import { PortfolioPage } from "./pages/public/PortfolioPage";
 import { ServicesPage } from "./pages/public/ServicesPage";
+import { HelpCenterPage } from "./pages/public/HelpCenterPage";
+import { TrustSafetyPage } from "./pages/public/TrustSafetyPage";
 import { dashboardPathFor, useAuth } from "./lib/auth/AuthProvider";
 import {
   AdminOverviewPage,
@@ -50,6 +52,7 @@ import {
   ProfilePage,
 } from "./pages/dashboard/IntegrationPages";
 import { InvestorSurveyPage } from "./pages/dashboard/InvestorSurveyPage";
+import { DocumentCenterPage } from "./pages/dashboard/DocumentCenterPage";
 
 function RoleRedirect() {
   const { user } = useAuth();
@@ -64,6 +67,9 @@ export default function App() {
         <Route path="/tentang" element={<AboutPage />} />
         <Route path="/layanan" element={<ServicesPage />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
+        <Route path="/bantuan" element={<HelpCenterPage />} />
+        <Route path="/keamanan" element={<TrustSafetyPage />} />
+        <Route path="/trust" element={<TrustSafetyPage />} />
         <Route path="/kontak" element={<ContactPage />} />
       </Route>
 
@@ -82,6 +88,7 @@ export default function App() {
           <Route index element={<UmkmOverviewPage />} />
           <Route path="onboarding" element={<UmkmOnboardingPage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="dokumen" element={<DocumentCenterPage />} />
           <Route path="bisnis" element={<BusinessesPage scope="mine" />} />
           <Route path="bisnis-profile" element={<BusinessProfilePage />} />
           <Route path="pengajuan" element={<SubmissionsPage />} />
@@ -98,6 +105,7 @@ export default function App() {
         <Route path="/dashboard/investor" element={<DashboardLayout />}>
           <Route index element={<InvestorOverviewPage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="dokumen" element={<DocumentCenterPage />} />
           <Route path="preferensi" element={<InvestorPreferencesPage />} />
           <Route path="survey" element={<InvestorSurveyPage />} />
           <Route path="peluang" element={<OpportunitiesPage />} />
