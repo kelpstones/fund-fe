@@ -4,17 +4,18 @@ import gsap from "gsap";
 import {
   ArrowRight,
   BarChart3,
+  BriefcaseBusiness,
   CheckCircle2,
   CircleDollarSign,
   Handshake,
   PlayCircle,
   Quote,
-  ShieldCheck,
+  Store,
   Sparkles,
   Target,
   TrendingUp,
 } from "lucide-react";
-import { compactCurrency } from "../../lib/format";
+import { compactCurrency, percent } from "../../lib/format";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 
 const proofPoints = [
@@ -25,19 +26,55 @@ const proofPoints = [
 
 const steps = [
   {
+    number: "01",
     title: "homeStepProfileTitle",
     body: "homeStepProfileBody",
     icon: BarChart3,
   },
   {
+    number: "02",
     title: "homeStepInvestorTitle",
     body: "homeStepInvestorBody",
     icon: Target,
   },
   {
+    number: "03",
     title: "homeStepDealTitle",
     body: "homeStepDealBody",
     icon: Handshake,
+  },
+];
+
+const featuredOpportunities = [
+  {
+    name: "Kopi Nusa Rasa",
+    sectorKey: "portfolioSectorFoodBeverage",
+    city: "Bandung",
+    raised: 164000000,
+    target: 250000000,
+    score: 92,
+    returnRate: 18,
+    risk: "Moderate",
+  },
+  {
+    name: "Batik Lestari",
+    sectorKey: "portfolioSectorFashion",
+    city: "Solo",
+    raised: 48000000,
+    target: 120000000,
+    score: 81,
+    returnRate: 15,
+    risk: "High",
+  },
+  {
+    name: "TaniHub Lokal",
+    sectorKey: "portfolioSectorAgribusiness",
+    city: "Malang",
+    raised: 310000000,
+    target: 400000000,
+    score: 88,
+    returnRate: 21,
+    risk: "Low",
   },
 ];
 
@@ -76,6 +113,31 @@ const testimonials = [
     image: "/testimonials/nadia-putri.png",
   },
 ];
+
+const roleCards = [
+  {
+    title: "homeRoleUmkmTitle",
+    body: "homeRoleUmkmBody",
+    image: "/images/services.png",
+    points: [
+      "homeRoleUmkmPoint1",
+      "homeRoleUmkmPoint2",
+      "homeRoleUmkmPoint3",
+    ],
+  },
+  {
+    title: "homeRoleInvestorTitle",
+    body: "homeRoleInvestorBody",
+    image: "/images/contact.png",
+    points: [
+      "homeRoleInvestorPoint1",
+      "homeRoleInvestorPoint2",
+      "homeRoleInvestorPoint3",
+    ],
+  },
+] as const;
+
+const riskLabelKey = (risk: string) => `risk${risk}`;
 
 function PhoneMockup() {
   const { t } = useLanguage();
@@ -261,103 +323,190 @@ export function HomePage() {
       </section>
 
       <section id="features" className="border-y border-base-300 bg-base-200">
-        <div className="mx-auto grid max-w-7xl gap-5 px-4 py-10 sm:px-6 md:grid-cols-3 lg:px-8">
-          {steps.map((step) => {
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="max-w-3xl">
+            <h2 className="text-4xl font-black tracking-normal">
+              {t("homeJourneyTitle")}
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-neutral/65">
+              {t("homeJourneyBody")}
+            </p>
+          </div>
+          <div className="mt-8 grid gap-5 md:grid-cols-3">
+          {steps.map((step, index) => {
             const Icon = step.icon;
             return (
               <div
                 key={step.title}
-                className="rounded-md bg-white p-6 shadow-sm"
+                className="relative rounded-md bg-white p-6 shadow-sm"
               >
-                <div className="grid h-11 w-11 place-items-center rounded-md bg-primary/10 text-primary">
-                  <Icon size={20} />
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-2xl font-black text-primary">
+                    {step.number}
+                  </span>
+                  <div className="grid h-11 w-11 place-items-center rounded-md bg-primary/10 text-primary">
+                    <Icon size={20} />
+                  </div>
                 </div>
                 <h2 className="mt-5 text-lg font-black">{t(step.title)}</h2>
                 <p className="mt-3 text-sm leading-6 text-neutral/60">
                   {t(step.body)}
                 </p>
+                {index < steps.length - 1 ? (
+                  <div className="pointer-events-none absolute bottom-[-20px] left-1/2 z-10 flex -translate-x-1/2 flex-col items-center md:bottom-auto md:left-auto md:right-[-24px] md:top-1/2 md:w-12 md:-translate-y-1/2 md:translate-x-0">
+                    <div className="h-6 w-px bg-primary/30 md:h-px md:w-8" />
+                    <ArrowRight
+                      size={16}
+                      className="rotate-90 text-primary/60 md:rotate-0"
+                    />
+                  </div>
+                ) : null}
               </div>
             );
           })}
-        </div>
-      </section>
-
-      <section className="bg-white">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
-          <div>
-            <h2 className="text-4xl font-black tracking-normal">
-              {t("homeWorkflowTitle")}
-            </h2>
-            <p className="mt-5 text-neutral/65">{t("homeWorkflowBody")}</p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {[
-              ["roleUmkm", "homeWorkflowUmkm"],
-              ["roleInvestor", "homeWorkflowInvestor"],
-              ["Admin", "homeWorkflowAdmin"],
-              ["AI Match", "homeWorkflowAi"],
-            ].map(([title, body]) => (
-              <div
-                key={title}
-                className="rounded-md border border-base-300 p-5"
-              >
-                <ShieldCheck className="text-primary" size={22} />
-                <h3 className="mt-4 font-black">{t(title)}</h3>
-                <p className="mt-2 text-sm leading-6 text-neutral/60">
-                  {t(body)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="border-y border-base-300 bg-base-200">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
-          <div>
-            <h2 className="mt-3 text-4xl font-black tracking-normal">
-              {t("homeDiagramTitle")}
-            </h2>
-            <p className="mt-4 text-sm leading-6 text-neutral/60">
-              {t("homeDiagramBody")}
-            </p>
-          </div>
-          <div className="grid gap-3">
-            {[
-              ["01", "homeDiagramProfile", BarChart3],
-              ["02", "homeDiagramMatch", Target],
-              ["03", "homeDiagramDeal", Handshake],
-              ["04", "homeDiagramProfit", TrendingUp],
-            ].map(([number, label, Icon]) => {
-              const FlowIcon = Icon as typeof BarChart3;
-              return (
-                <div
-                  key={String(label)}
-                  className="grid gap-3 rounded-md border border-base-300 bg-white p-4 shadow-sm sm:grid-cols-[auto_1fr_auto] sm:items-center"
-                >
-                  <span className="text-2xl font-black text-primary">
-                    {String(number)}
-                  </span>
-                  <div className="flex items-center gap-3">
-                    <div className="grid h-10 w-10 place-items-center rounded-md bg-primary/10 text-primary">
-                      <FlowIcon size={19} />
-                    </div>
-                    <p className="font-black">{t(String(label))}</p>
-                  </div>
-                  <ArrowRight
-                    className="hidden text-neutral/35 sm:block"
-                    size={20}
-                  />
-                </div>
-              );
-            })}
           </div>
         </div>
       </section>
 
       <section className="bg-white">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <h2 className="text-4xl font-black tracking-normal">
+                {t("homeOpportunitiesTitle")}
+              </h2>
+              <p className="mt-4 text-sm leading-7 text-neutral/65">
+                {t("homeOpportunitiesBody")}
+              </p>
+            </div>
+            <Link
+              to="/portfolio"
+              className="btn btn-outline btn-secondary rounded-md"
+            >
+              {t("homeOpportunitiesCta")}
+              <ArrowRight size={17} />
+            </Link>
+          </div>
+          <div className="mt-8 grid gap-5 lg:grid-cols-3">
+            {featuredOpportunities.map((item) => {
+              const progress = Math.min(
+                100,
+                Math.round((item.raised / item.target) * 100),
+              );
+              return (
+                <article
+                  key={item.name}
+                  className="rounded-md border border-base-300 bg-white p-5 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wide text-neutral/40">
+                        {t(item.sectorKey)}
+                      </p>
+                      <h3 className="mt-2 text-xl font-black">{item.name}</h3>
+                      <p className="mt-1 text-sm text-neutral/55">{item.city}</p>
+                    </div>
+                    <div className="grid h-10 w-10 place-items-center rounded-md bg-primary/10 text-primary">
+                      <Store size={19} />
+                    </div>
+                  </div>
+                  <div className="mt-5 grid grid-cols-3 gap-2 text-sm">
+                    <div className="rounded-md bg-base-200 p-3">
+                      <p className="text-neutral/50">{t("metricReturn")}</p>
+                      <p className="font-black">{percent(item.returnRate)}</p>
+                    </div>
+                    <div className="rounded-md bg-base-200 p-3">
+                      <p className="text-neutral/50">{t("metricRisk")}</p>
+                      <p className="font-black">{t(riskLabelKey(item.risk))}</p>
+                    </div>
+                    <div className="rounded-md bg-base-200 p-3">
+                      <p className="text-neutral/50">{t("metricMatch")}</p>
+                      <p className="font-black text-secondary">
+                        {percent(item.score)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-5">
+                    <div className="mb-2 flex justify-between text-sm font-semibold text-neutral/60">
+                      <span>{compactCurrency(item.raised)}</span>
+                      <span>{progress}%</span>
+                    </div>
+                    <div className="h-3 rounded-full bg-base-200">
+                      <div
+                        className="h-3 rounded-full bg-primary"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-base-300 bg-base-200">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="max-w-3xl">
+            <h2 className="text-4xl font-black tracking-normal">
+              {t("homeRoleSectionTitle")}
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-neutral/65">
+              {t("homeRoleSectionBody")}
+            </p>
+          </div>
+          <div className="mt-8 grid gap-5 lg:grid-cols-2">
+            {roleCards.map((roleCard) => (
+              <article
+                key={roleCard.title}
+                className="overflow-hidden rounded-md border border-base-300 bg-white shadow-sm"
+              >
+                <div className="aspect-[16/8] overflow-hidden bg-base-200">
+                  <img
+                    src={roleCard.image}
+                    alt={t(roleCard.title)}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="grid h-10 w-10 place-items-center rounded-md bg-primary/10 text-primary">
+                      {roleCard.title === "homeRoleUmkmTitle" ? (
+                        <BriefcaseBusiness size={18} />
+                      ) : (
+                        <CircleDollarSign size={18} />
+                      )}
+                    </div>
+                    <h3 className="text-xl font-black">{t(roleCard.title)}</h3>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-neutral/60">
+                    {t(roleCard.body)}
+                  </p>
+                  <ul className="mt-4 grid gap-2">
+                    {roleCard.points.map((point) => (
+                      <li
+                        key={point}
+                        className="flex items-start gap-2 text-sm text-neutral/70"
+                      >
+                        <CheckCircle2
+                          size={16}
+                          className="mt-0.5 shrink-0 text-success"
+                        />
+                        <span>{t(point)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div>
             <h2 className="mt-3 text-4xl font-black tracking-normal">
               {t("homeTestimonialsTitle")}
             </h2>

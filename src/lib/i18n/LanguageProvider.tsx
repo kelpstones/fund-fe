@@ -1462,6 +1462,37 @@ Object.assign(translations.id, {
   homeProgramCodingCamp: "Program capstone",
   homeProgramDbs: "Inisiator program",
   homeProgramDicoding: "Mitra edukasi",
+  homeJourneyTitle: "Dari profil bisnis sampai investasi jalan",
+  homeJourneyBody:
+    "Tiga langkah sederhana yang menghubungkan UMKM dan investor melalui data, AI matching, dan dashboard terintegrasi.",
+  homeStepProfileTitle: "Daftarkan bisnis & isi profil",
+  homeStepProfileBody:
+    "Data sektor, performa tahunan, kebutuhan modal, dan indikator risiko dirangkum jadi sinyal pendanaan yang terbaca sistem.",
+  homeStepInvestorTitle: "Sistem AI baca & cocokkan",
+  homeStepInvestorBody:
+    "Preferensi investor dicocokkan dengan profil UMKM secara otomatis menghasilkan skor kecocokan yang transparan.",
+  homeStepDealTitle: "Negosiasi, invoice, investasi",
+  homeStepDealBody:
+    "Penawaran, pembayaran, pencatatan investasi, dan distribusi profit dipantau dalam satu workspace multi-role.",
+  homeOpportunitiesTitle: "Peluang yang tersedia",
+  homeOpportunitiesBody:
+    "Contoh peluang UMKM yang bisa investor lihat, bandingkan, lalu lanjutkan ke proses negosiasi.",
+  homeOpportunitiesCta: "Lihat Semua Peluang",
+  homeRoleSectionTitle: "Dirancang untuk UMKM dan investor",
+  homeRoleSectionBody:
+    "Setiap role mendapatkan workspace yang fokus, tetapi tetap tersambung dalam alur pendanaan yang sama.",
+  homeRoleUmkmTitle: "Untuk UMKM",
+  homeRoleUmkmBody:
+    "UMKM mengelola kesiapan bisnis dari profil sampai negosiasi dalam alur yang jelas.",
+  homeRoleUmkmPoint1: "Lengkapi profil bisnis dan data operasional.",
+  homeRoleUmkmPoint2: "Kirim pengajuan pendanaan dan laporan penjualan.",
+  homeRoleUmkmPoint3: "Kelola negosiasi dan pantau status deal.",
+  homeRoleInvestorTitle: "Untuk Investor",
+  homeRoleInvestorBody:
+    "Investor menemukan peluang relevan, mengevaluasi risiko, lalu mengeksekusi investasi dalam satu dashboard.",
+  homeRoleInvestorPoint1: "Dapatkan rekomendasi peluang dari AI matching.",
+  homeRoleInvestorPoint2: "Bandingkan sektor, risiko, return, dan progres pendanaan.",
+  homeRoleInvestorPoint3: "Pantau invoice, investasi aktif, dan distribusi profit.",
   homeDiagramTitle: "Satu jalur kerja yang mudah dipahami",
   homeDiagramBody:
     "Landing page kini memperlihatkan gambaran proses sebelum pengguna masuk ke dashboard, dari profil bisnis sampai distribusi profit.",
@@ -1469,7 +1500,7 @@ Object.assign(translations.id, {
   homeDiagramMatch: "Investor mengisi preferensi dan mendapat match",
   homeDiagramDeal: "Kedua pihak masuk ke negosiasi dan invoice",
   homeDiagramProfit: "Investasi dan profit sharing dimonitor",
-  homeTestimonialsTitle: "Cerita singkat dari pengguna awal",
+  homeTestimonialsTitle: "Dipercaya oleh pelaku usaha",
   homeTestimonialRoleUmkm: "Pemilik UMKM",
   homeTestimonialRoleInvestor: "Investor ritel",
   homeTestimonialRoleAdmin: "Admin operasional",
@@ -1544,6 +1575,37 @@ Object.assign(translations.en, {
   homeProgramCodingCamp: "Capstone program",
   homeProgramDbs: "Program initiator",
   homeProgramDicoding: "Education partner",
+  homeJourneyTitle: "From business profile to active investment",
+  homeJourneyBody:
+    "Three simple steps that connect UMKM and investors through data, AI matching, and an integrated dashboard.",
+  homeStepProfileTitle: "Register business & complete profile",
+  homeStepProfileBody:
+    "Sector data, annual performance, capital needs, and risk indicators are summarized into funding signals the system can read.",
+  homeStepInvestorTitle: "AI reads & matches profiles",
+  homeStepInvestorBody:
+    "Investor preferences are automatically matched with UMKM profiles, producing transparent compatibility scores.",
+  homeStepDealTitle: "Negotiate, invoice, invest",
+  homeStepDealBody:
+    "Offers, payments, investment records, and profit distributions are monitored in one multi-role workspace.",
+  homeOpportunitiesTitle: "Available opportunities",
+  homeOpportunitiesBody:
+    "Sample UMKM opportunities investors can review, compare, and continue into negotiation.",
+  homeOpportunitiesCta: "View All Opportunities",
+  homeRoleSectionTitle: "Designed for UMKM and investors",
+  homeRoleSectionBody:
+    "Each role gets a focused workspace while staying connected in one funding flow.",
+  homeRoleUmkmTitle: "For UMKM",
+  homeRoleUmkmBody:
+    "UMKM can manage readiness from business profile to negotiation in a clear workflow.",
+  homeRoleUmkmPoint1: "Complete business profile and operational data.",
+  homeRoleUmkmPoint2: "Submit funding proposals and sales reports.",
+  homeRoleUmkmPoint3: "Manage negotiations and monitor deal status.",
+  homeRoleInvestorTitle: "For Investors",
+  homeRoleInvestorBody:
+    "Investors discover relevant opportunities, evaluate risk, and execute investments in one dashboard.",
+  homeRoleInvestorPoint1: "Get opportunities from AI matching recommendations.",
+  homeRoleInvestorPoint2: "Compare sector, risk, return, and funding progress.",
+  homeRoleInvestorPoint3: "Track invoices, active investments, and profit distributions.",
   homeDiagramTitle: "One workflow that is easy to understand",
   homeDiagramBody:
     "The landing page now shows the process before users enter the dashboard, from business profile to profit distribution.",
@@ -1551,7 +1613,7 @@ Object.assign(translations.en, {
   homeDiagramMatch: "Investors submit preferences and receive matches",
   homeDiagramDeal: "Both parties move into negotiation and invoice",
   homeDiagramProfit: "Investment and profit sharing are monitored",
-  homeTestimonialsTitle: "Short stories from early users",
+  homeTestimonialsTitle: "Trusted by business owners",
   homeTestimonialRoleUmkm: "UMKM owner",
   homeTestimonialRoleInvestor: "Retail investor",
   homeTestimonialRoleAdmin: "Operational admin",
