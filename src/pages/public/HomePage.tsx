@@ -315,9 +315,6 @@ export function HomePage() {
       <section className="border-y border-base-300 bg-base-200">
         <div className="mx-auto grid max-w-7xl gap-8 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
           <div>
-            <p className="text-xs font-black uppercase tracking-wide text-primary">
-              {t("homeDiagramEyebrow")}
-            </p>
             <h2 className="mt-3 text-4xl font-black tracking-normal">
               {t("homeDiagramTitle")}
             </h2>
@@ -361,9 +358,6 @@ export function HomePage() {
       <section className="bg-white">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="max-w-3xl">
-            <p className="text-xs font-black uppercase tracking-wide text-primary">
-              {t("homeTestimonialsEyebrow")}
-            </p>
             <h2 className="mt-3 text-4xl font-black tracking-normal">
               {t("homeTestimonialsTitle")}
             </h2>

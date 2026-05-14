@@ -1450,11 +1450,10 @@ Object.assign(translations.id, {
   homePhoneBusinessMeta: "Kuliner, Bandung",
   homeTrustEyebrow: "Capstone project program",
   homeTrustBody:
-    "FundRaise dibuat sebagai proyek capstone Coding Camp 2026 dengan ekosistem pembelajaran dari DBS Foundation dan Dicoding.",
+    "FundRaise dibuat sebagai capstone project Coding Camp 2026 dari DBS Foundation dan Dicoding.",
   homeProgramCodingCamp: "Program capstone",
   homeProgramDbs: "Inisiator program",
   homeProgramDicoding: "Mitra edukasi",
-  homeDiagramEyebrow: "Alur platform",
   homeDiagramTitle: "Satu jalur kerja yang mudah dipahami",
   homeDiagramBody:
     "Landing page kini memperlihatkan gambaran proses sebelum pengguna masuk ke dashboard, dari profil bisnis sampai distribusi profit.",
@@ -1462,7 +1461,6 @@ Object.assign(translations.id, {
   homeDiagramMatch: "Investor mengisi preferensi dan mendapat match",
   homeDiagramDeal: "Kedua pihak masuk ke negosiasi dan invoice",
   homeDiagramProfit: "Investasi dan profit sharing dimonitor",
-  homeTestimonialsEyebrow: "Social proof",
   homeTestimonialsTitle: "Cerita singkat dari pengguna awal",
   homeTestimonialRoleUmkm: "Pemilik UMKM",
   homeTestimonialRoleInvestor: "Investor ritel",
@@ -1538,7 +1536,6 @@ Object.assign(translations.en, {
   homeProgramCodingCamp: "Capstone program",
   homeProgramDbs: "Program initiator",
   homeProgramDicoding: "Education partner",
-  homeDiagramEyebrow: "Platform flow",
   homeDiagramTitle: "One workflow that is easy to understand",
   homeDiagramBody:
     "The landing page now shows the process before users enter the dashboard, from business profile to profit distribution.",
@@ -1546,7 +1543,6 @@ Object.assign(translations.en, {
   homeDiagramMatch: "Investors submit preferences and receive matches",
   homeDiagramDeal: "Both parties move into negotiation and invoice",
   homeDiagramProfit: "Investment and profit sharing are monitored",
-  homeTestimonialsEyebrow: "Social proof",
   homeTestimonialsTitle: "Short stories from early users",
   homeTestimonialRoleUmkm: "UMKM owner",
   homeTestimonialRoleInvestor: "Retail investor",
@@ -2074,7 +2070,8 @@ Object.assign(translations.id, {
   investorStepProfileTitle: "Lengkapi Profil Akun",
   investorStepProfileBody:
     "Pastikan nama, email, dan nomor telepon sudah terisi agar identitas kamu valid di platform.",
-  investorStepProfileTodo: "Profil akun belum lengkap. Lengkapi nama dan nomor telepon.",
+  investorStepProfileTodo:
+    "Profil akun belum lengkap. Lengkapi nama dan nomor telepon.",
   investorStepProfileDone: "Profil akun sudah lengkap.",
   investorStepPreferenceTitle: "Atur Preferensi Investasi",
   investorStepPreferenceBody:
@@ -2088,16 +2085,19 @@ Object.assign(translations.id, {
   investorStepOpportunityTitle: "Telusuri Peluang UMKM",
   investorStepOpportunityBody:
     "Jelajahi marketplace peluang, gunakan filter sektor dan risiko, lalu simpan kandidat yang menarik.",
-  investorStepOpportunityTodo: "Mulai telusuri dan simpan peluang UMKM yang sesuai.",
+  investorStepOpportunityTodo:
+    "Mulai telusuri dan simpan peluang UMKM yang sesuai.",
   investorStepNegotiationTitle: "Mulai Negosiasi",
   investorStepNegotiationBody:
     "Kirim penawaran investasi, diskusikan nominal dan return, lalu tunggu konfirmasi dari UMKM.",
-  investorStepNegotiationTodo: "Buka peluang yang kamu minati dan kirim penawaran awal.",
+  investorStepNegotiationTodo:
+    "Buka peluang yang kamu minati dan kirim penawaran awal.",
   investorStepNegotiationDone: "{count} negosiasi aktif.",
   investorStepPortfolioTitle: "Pantau Portfolio & Profit",
   investorStepPortfolioBody:
     "Setelah negosiasi selesai, investasi akan dicatat. Pantau invoice, nilai investasi, dan distribusi profit dari sini.",
-  investorStepPortfolioTodo: "Portfolio akan terisi setelah negosiasi pertama selesai.",
+  investorStepPortfolioTodo:
+    "Portfolio akan terisi setelah negosiasi pertama selesai.",
   investorStepPortfolioDone: "{count} investasi aktif dalam portfolio.",
   browseOpportunities: "Telusuri Peluang",
   viewPortfolio: "Lihat Portfolio",
@@ -2118,7 +2118,8 @@ Object.assign(translations.en, {
   investorStepProfileTitle: "Complete Account Profile",
   investorStepProfileBody:
     "Make sure your name, email, and phone number are filled in so your identity is valid on the platform.",
-  investorStepProfileTodo: "Account profile is incomplete. Add your name and phone number.",
+  investorStepProfileTodo:
+    "Account profile is incomplete. Add your name and phone number.",
   investorStepProfileDone: "Account profile is complete.",
   investorStepPreferenceTitle: "Set Investment Preferences",
   investorStepPreferenceBody:
@@ -2128,20 +2129,24 @@ Object.assign(translations.en, {
   investorStepSurveyTitle: "Complete Investor Survey",
   investorStepSurveyBody:
     "A quick survey to help the system understand your investment patterns and risk profile in depth.",
-  investorStepSurveyTodo: "Complete the survey for more accurate AI recommendations.",
+  investorStepSurveyTodo:
+    "Complete the survey for more accurate AI recommendations.",
   investorStepOpportunityTitle: "Browse UMKM Opportunities",
   investorStepOpportunityBody:
     "Explore the opportunity marketplace, use sector and risk filters, then save interesting candidates.",
-  investorStepOpportunityTodo: "Start browsing and saving relevant UMKM opportunities.",
+  investorStepOpportunityTodo:
+    "Start browsing and saving relevant UMKM opportunities.",
   investorStepNegotiationTitle: "Start a Negotiation",
   investorStepNegotiationBody:
     "Send an investment offer, discuss the nominal and return, then wait for confirmation from the UMKM.",
-  investorStepNegotiationTodo: "Open an opportunity you like and send an initial offer.",
+  investorStepNegotiationTodo:
+    "Open an opportunity you like and send an initial offer.",
   investorStepNegotiationDone: "{count} active negotiations.",
   investorStepPortfolioTitle: "Monitor Portfolio & Profit",
   investorStepPortfolioBody:
     "After a negotiation closes, the investment is recorded. Track invoices, investment value, and profit distributions here.",
-  investorStepPortfolioTodo: "Portfolio will fill after the first negotiation completes.",
+  investorStepPortfolioTodo:
+    "Portfolio will fill after the first negotiation completes.",
   investorStepPortfolioDone: "{count} active investments in portfolio.",
   browseOpportunities: "Browse Opportunities",
   viewPortfolio: "View Portfolio",
