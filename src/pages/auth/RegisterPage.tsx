@@ -6,14 +6,15 @@ import { Logo } from "../../components/Logo";
 import { useAuth } from "../../lib/auth/AuthProvider";
 import { LanguageSwitcher } from "../../components/LanguageSwitcher";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
+import { useToast } from "../../components/ToastProvider";
 import type { RegisterPayload } from "../../types";
 
 export function RegisterPage() {
   const { register } = useAuth();
   const { t } = useLanguage();
+  const toast = useToast();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState("");
   const [form, setForm] = useState<RegisterPayload>({
     nama: "",
     email: "",
@@ -27,11 +28,10 @@ export function RegisterPage() {
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (form.password !== form.password_confirmation) {
-      setError(t("passwordConfirmationMismatch"));
+      toast.warning(t("passwordConfirmationMismatch"));
       return;
     }
     setIsSubmitting(true);
-    setError("");
     try {
       await register(form);
       navigate("/login", {
@@ -41,9 +41,11 @@ export function RegisterPage() {
     } catch (err) {
       import("axios").then(({ default: axios }) => {
         if (axios.isAxiosError(err) && err.response?.data?.message) {
-          setError(err.response.data.message as string);
+          toast.error(err.response.data.message as string, {
+            title: t("registerError"),
+          });
         } else {
-          setError(t("registerError"));
+          toast.error(t("registerError"));
         }
       });
     } finally {
@@ -144,11 +146,6 @@ export function RegisterPage() {
               />
             </label>
           </div>
-          {error ? (
-            <p className="rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-semibold text-error">
-              {error}
-            </p>
-          ) : null}
           <button className="btn btn-primary h-12 rounded-md text-white" disabled={isSubmitting}>
             {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : null}
             {t("registerButton")}

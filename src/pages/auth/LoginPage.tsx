@@ -7,31 +7,31 @@ import { dashboardPathFor, useAuth } from "../../lib/auth/AuthProvider";
 import { Logo } from "../../components/Logo";
 import { LanguageSwitcher } from "../../components/LanguageSwitcher";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
+import { useToast } from "../../components/ToastProvider";
 
 export function LoginPage() {
   const { login } = useAuth();
   const { t } = useLanguage();
+  const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState("");
   const successMessage = (location.state as { message?: string } | null)?.message ?? "";
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
-    setError("");
     try {
       const user = await login({ email, password });
       const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
       navigate(from || dashboardPathFor(user.role), { replace: true });
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.data?.message) {
-        setError(String(err.response.data.message));
+        toast.error(String(err.response.data.message), { title: t("loginError") });
       } else {
-        setError(t("loginError"));
+        toast.error(t("loginError"));
       }
     } finally {
       setIsSubmitting(false);
@@ -75,7 +75,6 @@ export function LoginPage() {
               required
             />
           </label>
-          {error ? <p className="text-sm font-semibold text-error">{error}</p> : null}
           <div className="flex justify-end">
             <Link className="text-sm font-semibold text-primary" to="/forgot-password">
               {t("forgotPasswordLink")}

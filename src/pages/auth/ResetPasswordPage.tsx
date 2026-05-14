@@ -7,9 +7,11 @@ import { apiClient } from "../../lib/api/client";
 import axios from "axios";
 import { LanguageSwitcher } from "../../components/LanguageSwitcher";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
+import { useToast } from "../../components/ToastProvider";
 
 export function ResetPasswordPage() {
   const { t } = useLanguage();
+  const toast = useToast();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const tokenFromUrl = searchParams.get("token") ?? "";
@@ -20,7 +22,6 @@ export function ResetPasswordPage() {
     password_confirmation: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState("");
 
   const update = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) =>
     setForm((prev) => ({ ...prev, [key]: event.target.value }));
@@ -28,11 +29,10 @@ export function ResetPasswordPage() {
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (form.new_password !== form.password_confirmation) {
-      setError(t("passwordConfirmationMismatch"));
+      toast.warning(t("passwordConfirmationMismatch"));
       return;
     }
     setIsSubmitting(true);
-    setError("");
     try {
       await apiClient.post("/user/reset-password", {
         token: form.token,
@@ -42,11 +42,13 @@ export function ResetPasswordPage() {
       navigate("/login", { state: { message: t("resetPasswordSuccess") } });
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 404) {
-        setError(t("resetUnavailable"));
+        toast.error(t("resetUnavailable"));
       } else if (axios.isAxiosError(err) && err.response?.data?.message) {
-        setError(err.response.data.message as string);
+        toast.error(err.response.data.message as string, {
+          title: t("resetPasswordError"),
+        });
       } else {
-        setError(t("resetPasswordError"));
+        toast.error(t("resetPasswordError"));
       }
     } finally {
       setIsSubmitting(false);
@@ -97,7 +99,6 @@ export function ResetPasswordPage() {
               required
             />
           </label>
-          {error ? <p className="text-sm font-semibold text-error">{error}</p> : null}
           <button className="btn btn-primary h-12 rounded-md text-white" disabled={isSubmitting}>
             {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : null}
             {t("resetPasswordButton")}
