@@ -109,7 +109,12 @@ export function PortfolioPage() {
         <div className="mt-10 grid gap-3 rounded-md border border-base-300 bg-base-200 p-4 md:grid-cols-[1fr_0.75fr_0.75fr]">
           <label className="input input-bordered flex items-center gap-2 rounded-md bg-white">
             <Search size={18} className="text-neutral/40" />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("portfolioSearchPlaceholder")} />
+            <input
+              className="w-full min-w-0 bg-transparent outline-none"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t("portfolioSearchPlaceholder")}
+            />
           </label>
           <select className="select select-bordered rounded-md bg-white" value={risk} onChange={(event) => setRisk(event.target.value)}>
             <option value="all">{t("allRisk")}</option>

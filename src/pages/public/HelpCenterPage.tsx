@@ -72,6 +72,7 @@ export function HelpCenterPage() {
             <label className="input input-bordered flex items-center gap-2 rounded-md">
               <Search size={18} className="text-neutral/40" />
               <input
+                className="w-full min-w-0 bg-transparent outline-none"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder={t("helpSearchPlaceholder")}

@@ -390,7 +390,12 @@ export function OpportunitiesPage() {
         <div className="grid gap-3 lg:grid-cols-[1.2fr_0.8fr_0.8fr_0.7fr]">
           <label className="input input-bordered flex items-center gap-2 rounded-md">
             <Search size={17} className="text-neutral/40" />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("searchUmkmSectorCity")} />
+            <input
+              className="w-full min-w-0 bg-transparent outline-none"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t("searchUmkmSectorCity")}
+            />
           </label>
           <label className="flex h-12 items-center gap-2 rounded-md border border-base-300 px-3">
             <Filter size={17} className="text-neutral/45" />
