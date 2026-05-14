@@ -1,4 +1,12 @@
-import { ArrowRight, BarChart3, FileCheck2, Handshake, LineChart, Receipt, Scale } from "lucide-react";
+import {
+  ArrowRight,
+  BarChart3,
+  FileCheck2,
+  Handshake,
+  LineChart,
+  Receipt,
+  Scale,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 
@@ -76,19 +84,16 @@ export function ServicesPage() {
               key={title}
               className={`flex gap-4 rounded-md border p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-soft sm:p-6 md:block ${cardClass}`}
             >
-              <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-md ${iconClass}`}>
+              <div
+                className={`grid h-12 w-12 shrink-0 place-items-center rounded-md ${iconClass}`}
+              >
                 <Icon size={22} />
               </div>
               <div className="min-w-0 md:mt-5">
                 <h2 className="text-lg font-black">{t(title)}</h2>
-                <p className="mt-2 text-sm font-medium leading-6 opacity-82 md:mt-3">{t(body)}</p>
-                <div className="mt-5 grid grid-cols-3 gap-2">
-                  {[55, 78, 92].map((width) => (
-                    <div key={width} className="h-2 rounded-full bg-white/35">
-                      <div className="h-2 rounded-full bg-white" style={{ width: `${width}%` }} />
-                    </div>
-                  ))}
-                </div>
+                <p className="mt-2 text-sm font-medium leading-6 opacity-82 md:mt-3">
+                  {t(body)}
+                </p>
               </div>
             </div>
           ))}
@@ -97,21 +102,50 @@ export function ServicesPage() {
       <section className="border-y border-base-300 bg-base-200">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="max-w-3xl">
-            <h2 className="text-4xl font-black tracking-normal">{t("servicesComparisonTitle")}</h2>
-            <p className="mt-4 text-sm leading-6 text-neutral/60">{t("servicesComparisonBody")}</p>
+            <h2 className="text-4xl font-black tracking-normal">
+              {t("servicesComparisonTitle")}
+            </h2>
+            <p className="mt-4 text-sm leading-6 text-neutral/60">
+              {t("servicesComparisonBody")}
+            </p>
           </div>
           <div className="mt-8 grid gap-5 lg:grid-cols-2">
             {[
-              ["roleUmkm", ["servicesUmkmFeature1", "servicesUmkmFeature2", "servicesUmkmFeature3"]],
-              ["roleInvestor", ["servicesInvestorFeature1", "servicesInvestorFeature2", "servicesInvestorFeature3"]],
+              [
+                "roleUmkm",
+                [
+                  "servicesUmkmFeature1",
+                  "servicesUmkmFeature2",
+                  "servicesUmkmFeature3",
+                ],
+              ],
+              [
+                "roleInvestor",
+                [
+                  "servicesInvestorFeature1",
+                  "servicesInvestorFeature2",
+                  "servicesInvestorFeature3",
+                ],
+              ],
             ].map(([title, items]) => (
-              <div key={String(title)} className="rounded-md border border-base-300 bg-white p-6 shadow-sm">
+              <div
+                key={String(title)}
+                className="rounded-md border border-base-300 bg-white p-6 shadow-sm"
+              >
                 <h3 className="text-2xl font-black">{t(String(title))}</h3>
                 <div className="mt-5 grid gap-3">
                   {(items as string[]).map((item) => (
-                    <div key={item} className="flex items-start gap-3 rounded-md bg-base-200 p-3">
-                      <FileCheck2 className="mt-0.5 shrink-0 text-primary" size={18} />
-                      <span className="text-sm font-semibold leading-5 text-neutral/70">{t(item)}</span>
+                    <div
+                      key={item}
+                      className="flex items-start gap-3 rounded-md bg-base-200 p-3"
+                    >
+                      <FileCheck2
+                        className="mt-0.5 shrink-0 text-primary"
+                        size={18}
+                      />
+                      <span className="text-sm font-semibold leading-5 text-neutral/70">
+                        {t(item)}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -124,10 +158,17 @@ export function ServicesPage() {
         <div className="mx-auto max-w-7xl rounded-md bg-neutral p-8 text-white lg:p-10">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h2 className="text-3xl font-black tracking-normal">{t("servicesBottomCtaTitle")}</h2>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65">{t("servicesBottomCtaBody")}</p>
+              <h2 className="text-3xl font-black tracking-normal">
+                {t("servicesBottomCtaTitle")}
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65">
+                {t("servicesBottomCtaBody")}
+              </p>
             </div>
-            <Link to="/register" className="btn btn-primary rounded-md text-white">
+            <Link
+              to="/register"
+              className="btn btn-primary rounded-md text-white"
+            >
               {t("getStarted")}
               <ArrowRight size={18} />
             </Link>

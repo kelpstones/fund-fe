@@ -1,4 +1,11 @@
-import { BrainCircuit, Building2, CalendarCheck2, ShieldCheck, Target, Users } from "lucide-react";
+import {
+  BrainCircuit,
+  Building2,
+  CalendarCheck2,
+  ShieldCheck,
+  Target,
+  Users,
+} from "lucide-react";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 
 const values = [
@@ -122,48 +129,6 @@ export function AboutPage() {
               </article>
             ))}
           </div>
-        </div>
-      </section>
-      <section className="bg-white">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
-          <div className="rounded-md border border-base-300 bg-base-200 p-6">
-            <Target className="text-primary" size={28} />
-            <h2 className="mt-5 text-3xl font-black tracking-normal">{t("aboutMissionTitle")}</h2>
-            <p className="mt-4 text-sm leading-6 text-neutral/65">{t("aboutMissionBody")}</p>
-          </div>
-          <div className="rounded-md border border-base-300 bg-white p-6 shadow-sm">
-            <h2 className="text-3xl font-black tracking-normal">{t("aboutTimelineTitle")}</h2>
-            <div className="mt-6 grid gap-4">
-              {timeline.map(([year, body]) => (
-                <div key={year} className="grid gap-3 rounded-md border border-base-300 p-4 sm:grid-cols-[auto_1fr] sm:items-start">
-                  <div className="flex items-center gap-3">
-                    <CalendarCheck2 className="text-primary" size={20} />
-                    <span className="text-xl font-black text-primary">{year}</span>
-                  </div>
-                  <p className="text-sm leading-6 text-neutral/65">{t(body)}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-      <section className="border-y border-base-300 bg-base-200">
-        <div className="mx-auto grid max-w-7xl gap-5 px-4 py-16 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-8">
-          {values.map((item) => {
-            const Icon = item.icon;
-            return (
-              <div
-                key={item.title}
-                className="rounded-md bg-white p-6 shadow-sm"
-              >
-                <Icon className="text-primary" size={24} />
-                <h2 className="mt-5 font-black">{t(item.title)}</h2>
-                <p className="mt-3 text-sm leading-6 text-neutral/60">
-                  {t(item.body)}
-                </p>
-              </div>
-            );
-          })}
         </div>
       </section>
     </main>

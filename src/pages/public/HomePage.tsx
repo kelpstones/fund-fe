@@ -54,19 +54,19 @@ const testimonials = [
     name: "Rani Prameswari",
     role: "homeTestimonialRoleUmkm",
     quote: "homeTestimonialRani",
-    initials: "RP",
+    image: "/testimonials/rani-prameswari.png",
   },
   {
     name: "Dimas Arya",
     role: "homeTestimonialRoleInvestor",
     quote: "homeTestimonialDimas",
-    initials: "DA",
+    image: "/testimonials/dimas-arya.png",
   },
   {
     name: "Nadia Putri",
     role: "homeTestimonialRoleAdmin",
     quote: "homeTestimonialNadia",
-    initials: "NP",
+    image: "/testimonials/nadia-putri.png",
   },
 ];
 
@@ -378,8 +378,13 @@ export function HomePage() {
                   {t(item.quote)}
                 </p>
                 <div className="mt-6 flex items-center gap-3">
-                  <div className="grid h-11 w-11 place-items-center rounded-md bg-primary text-sm font-black text-white">
-                    {item.initials}
+                  <div className="h-11 w-11 shrink-0 overflow-hidden rounded-md">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
                   </div>
                   <div>
                     <p className="font-black">{item.name}</p>
