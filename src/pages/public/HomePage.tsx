@@ -238,23 +238,20 @@ export function HomePage() {
       <section className="border-y border-base-300 bg-white">
         <div className="mx-auto grid max-w-7xl gap-4 px-4 py-8 sm:px-6 md:grid-cols-[0.7fr_1.3fr] md:items-center lg:px-8">
           <div>
-            <p className="text-xs font-black uppercase tracking-wide text-neutral/40">
-              {t("homeTrustEyebrow")}
-            </p>
             <p className="mt-2 text-sm leading-6 text-neutral/60">
               {t("homeTrustBody")}
             </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             {programLogos.map((item) => (
               <div
                 key={item.name}
-                className="flex h-16 items-center justify-center rounded-md bg-white px-5"
+                className="flex h-14 items-center justify-center rounded-md bg-white px-2 sm:h-16 sm:px-5"
               >
                 <img
                   src={item.image}
                   alt={item.name}
-                  className="max-h-16 w-full object-contain"
+                  className="max-h-8 w-full object-contain sm:max-h-16"
                   loading="lazy"
                 />
               </div>
