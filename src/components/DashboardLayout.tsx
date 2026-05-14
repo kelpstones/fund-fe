@@ -22,6 +22,7 @@ import {
   ClipboardList,
   Bookmark,
   ClipboardCheck,
+  ChevronRight,
 } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { Logo } from "./Logo";
@@ -296,6 +297,8 @@ export function DashboardLayout() {
       .sort((a, b) => b.to.length - a.to.length)
       .find((item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)) ??
     flatNav[0];
+  const activeGroup =
+    groups.find((group) => group.items.some((item) => item.to === activeItem.to)) ?? groups[0];
   const notificationsPath = `${dashboardPathFor(role)}/notifikasi`;
 
   return (
@@ -310,6 +313,11 @@ export function DashboardLayout() {
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-neutral/40">{t("workspaceTitle")}</p>
               <h1 className="text-lg font-bold text-neutral">{t(activeItem.labelKey)}</h1>
+              <nav className="mt-1 flex items-center gap-1 text-xs font-semibold text-neutral/45">
+                <span>{t(activeGroup.labelKey)}</span>
+                <ChevronRight size={12} />
+                <span>{t(activeItem.labelKey)}</span>
+              </nav>
             </div>
           </div>
           <div className="flex items-center gap-2">

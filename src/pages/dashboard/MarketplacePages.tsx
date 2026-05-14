@@ -24,6 +24,8 @@ import {
   NotebookPen,
   Send,
 } from "lucide-react";
+import { EmptyState } from "../../components/EmptyState";
+import { CardSkeletonGrid, ListSkeleton } from "../../components/PageSkeleton";
 import { apiClient, unwrap } from "../../lib/api/client";
 import { resourceApi } from "../../lib/api/resources";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
@@ -294,16 +296,9 @@ function CatalogGrid({
   compareIds?: Set<string>;
   onToggleCompare?: (item: Entity) => void;
 }) {
-  const { t } = useLanguage();
-
   if (items.length === 0) {
     return (
-      <div className="rounded-md border border-base-300 bg-white p-8 text-center shadow-sm">
-        <h3 className="text-xl font-black">{t("noOpportunities")}</h3>
-        <p className="mt-2 text-sm text-neutral/55">
-          {t("noOpportunitiesBody")}
-        </p>
-      </div>
+      <EmptyState title="noOpportunities" body="noOpportunitiesBody" />
     );
   }
 
@@ -425,7 +420,7 @@ export function OpportunitiesPage() {
       </div>
 
       {isLoading ? (
-        <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">{t("loadingOpportunities")}</div>
+        <CardSkeletonGrid count={6} />
       ) : null}
       {isError ? (
         <div className="rounded-md border border-error/20 bg-error/10 p-4 text-sm font-semibold text-error">
@@ -519,7 +514,7 @@ export function AiRecommendationsPage() {
         </div>
       </div>
 
-      {isLoading ? <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">{t("loadingRecommendations")}</div> : null}
+      {isLoading ? <CardSkeletonGrid count={3} /> : null}
       {isError ? (
         <div className="rounded-md border border-warning/20 bg-warning/10 p-4 text-sm font-semibold text-warning">
           {apiErrorMessage(error, t("recommendationsUnavailable"))}
@@ -531,12 +526,13 @@ export function AiRecommendationsPage() {
         </div>
       ) : null}
       {!isLoading && !isError && filtered.length === 0 ? (
-        <div className="rounded-md border border-base-300 bg-white p-8 text-center shadow-sm">
-          <h3 className="text-xl font-black">{t("noRecommendations")}</h3>
-          <p className="mt-2 text-sm text-neutral/55">{t("noRecommendationsBody")}</p>
-          <Link to="/dashboard/investor/survey" className="btn btn-primary mt-5 rounded-md text-white">
-            {t("startSurvey")}
-          </Link>
+        <div className="space-y-4">
+          <EmptyState title="noRecommendations" body="noRecommendationsBody" />
+          <div className="text-center">
+            <Link to="/dashboard/investor/survey" className="btn btn-primary rounded-md text-white">
+              {t("startSurvey")}
+            </Link>
+          </div>
         </div>
       ) : null}
       {!isLoading && !isError && filtered.length > 0 ? (
@@ -578,7 +574,7 @@ export function SavedOpportunitiesPage() {
         }
       />
       {savedState.isLoading ? (
-        <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">{t("loadingBookmarks")}</div>
+        <CardSkeletonGrid count={3} />
       ) : null}
       {savedState.isError ? (
         <div className="rounded-md border border-error/20 bg-error/10 p-4 text-sm font-semibold text-error">
@@ -642,10 +638,7 @@ export function CompareOpportunitiesPage() {
         </div>
       ) : null}
       {compared.length === 0 ? (
-        <div className="rounded-md border border-base-300 bg-white p-8 text-center shadow-sm">
-          <h3 className="text-xl font-black">{t("noCompareItems")}</h3>
-          <p className="mt-2 text-sm text-neutral/55">{t("noCompareItemsBody")}</p>
-        </div>
+        <EmptyState title="noCompareItems" body="noCompareItemsBody" />
       ) : (
         <div className="overflow-x-auto rounded-md border border-base-300 bg-white shadow-sm">
           <table className="table">
@@ -729,7 +722,7 @@ export function OpportunityDetailPage() {
   });
 
   if (isLoading && !opportunity) {
-    return <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">{t("loadingOpportunityDetail")}</div>;
+    return <ListSkeleton rows={3} />;
   }
 
   if (!opportunity) {
@@ -936,12 +929,9 @@ export function DealRoomPage() {
         description="dealRoomBody"
         actions={<Link to="/dashboard/investor/negosiasi" className="btn btn-outline rounded-md">{t("allNegotiations")}</Link>}
       />
-      {isLoading ? <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">{t("loadingDealRoom")}</div> : null}
-      {isError || !deal ? (
-        <div className="rounded-md border border-base-300 bg-white p-8 text-center shadow-sm">
-          <h3 className="text-xl font-black">{t("noActiveDeal")}</h3>
-          <p className="mt-2 text-sm text-neutral/55">{t("noActiveDealBody")}</p>
-        </div>
+      {isLoading ? <ListSkeleton rows={4} /> : null}
+      {!isLoading && (isError || !deal) ? (
+        <EmptyState title="noActiveDeal" body="noActiveDealBody" />
       ) : (
         <div className="grid gap-5">
           <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
@@ -1056,9 +1046,7 @@ export function DealRoomPage() {
             </form>
             <div className="mt-5 grid gap-3">
               {notes.length === 0 ? (
-                <div className="rounded-md bg-base-200 p-4 text-sm font-semibold text-neutral/55">
-                  {t("dealNotesEmpty")}
-                </div>
+                <EmptyState title="dataUnavailable" body="dealNotesEmpty" compact />
               ) : null}
               {notes.map((note) => (
                 <div key={note.id} className="rounded-md border border-base-300 p-4">
@@ -1101,18 +1089,14 @@ export function AdminReviewQueuePage() {
         description="adminReviewQueueBody"
         actions={<Link to="/dashboard/admin/pengajuan" className="btn btn-outline rounded-md">{t("viewAllSubmissions")}</Link>}
       />
-      {isLoading ? <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">{t("loadingReviewQueue")}</div> : null}
+      {isLoading ? <ListSkeleton rows={4} /> : null}
       {isError ? (
         <div className="rounded-md border border-error/20 bg-error/10 p-4 text-sm font-semibold text-error">
           {apiErrorMessage(error, t("loadReviewQueueError"))}
         </div>
       ) : null}
       {!isLoading && !isError && reviewItems.length === 0 ? (
-        <div className="rounded-md border border-base-300 bg-white p-8 text-center shadow-sm">
-          <ClipboardCheck className="mx-auto text-success" size={34} />
-          <h3 className="mt-4 text-xl font-black">{t("noPendingSubmissions")}</h3>
-          <p className="mt-2 text-sm text-neutral/55">{t("noPendingSubmissionsBody")}</p>
-        </div>
+        <EmptyState title="noPendingSubmissions" body="noPendingSubmissionsBody" icon={ClipboardCheck} />
       ) : null}
       <div className="grid gap-4">
         {reviewItems.map((item) => (

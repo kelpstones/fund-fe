@@ -12,6 +12,7 @@ import type { LucideIcon } from "lucide-react";
 import { useAuth } from "../../lib/auth/AuthProvider";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import { dateShort } from "../../lib/format";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 
 type DocumentMeta = {
   name: string;
@@ -61,6 +62,7 @@ export function DocumentCenterPage() {
   const role = user?.role === "investor" ? "investor" : "umkm";
   const requirements = documentRequirements[role];
   const [documents, setDocuments] = useState<Record<string, DocumentMeta>>(() => readDocuments(role));
+  const [pendingDeleteKey, setPendingDeleteKey] = useState<string | null>(null);
   const uploadedCount = requirements.filter(([key]) => documents[key]).length;
   const progress = Math.round((uploadedCount / requirements.length) * 100);
 
@@ -167,7 +169,10 @@ export function DocumentCenterPage() {
                       />
                     </label>
                     {document ? (
-                      <button className="btn btn-outline rounded-md" onClick={() => remove(key)}>
+                      <button
+                        className="btn btn-outline rounded-md"
+                        onClick={() => setPendingDeleteKey(key)}
+                      >
                         <Trash2 size={17} />
                         {t("delete")}
                       </button>
@@ -199,6 +204,18 @@ export function DocumentCenterPage() {
           </div>
         </aside>
       </div>
+      <ConfirmDialog
+        open={Boolean(pendingDeleteKey)}
+        title={t("deleteDataTitle")}
+        message={t("deleteDataMessage")}
+        confirmLabel={t("delete")}
+        confirmTone="danger"
+        onCancel={() => setPendingDeleteKey(null)}
+        onConfirm={() => {
+          if (pendingDeleteKey) remove(pendingDeleteKey);
+          setPendingDeleteKey(null);
+        }}
+      />
     </section>
   );
 }

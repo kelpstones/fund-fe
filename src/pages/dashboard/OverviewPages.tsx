@@ -14,6 +14,8 @@ import {
   Users,
 } from "lucide-react";
 import { StatCard } from "../../components/StatCard";
+import { EmptyState } from "../../components/EmptyState";
+import { ListSkeleton } from "../../components/PageSkeleton";
 import { directApi } from "../../lib/api/direct";
 import { resourceApi } from "../../lib/api/resources";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
@@ -72,7 +74,7 @@ function PageHeader({
   );
 }
 
-function MatchList({ submissions }: { submissions: Entity[] }) {
+function MatchList({ submissions, isLoading = false }: { submissions: Entity[]; isLoading?: boolean }) {
   const { t } = useLanguage();
   const sorted = [...submissions].sort(
     (a, b) =>
@@ -89,10 +91,9 @@ function MatchList({ submissions }: { submissions: Entity[] }) {
         <Scale className="text-primary" size={24} />
       </div>
       <div className="mt-5 grid gap-3">
-        {sorted.length === 0 ? (
-          <div className="rounded-md border border-base-300 p-4 text-sm font-semibold text-neutral/55">
-            {t("matchDataEmpty")}
-          </div>
+        {isLoading ? <ListSkeleton rows={3} /> : null}
+        {!isLoading && sorted.length === 0 ? (
+          <EmptyState title="dataUnavailable" body="matchDataEmpty" compact icon={Scale} />
         ) : null}
         {sorted.slice(0, 4).map((item) => {
           const score = Number(item.match_score || item.skor_kecocokan || 0);
@@ -120,7 +121,7 @@ function MatchList({ submissions }: { submissions: Entity[] }) {
   );
 }
 
-function ActivityPanel({ items }: { items: Entity[] }) {
+function ActivityPanel({ items, isLoading = false }: { items: Entity[]; isLoading?: boolean }) {
   const { t } = useLanguage();
 
   return (
@@ -132,10 +133,9 @@ function ActivityPanel({ items }: { items: Entity[] }) {
         <Bell className="text-primary" size={24} />
       </div>
       <div className="mt-5 grid gap-3">
-        {items.length === 0 ? (
-          <div className="rounded-md border border-base-300 p-4 text-sm font-semibold text-neutral/55">
-            {t("latestUpdatesEmpty")}
-          </div>
+        {isLoading ? <ListSkeleton rows={3} /> : null}
+        {!isLoading && items.length === 0 ? (
+          <EmptyState title="dataUnavailable" body="latestUpdatesEmpty" compact icon={Bell} />
         ) : null}
         {items.slice(0, 4).map((item) => (
           <div key={item.id} className="flex items-start gap-3 rounded-md bg-base-200 p-3">
@@ -163,10 +163,14 @@ export function UmkmOverviewPage() {
   const dashboardInvestor = asRecord(d.investor);
   const penjualanChart = asEntityArray(d.penjualan_chart);
 
-  const businesses = useResource(myBusinessConfig).data ?? [];
-  const submissions = useResource(submissionConfig).data ?? [];
-  const sales = useResource(salesConfig).data ?? [];
-  const negotiations = useResource(myNegotiationConfig).data ?? [];
+  const businessesQuery = useResource(myBusinessConfig);
+  const submissionsQuery = useResource(submissionConfig);
+  const salesQuery = useResource(salesConfig);
+  const negotiationsQuery = useResource(myNegotiationConfig);
+  const businesses = businessesQuery.data ?? [];
+  const submissions = submissionsQuery.data ?? [];
+  const sales = salesQuery.data ?? [];
+  const negotiations = negotiationsQuery.data ?? [];
 
   const totalSales =
     penjualanChart.reduce((sum, item) => sum + Number(item.total_penjualan || 0), 0) ||
@@ -234,8 +238,8 @@ export function UmkmOverviewPage() {
         </div>
       </div>
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <MatchList submissions={submissions} />
-        <ActivityPanel items={negotiations} />
+        <MatchList submissions={submissions} isLoading={submissionsQuery.isLoading} />
+        <ActivityPanel items={negotiations} isLoading={negotiationsQuery.isLoading} />
       </div>
     </div>
   );
@@ -250,10 +254,14 @@ export function InvestorOverviewPage() {
   const dashboardProfit = asRecord(d.profit);
   const recentDistribution = asEntityArray(d.recent_distribusi);
 
-  const submissions = useResource(submissionConfig).data ?? [];
-  const investments = useResource(investorInvestmentConfig).data ?? [];
-  const invoices = useResource(investorInvoiceConfig).data ?? [];
-  const profits = useResource(investorProfitConfig).data ?? [];
+  const submissionsQuery = useResource(submissionConfig);
+  const investmentsQuery = useResource(investorInvestmentConfig);
+  const invoicesQuery = useResource(investorInvoiceConfig);
+  const profitsQuery = useResource(investorProfitConfig);
+  const submissions = submissionsQuery.data ?? [];
+  const investments = investmentsQuery.data ?? [];
+  const invoices = invoicesQuery.data ?? [];
+  const profits = profitsQuery.data ?? [];
 
   const invested =
     Number(dashboardInvestment.total_nominal ?? 0) ||
@@ -279,11 +287,21 @@ export function InvestorOverviewPage() {
         <StatCard label={t("invoice")} value={String(invoiceCount)} helper={t("investorBills")} icon={Receipt} loading={dashboardQuery.isLoading} />
       </div>
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <MatchList submissions={submissions} />
+        <MatchList submissions={submissions} isLoading={submissionsQuery.isLoading} />
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
           <h3 className="text-xl font-black">{t("activeInvestments")}</h3>
           <p className="mt-1 text-sm font-semibold text-neutral/55">{t("activeInvestmentCount", { count: investmentCount })}</p>
           <div className="mt-5 grid gap-3">
+            {!investmentsQuery.isLoading &&
+            recentDistribution.length === 0 &&
+            investments.length === 0 ? (
+              <EmptyState
+                title="noActiveInvestments"
+                body="noActiveInvestmentsBody"
+                compact
+                icon={TrendingUp}
+              />
+            ) : null}
             {(recentDistribution.length > 0 ? recentDistribution : investments).map((item) => (
               <div key={item.id} className="rounded-md border border-base-300 p-4">
                 <div className="flex justify-between gap-4">
@@ -317,10 +335,14 @@ export function AdminOverviewPage() {
   const submissionByStatus = asRecord(dashboardSubmission.by_status);
   const recentSubmissions = asEntityArray(d.recent_pengajuan);
 
-  const businesses = useResource(businessConfig).data ?? [];
-  const submissions = useResource(submissionConfig).data ?? [];
-  const admins = useResource(adminConfig).data ?? [];
-  const notifications = useResource(notificationConfig).data ?? [];
+  const businessesQuery = useResource(businessConfig);
+  const submissionsQuery = useResource(submissionConfig);
+  const adminsQuery = useResource(adminConfig);
+  const notificationsQuery = useResource(notificationConfig);
+  const businesses = businessesQuery.data ?? [];
+  const submissions = submissionsQuery.data ?? [];
+  const admins = adminsQuery.data ?? [];
+  const notifications = notificationsQuery.data ?? [];
 
   const bisnisCount = Number(dashboardBusiness.total ?? 0) || businesses.length;
   const submissionCount = Number(dashboardSubmission.total ?? 0) || submissions.length;
@@ -347,6 +369,16 @@ export function AdminOverviewPage() {
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
           <h3 className="text-xl font-black">{t("submissionStatus")}</h3>
           <div className="mt-5 grid gap-3">
+            {!submissionsQuery.isLoading &&
+            recentSubmissions.length === 0 &&
+            submissions.length === 0 ? (
+              <EmptyState
+                title="dataUnavailable"
+                body="latestUpdatesEmpty"
+                compact
+                icon={FileCheck2}
+              />
+            ) : null}
             {(recentSubmissions.length > 0 ? recentSubmissions : submissions).map((item) => (
               <div key={item.id} className="flex items-center justify-between gap-4 rounded-md border border-base-300 p-4">
                 <div>
@@ -362,7 +394,7 @@ export function AdminOverviewPage() {
             ))}
           </div>
         </div>
-        <ActivityPanel items={notifications} />
+        <ActivityPanel items={notifications} isLoading={notificationsQuery.isLoading} />
       </div>
     </div>
   );

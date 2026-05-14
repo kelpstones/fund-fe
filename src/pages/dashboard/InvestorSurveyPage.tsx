@@ -11,6 +11,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { EmptyState } from "../../components/EmptyState";
+import { ListSkeleton } from "../../components/PageSkeleton";
 import { apiClient, unwrap } from "../../lib/api/client";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import { dateShort, percent, readPath, textValue } from "../../lib/format";
@@ -319,8 +321,8 @@ export function InvestorSurveyPage() {
           </div>
 
           {recommendationsQuery.isLoading ? (
-            <div className="mt-5 rounded-md border border-base-300 bg-base-200 p-4 text-sm font-semibold text-neutral/55">
-              {t("loadingRecommendations")}
+            <div className="mt-5">
+              <ListSkeleton rows={3} />
             </div>
           ) : null}
           {recommendationsQuery.isError ? (
@@ -358,9 +360,8 @@ export function InvestorSurveyPage() {
           </div>
 
           {!recommendationsQuery.isLoading && !recommendationsQuery.isError && recommendations.length === 0 ? (
-            <div className="mt-5 rounded-md border border-base-300 bg-base-200 p-5 text-center">
-              <h4 className="font-black">{t("noRecommendations")}</h4>
-              <p className="mt-2 text-sm leading-6 text-neutral/55">{t("surveyBackendEmpty")}</p>
+            <div className="mt-5">
+              <EmptyState title="noRecommendations" body="surveyBackendEmpty" compact />
             </div>
           ) : null}
 

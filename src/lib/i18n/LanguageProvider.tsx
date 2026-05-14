@@ -457,6 +457,7 @@ Object.assign(translations.id, {
   cancel: "Batal",
   loading: "Memuat",
   loadingData: "Memuat data",
+  noFilterMatchInline: "Tidak ada data yang cocok dengan filter saat ini.",
   available: "Tersedia",
   unavailable: "Belum tersedia",
 });
@@ -533,6 +534,7 @@ Object.assign(translations.en, {
   cancel: "Cancel",
   loading: "Loading",
   loadingData: "Loading data",
+  noFilterMatchInline: "No data matches the current filters.",
   available: "Available",
   unavailable: "Unavailable",
 });
@@ -576,6 +578,9 @@ Object.assign(translations.id, {
   pendingAmount: "{amount} pending",
   activeInvestments: "Investasi aktif",
   activeInvestmentCount: "{count} investasi aktif",
+  noActiveInvestments: "Belum ada investasi aktif",
+  noActiveInvestmentsBody:
+    "Investasi aktif akan muncul setelah ada invoice yang dibayar dan deal berjalan.",
   registered: "Terdaftar",
   submissions: "Pengajuan",
   pendingCount: "{count} pending",
@@ -625,6 +630,9 @@ Object.assign(translations.en, {
   pendingAmount: "{amount} pending",
   activeInvestments: "Active investments",
   activeInvestmentCount: "{count} active investments",
+  noActiveInvestments: "No active investments yet",
+  noActiveInvestmentsBody:
+    "Active investments will appear after invoices are paid and deals are running.",
   registered: "Registered",
   submissions: "Submissions",
   pendingCount: "{count} pending",
