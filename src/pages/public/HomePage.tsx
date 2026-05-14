@@ -26,19 +26,16 @@ const proofPoints = [
 
 const steps = [
   {
-    number: "01",
     title: "homeStepProfileTitle",
     body: "homeStepProfileBody",
     icon: BarChart3,
   },
   {
-    number: "02",
     title: "homeStepInvestorTitle",
     body: "homeStepInvestorBody",
     icon: Target,
   },
   {
-    number: "03",
     title: "homeStepDealTitle",
     body: "homeStepDealBody",
     icon: Handshake,
@@ -332,38 +329,28 @@ export function HomePage() {
               {t("homeJourneyBody")}
             </p>
           </div>
-          <div className="mt-8 grid gap-5 md:grid-cols-3">
-          {steps.map((step, index) => {
-            const Icon = step.icon;
-            return (
-              <div
-                key={step.title}
-                className="relative rounded-md bg-white p-6 shadow-sm"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-2xl font-black text-primary">
-                    {step.number}
-                  </span>
-                  <div className="grid h-11 w-11 place-items-center rounded-md bg-primary/10 text-primary">
-                    <Icon size={20} />
+          <div className="mt-8 grid max-w-4xl gap-5">
+            {steps.map((step) => {
+              const Icon = step.icon;
+              return (
+                <div
+                  key={step.title}
+                  className="relative rounded-md bg-white p-6 shadow-sm"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+                      <Icon size={20} />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-black">{t(step.title)}</h2>
+                      <p className="mt-2 text-sm leading-6 text-neutral/60">
+                        {t(step.body)}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <h2 className="mt-5 text-lg font-black">{t(step.title)}</h2>
-                <p className="mt-3 text-sm leading-6 text-neutral/60">
-                  {t(step.body)}
-                </p>
-                {index < steps.length - 1 ? (
-                  <div className="pointer-events-none absolute bottom-[-20px] left-1/2 z-10 flex -translate-x-1/2 flex-col items-center md:bottom-auto md:left-auto md:right-[-24px] md:top-1/2 md:w-12 md:-translate-y-1/2 md:translate-x-0">
-                    <div className="h-6 w-px bg-primary/30 md:h-px md:w-8" />
-                    <ArrowRight
-                      size={16}
-                      className="rotate-90 text-primary/60 md:rotate-0"
-                    />
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
+              );
+            })}
           </div>
         </div>
       </section>

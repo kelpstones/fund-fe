@@ -162,13 +162,13 @@ Object.assign(translations.id, {
   homeFloatComparison: "Comparison",
   homeStepProfileTitle: "Profil bisnis dibaca sistem",
   homeStepProfileBody:
-    "Data sektor, performa penjualan, risiko, kebutuhan modal, dan proyeksi return dirangkum menjadi sinyal pendanaan.",
+    "Isi data bisnis utama: sektor, performa, kebutuhan modal, dan indikator risiko.",
   homeStepInvestorTitle: "Investor mendapat rekomendasi",
   homeStepInvestorBody:
-    "Preferensi nominal, toleransi risiko, minat sektor, dan target return dipakai untuk membuat daftar peluang yang relevan.",
+    "AI mencocokkan preferensi investor dengan profil UMKM lalu menampilkan peluang yang relevan.",
   homeStepDealTitle: "Negosiasi sampai investasi",
   homeStepDealBody:
-    "Penawaran, invoice, investasi, dan distribusi profit dipantau dalam satu dashboard multi-role.",
+    "Lanjut ke negosiasi, invoice, investasi, lalu pantau distribusi profit dalam satu alur.",
   homeWorkflowTitle: "Dari proposal sampai profit sharing",
   homeWorkflowBody:
     "UMKM, investor, dan admin mendapat ruang kerja yang berbeda namun tetap tersambung pada data pengajuan, negosiasi, invoice, investasi, dan distribusi profit.",
@@ -280,13 +280,13 @@ Object.assign(translations.en, {
   homeFloatComparison: "Comparison",
   homeStepProfileTitle: "Business profiles are read by the system",
   homeStepProfileBody:
-    "Sector data, sales performance, risk, capital needs, and projected returns are summarized into funding signals.",
+    "Fill in core business data: sector, performance, funding needs, and risk indicators.",
   homeStepInvestorTitle: "Investors get recommendations",
   homeStepInvestorBody:
-    "Nominal preferences, risk tolerance, sector interests, and return targets shape a relevant opportunity list.",
+    "AI matches investor preferences with UMKM profiles and shows relevant opportunities.",
   homeStepDealTitle: "Negotiate through investment",
   homeStepDealBody:
-    "Offers, invoices, investments, and profit distributions are tracked in one multi-role dashboard.",
+    "Continue to negotiation, invoice, investment, then track profit distribution in one flow.",
   homeWorkflowTitle: "From proposal to profit sharing",
   homeWorkflowBody:
     "UMKM, investors, and admins get different workspaces while staying connected through submissions, negotiations, invoices, investments, and profit distributions.",
@@ -1467,13 +1467,13 @@ Object.assign(translations.id, {
     "Tiga langkah sederhana yang menghubungkan UMKM dan investor melalui data, AI matching, dan dashboard terintegrasi.",
   homeStepProfileTitle: "Daftarkan bisnis & isi profil",
   homeStepProfileBody:
-    "Data sektor, performa tahunan, kebutuhan modal, dan indikator risiko dirangkum jadi sinyal pendanaan yang terbaca sistem.",
+    "Isi data inti bisnis: sektor, performa, kebutuhan modal, dan indikator risiko.",
   homeStepInvestorTitle: "Sistem AI baca & cocokkan",
   homeStepInvestorBody:
-    "Preferensi investor dicocokkan dengan profil UMKM secara otomatis menghasilkan skor kecocokan yang transparan.",
+    "AI mencocokkan preferensi investor dengan profil UMKM dan memberi skor kecocokan.",
   homeStepDealTitle: "Negosiasi, invoice, investasi",
   homeStepDealBody:
-    "Penawaran, pembayaran, pencatatan investasi, dan distribusi profit dipantau dalam satu workspace multi-role.",
+    "Lanjut ke negosiasi, invoice, investasi, lalu pantau distribusi profit dalam satu alur.",
   homeOpportunitiesTitle: "Peluang yang tersedia",
   homeOpportunitiesBody:
     "Contoh peluang UMKM yang bisa investor lihat, bandingkan, lalu lanjutkan ke proses negosiasi.",
@@ -1580,13 +1580,13 @@ Object.assign(translations.en, {
     "Three simple steps that connect UMKM and investors through data, AI matching, and an integrated dashboard.",
   homeStepProfileTitle: "Register business & complete profile",
   homeStepProfileBody:
-    "Sector data, annual performance, capital needs, and risk indicators are summarized into funding signals the system can read.",
+    "Fill core business data: sector, performance, funding needs, and risk indicators.",
   homeStepInvestorTitle: "AI reads & matches profiles",
   homeStepInvestorBody:
-    "Investor preferences are automatically matched with UMKM profiles, producing transparent compatibility scores.",
+    "AI matches investor preferences with UMKM profiles and provides a clear match score.",
   homeStepDealTitle: "Negotiate, invoice, invest",
   homeStepDealBody:
-    "Offers, payments, investment records, and profit distributions are monitored in one multi-role workspace.",
+    "Continue with negotiation, invoice, and investment, then track profit distribution in one flow.",
   homeOpportunitiesTitle: "Available opportunities",
   homeOpportunitiesBody:
     "Sample UMKM opportunities investors can review, compare, and continue into negotiation.",
