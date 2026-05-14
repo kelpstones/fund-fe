@@ -2065,6 +2065,94 @@ Object.assign(translations.en, {
   completed: "Completed",
 });
 
+Object.assign(translations.id, {
+  investorOnboarding: "Onboarding Investor",
+  investorOnboardingTitle: "Mulai perjalanan investasi kamu",
+  investorOnboardingBody:
+    "Ikuti langkah berikut agar profil investor kamu siap dan peluang yang tepat bisa ditemukan melalui AI matchmaking.",
+  investorOnboardingProgress: "Progress onboarding investor",
+  investorStepProfileTitle: "Lengkapi Profil Akun",
+  investorStepProfileBody:
+    "Pastikan nama, email, dan nomor telepon sudah terisi agar identitas kamu valid di platform.",
+  investorStepProfileTodo: "Profil akun belum lengkap. Lengkapi nama dan nomor telepon.",
+  investorStepProfileDone: "Profil akun sudah lengkap.",
+  investorStepPreferenceTitle: "Atur Preferensi Investasi",
+  investorStepPreferenceBody:
+    "Tentukan sektor, nominal minimum, toleransi risiko, dan target return agar sistem bisa memberi rekomendasi yang relevan.",
+  investorStepPreferenceTodo: "Preferensi investasi belum diatur.",
+  investorStepPreferenceDone: "Preferensi investasi sudah disimpan.",
+  investorStepSurveyTitle: "Isi Survey Investor",
+  investorStepSurveyBody:
+    "Survey singkat untuk membantu sistem memahami pola investasi dan profil risiko kamu lebih dalam.",
+  investorStepSurveyTodo: "Lengkapi survey agar rekomendasi AI lebih akurat.",
+  investorStepOpportunityTitle: "Telusuri Peluang UMKM",
+  investorStepOpportunityBody:
+    "Jelajahi marketplace peluang, gunakan filter sektor dan risiko, lalu simpan kandidat yang menarik.",
+  investorStepOpportunityTodo: "Mulai telusuri dan simpan peluang UMKM yang sesuai.",
+  investorStepNegotiationTitle: "Mulai Negosiasi",
+  investorStepNegotiationBody:
+    "Kirim penawaran investasi, diskusikan nominal dan return, lalu tunggu konfirmasi dari UMKM.",
+  investorStepNegotiationTodo: "Buka peluang yang kamu minati dan kirim penawaran awal.",
+  investorStepNegotiationDone: "{count} negosiasi aktif.",
+  investorStepPortfolioTitle: "Pantau Portfolio & Profit",
+  investorStepPortfolioBody:
+    "Setelah negosiasi selesai, investasi akan dicatat. Pantau invoice, nilai investasi, dan distribusi profit dari sini.",
+  investorStepPortfolioTodo: "Portfolio akan terisi setelah negosiasi pertama selesai.",
+  investorStepPortfolioDone: "{count} investasi aktif dalam portfolio.",
+  browseOpportunities: "Telusuri Peluang",
+  viewPortfolio: "Lihat Portfolio",
+  setPreferences: "Atur Preferensi",
+  reviewPreferences: "Review Preferensi",
+  completeSurvey: "Isi Survey",
+  reviewSurvey: "Review Survey",
+  navTerms: "Syarat Layanan",
+  navPrivacy: "Kebijakan Privasi",
+});
+
+Object.assign(translations.en, {
+  investorOnboarding: "Investor Onboarding",
+  investorOnboardingTitle: "Start your investment journey",
+  investorOnboardingBody:
+    "Follow these steps to get your investor profile ready and let the AI matchmaking surface the right UMKM opportunities for you.",
+  investorOnboardingProgress: "Investor onboarding progress",
+  investorStepProfileTitle: "Complete Account Profile",
+  investorStepProfileBody:
+    "Make sure your name, email, and phone number are filled in so your identity is valid on the platform.",
+  investorStepProfileTodo: "Account profile is incomplete. Add your name and phone number.",
+  investorStepProfileDone: "Account profile is complete.",
+  investorStepPreferenceTitle: "Set Investment Preferences",
+  investorStepPreferenceBody:
+    "Define sectors, minimum nominal, risk tolerance, and return targets so the system can give relevant recommendations.",
+  investorStepPreferenceTodo: "Investment preferences have not been set.",
+  investorStepPreferenceDone: "Investment preferences saved.",
+  investorStepSurveyTitle: "Complete Investor Survey",
+  investorStepSurveyBody:
+    "A quick survey to help the system understand your investment patterns and risk profile in depth.",
+  investorStepSurveyTodo: "Complete the survey for more accurate AI recommendations.",
+  investorStepOpportunityTitle: "Browse UMKM Opportunities",
+  investorStepOpportunityBody:
+    "Explore the opportunity marketplace, use sector and risk filters, then save interesting candidates.",
+  investorStepOpportunityTodo: "Start browsing and saving relevant UMKM opportunities.",
+  investorStepNegotiationTitle: "Start a Negotiation",
+  investorStepNegotiationBody:
+    "Send an investment offer, discuss the nominal and return, then wait for confirmation from the UMKM.",
+  investorStepNegotiationTodo: "Open an opportunity you like and send an initial offer.",
+  investorStepNegotiationDone: "{count} active negotiations.",
+  investorStepPortfolioTitle: "Monitor Portfolio & Profit",
+  investorStepPortfolioBody:
+    "After a negotiation closes, the investment is recorded. Track invoices, investment value, and profit distributions here.",
+  investorStepPortfolioTodo: "Portfolio will fill after the first negotiation completes.",
+  investorStepPortfolioDone: "{count} active investments in portfolio.",
+  browseOpportunities: "Browse Opportunities",
+  viewPortfolio: "View Portfolio",
+  setPreferences: "Set Preferences",
+  reviewPreferences: "Review Preferences",
+  completeSurvey: "Complete Survey",
+  reviewSurvey: "Review Survey",
+  navTerms: "Terms of Service",
+  navPrivacy: "Privacy Policy",
+});
+
 type TranslateParams = Record<string, string | number>;
 
 type LanguageContextValue = {

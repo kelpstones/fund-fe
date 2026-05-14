@@ -6,7 +6,14 @@ import { useAuth } from "../lib/auth/AuthProvider";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useLanguage } from "../lib/i18n/LanguageProvider";
 
-const links = [
+const headerLinks = [
+  { to: "/", labelKey: "navHome" },
+  { to: "/tentang", labelKey: "navAbout" },
+  { to: "/portfolio", labelKey: "navPortfolio" },
+  { to: "/kontak", labelKey: "navContact" },
+] as const;
+
+const footerLinks = [
   { to: "/", labelKey: "navHome" },
   { to: "/tentang", labelKey: "navAbout" },
   { to: "/layanan", labelKey: "navServices" },
@@ -40,7 +47,7 @@ export function PublicLayout() {
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Logo />
           <nav className="hidden items-center gap-3 text-sm font-semibold lg:flex">
-            {links.map((link) => (
+            {headerLinks.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}
@@ -103,7 +110,7 @@ export function PublicLayout() {
         </div>
         <nav className="flex-1 px-4 py-5">
           <div className="grid gap-1">
-            {links.map((link) => (
+            {headerLinks.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}
@@ -157,7 +164,7 @@ export function PublicLayout() {
           <div>
             <h3 className="text-sm font-bold text-white">{t("navigation")}</h3>
             <div className="mt-4 grid gap-2 text-sm text-white/65">
-              {links.map((link) => (
+              {footerLinks.map((link) => (
                 <Link key={link.to} to={link.to} className="hover:text-accent">
                   {t(link.labelKey)}
                 </Link>
@@ -188,7 +195,11 @@ export function PublicLayout() {
         <div className="border-t border-white/10">
           <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-sm text-white/55 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
             <p>{t("footerCopyright", { year: currentYear })}</p>
-            <p>{t("footerBuiltBy")}</p>
+            <div className="flex flex-wrap items-center gap-4">
+              <Link to="/syarat" className="hover:text-white/80 transition">{t("navTerms")}</Link>
+              <Link to="/privasi" className="hover:text-white/80 transition">{t("navPrivacy")}</Link>
+              <span>{t("footerBuiltBy")}</span>
+            </div>
           </div>
         </div>
       </footer>

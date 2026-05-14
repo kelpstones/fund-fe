@@ -15,6 +15,9 @@ import { PortfolioPage } from "./pages/public/PortfolioPage";
 import { ServicesPage } from "./pages/public/ServicesPage";
 import { HelpCenterPage } from "./pages/public/HelpCenterPage";
 import { TrustSafetyPage } from "./pages/public/TrustSafetyPage";
+import { TermsPage } from "./pages/public/TermsPage";
+import { PrivacyPage } from "./pages/public/PrivacyPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import { dashboardPathFor, useAuth } from "./lib/auth/AuthProvider";
 import {
   AdminOverviewPage,
@@ -22,6 +25,7 @@ import {
   UmkmOverviewPage,
 } from "./pages/dashboard/OverviewPages";
 import { UmkmOnboardingPage } from "./pages/dashboard/UmkmOnboardingPage";
+import { InvestorOnboardingPage } from "./pages/dashboard/InvestorOnboardingPage";
 import {
   AdminsPage,
   BusinessesPage,
@@ -83,6 +87,8 @@ export default function App() {
           <Route path="/bantuan" element={<HelpCenterPage />} />
           <Route path="/keamanan" element={<TrustSafetyPage />} />
           <Route path="/trust" element={<TrustSafetyPage />} />
+          <Route path="/syarat" element={<TermsPage />} />
+          <Route path="/privasi" element={<PrivacyPage />} />
           <Route path="/kontak" element={<ContactPage />} />
         </Route>
 
@@ -117,6 +123,7 @@ export default function App() {
         <Route element={<ProtectedRoute roles={["investor"]} />}>
           <Route path="/dashboard/investor" element={<DashboardLayout />}>
             <Route index element={<InvestorOverviewPage />} />
+            <Route path="onboarding" element={<InvestorOnboardingPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="dokumen" element={<DocumentCenterPage />} />
             <Route path="preferensi" element={<InvestorPreferencesPage />} />
@@ -157,7 +164,7 @@ export default function App() {
           </Route>
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </>
   );

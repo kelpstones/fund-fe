@@ -85,7 +85,10 @@ const navByRole: Record<UserRole, NavGroup[]> = {
   investor: [
     {
       labelKey: "dashboardGroupMain",
-      items: [{ to: "/dashboard/investor", labelKey: "dashboardOverview", icon: LayoutDashboard }],
+      items: [
+        { to: "/dashboard/investor", labelKey: "dashboardOverview", icon: LayoutDashboard },
+        { to: "/dashboard/investor/onboarding", labelKey: "dashboardOnboarding", icon: Rocket },
+      ],
     },
     {
       labelKey: "dashboardGroupAccount",
