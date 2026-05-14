@@ -1,41 +1,4 @@
-import {
-  BrainCircuit,
-  Building2,
-  CalendarCheck2,
-  ShieldCheck,
-  Target,
-  Users,
-} from "lucide-react";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
-
-const values = [
-  {
-    title: "aboutValueContextTitle",
-    body: "aboutValueContextBody",
-    icon: Building2,
-  },
-  {
-    title: "aboutValuePreferenceTitle",
-    body: "aboutValuePreferenceBody",
-    icon: Users,
-  },
-  {
-    title: "aboutValueScoreTitle",
-    body: "aboutValueScoreBody",
-    icon: BrainCircuit,
-  },
-  {
-    title: "aboutValueAdminTitle",
-    body: "aboutValueAdminBody",
-    icon: ShieldCheck,
-  },
-];
-
-const timeline = [
-  ["2024", "aboutTimelineResearch"],
-  ["2025", "aboutTimelinePrototype"],
-  ["2026", "aboutTimelineCapstone"],
-];
 
 const teamMembers = [
   {

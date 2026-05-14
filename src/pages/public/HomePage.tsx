@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   CircleDollarSign,
   Handshake,
-  Landmark,
   PlayCircle,
   Quote,
   ShieldCheck,
@@ -42,11 +41,19 @@ const steps = [
   },
 ];
 
-const trustBadges = [
-  "homeTrustKominfo",
-  "homeTrustBI",
-  "homeTrustOJK",
-  "homeTrustCommunity",
+const programLogos = [
+  {
+    name: "Coding Camp 2026",
+    image: "/partners/coding-camp.png",
+  },
+  {
+    name: "DBS Foundation",
+    image: "/partners/dbs-foundation.png",
+  },
+  {
+    name: "Dicoding",
+    image: "/partners/dicoding.png",
+  },
 ];
 
 const testimonials = [
@@ -238,21 +245,18 @@ export function HomePage() {
               {t("homeTrustBody")}
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {trustBadges.map((item) => (
+          <div className="grid gap-4 sm:grid-cols-3">
+            {programLogos.map((item) => (
               <div
-                key={item}
-                className="flex items-center gap-3 rounded-md border border-base-300 bg-base-200 p-4"
+                key={item.name}
+                className="flex h-16 items-center justify-center rounded-md bg-white px-5"
               >
-                <div className="grid h-10 w-10 place-items-center rounded-md bg-white text-primary">
-                  <Landmark size={19} />
-                </div>
-                <div>
-                  <p className="text-sm font-black">{t(item)}</p>
-                  <p className="text-xs font-semibold text-neutral/45">
-                    {t("homeTrustPlaceholder")}
-                  </p>
-                </div>
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  className="max-h-16 w-full object-contain"
+                  loading="lazy"
+                />
               </div>
             ))}
           </div>

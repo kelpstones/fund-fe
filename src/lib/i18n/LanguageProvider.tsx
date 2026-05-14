@@ -1448,14 +1448,12 @@ Object.assign(translations.en, {
 
 Object.assign(translations.id, {
   homePhoneBusinessMeta: "Kuliner, Bandung",
-  homeTrustEyebrow: "Trust badge demo",
+  homeTrustEyebrow: "Capstone project program",
   homeTrustBody:
-    "Area ini disiapkan untuk menampilkan partner, regulator, atau sertifikasi saat kerja sama resmi sudah tersedia.",
-  homeTrustKominfo: "Kominfo",
-  homeTrustBI: "Bank Indonesia",
-  homeTrustOJK: "OJK",
-  homeTrustCommunity: "Komunitas UMKM",
-  homeTrustPlaceholder: "Placeholder",
+    "FundRaise dibuat sebagai proyek capstone Coding Camp 2026 dengan ekosistem pembelajaran dari DBS Foundation dan Dicoding.",
+  homeProgramCodingCamp: "Program capstone",
+  homeProgramDbs: "Inisiator program",
+  homeProgramDicoding: "Mitra edukasi",
   homeDiagramEyebrow: "Alur platform",
   homeDiagramTitle: "Satu jalur kerja yang mudah dipahami",
   homeDiagramBody:
@@ -1534,14 +1532,12 @@ Object.assign(translations.id, {
 Object.assign(translations.en, {
   homeHeroImageAlt: "FundRaise operations illustration for UMKM and investors",
   homePhoneBusinessMeta: "Culinary, Bandung",
-  homeTrustEyebrow: "Demo trust badges",
+  homeTrustEyebrow: "Capstone project program",
   homeTrustBody:
-    "This area is prepared for partners, regulators, or certifications once official collaboration is available.",
-  homeTrustKominfo: "Kominfo",
-  homeTrustBI: "Bank Indonesia",
-  homeTrustOJK: "OJK",
-  homeTrustCommunity: "UMKM Community",
-  homeTrustPlaceholder: "Placeholder",
+    "FundRaise was built as a Coding Camp 2026 capstone project within the DBS Foundation and Dicoding learning ecosystem.",
+  homeProgramCodingCamp: "Capstone program",
+  homeProgramDbs: "Program initiator",
+  homeProgramDicoding: "Education partner",
   homeDiagramEyebrow: "Platform flow",
   homeDiagramTitle: "One workflow that is easy to understand",
   homeDiagramBody:
