@@ -91,11 +91,12 @@ export function LanguageSwitcher({ compact = false, className = "" }: LanguageSw
         aria-label={t("language")}
         aria-haspopup="menu"
         aria-expanded={open}
+        onMouseDown={(event) => event.preventDefault()}
         onClick={() => setOpen((current) => !current)}
       >
-        <ActiveFlag className="h-5 w-5" />
+        <ActiveFlag className="pointer-events-none h-5 w-5" />
         <span
-          className={`font-semibold leading-none ${
+          className={`pointer-events-none select-none font-semibold leading-none ${
             compact ? "min-w-[2ch] text-center" : "w-24 text-left"
           }`}
         >
@@ -112,14 +113,15 @@ export function LanguageSwitcher({ compact = false, className = "" }: LanguageSw
                 <button
                   type="button"
                   className={active ? "active" : ""}
+                  onMouseDown={(event) => event.preventDefault()}
                   onClick={() => {
                     setLanguage(option.value);
                     setOpen(false);
                   }}
                 >
-                  <OptionFlag />
-                  <span className="font-bold">{option.shortLabel}</span>
-                  <span>{option.label}</span>
+                  <OptionFlag className="pointer-events-none" />
+                  <span className="pointer-events-none font-bold">{option.shortLabel}</span>
+                  <span className="pointer-events-none">{option.label}</span>
                 </button>
               </li>
             );

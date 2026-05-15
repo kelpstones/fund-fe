@@ -301,6 +301,7 @@ export function DashboardLayout() {
   const { t } = useLanguage();
   const location = useLocation();
   const role = user?.role ?? "umkm";
+  const isAdminRole = role === "admin" || role === "superadmin";
   const roleLabelKey = roleLabelKeyByRole[role];
   const groups = navByRole[role];
   const flatNav = groups.flatMap((group) => group.items);
@@ -316,7 +317,7 @@ export function DashboardLayout() {
   const initials = initialsFromName(user?.nama);
 
   return (
-    <div className="drawer min-h-screen bg-base-200 lg:drawer-open">
+    <div className={`drawer min-h-screen bg-base-200 lg:drawer-open ${isAdminRole ? "fr-admin-neutral" : ""}`}>
       <input id="dashboard-drawer" type="checkbox" className="drawer-toggle" />
       <div className="drawer-content flex min-h-screen flex-col">
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-base-300 bg-white/95 px-4 backdrop-blur lg:px-8">

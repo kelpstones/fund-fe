@@ -12,6 +12,18 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.fr-admin-neutral {
+  --p: 220 8% 38%;
+  --pf: 220 8% 32%;
+  --pc: 0 0% 100%;
+  --s: 220 6% 46%;
+  --sf: 220 6% 39%;
+  --sc: 0 0% 100%;
+  --a: 220 5% 57%;
+  --af: 220 5% 50%;
+  --ac: 220 20% 12%;
+}
+
 html {
   background: #f6f7fb;
   scroll-behavior: smooth;
