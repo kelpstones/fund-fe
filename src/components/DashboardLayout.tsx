@@ -255,7 +255,7 @@ function Sidebar() {
                       end={item.to === dashboardPathFor(role)}
                       className={({ isActive }) =>
                         [
-                          "flex h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold transition",
+                          "flex h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors duration-150 ease-out",
                           isActive
                             ? "bg-primary text-white"
                             : "text-neutral/70 hover:bg-base-200 hover:text-neutral",

@@ -18,6 +18,7 @@ type ToastItem = {
   message: string;
   title?: string;
   duration: number;
+  isExiting?: boolean;
 };
 
 type ToastPayload = {
@@ -42,6 +43,7 @@ type ToastItemInput = ToastPayload & {
 
 const DEFAULT_DURATION = 4200;
 const MAX_TOAST = 4;
+const EXIT_DURATION = 160;
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 const toneClass: Record<ToastTone, string> = {
@@ -62,19 +64,47 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const sequence = useRef(0);
   const timers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+  const exitTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
-  const dismiss = useCallback((id: number) => {
+  const removeToast = useCallback((id: number) => {
     setToasts((current) => current.filter((item) => item.id !== id));
     const timer = timers.current.get(id);
     if (timer) {
       clearTimeout(timer);
       timers.current.delete(id);
     }
+    const exitTimer = exitTimers.current.get(id);
+    if (exitTimer) {
+      clearTimeout(exitTimer);
+      exitTimers.current.delete(id);
+    }
   }, []);
 
-  const clear = useCallback(() => {
+  const dismiss = useCallback((id: number) => {
+    const timer = timers.current.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      timers.current.delete(id);
+    }
+
+    setToasts((current) =>
+      current.map((item) =>
+        item.id === id ? { ...item, isExiting: true } : item,
+      ),
+    );
+
+    if (exitTimers.current.has(id)) return;
+    const timeoutId = setTimeout(() => {
+      removeToast(id);
+    }, EXIT_DURATION);
+    exitTimers.current.set(id, timeoutId);
+  }, [removeToast]);
+
+  const clearAll = useCallback(() => {
     timers.current.forEach((timer) => clearTimeout(timer));
     timers.current.clear();
+    exitTimers.current.forEach((timer) => clearTimeout(timer));
+    exitTimers.current.clear();
     setToasts([]);
   }, []);
 
@@ -122,11 +152,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ show, success, error, info, warning, dismiss, clear }),
-    [show, success, error, info, warning, dismiss, clear],
+    () => ({ show, success, error, info, warning, dismiss, clear: clearAll }),
+    [show, success, error, info, warning, dismiss, clearAll],
   );
 
-  useEffect(() => () => clear(), [clear]);
+  useEffect(() => () => clearAll(), [clearAll]);
 
   return (
     <ToastContext.Provider value={value}>
@@ -138,7 +168,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <div
               key={item.id}
               role="status"
-              className={`alert ${toneClass[item.tone]} pointer-events-auto shadow-soft`}
+              className={`alert ${toneClass[item.tone]} pointer-events-auto shadow-soft ${
+                item.isExiting ? "fr-toast-exit" : "fr-toast-enter"
+              }`}
             >
               <Icon size={18} />
               <div className="grid gap-0.5">

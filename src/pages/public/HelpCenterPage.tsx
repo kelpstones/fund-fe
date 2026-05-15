@@ -112,11 +112,15 @@ export function HelpCenterPage() {
             <details key={question} className="group rounded-md border border-base-300 bg-white p-5 shadow-sm">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-black">
                 {t(question)}
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-base-200 text-primary group-open:bg-primary group-open:text-white">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-base-200 text-primary transition-[transform,background-color,color] duration-200 ease-out group-open:rotate-45 group-open:bg-primary group-open:text-white">
                   +
                 </span>
               </summary>
-              <p className="mt-4 max-w-3xl text-sm leading-6 text-neutral/65">{t(answer)}</p>
+              <div className="grid transition-[grid-template-rows,opacity] duration-200 ease-out [grid-template-rows:0fr] opacity-75 group-open:[grid-template-rows:1fr] group-open:opacity-100">
+                <div className="overflow-hidden">
+                  <p className="mt-4 max-w-3xl text-sm leading-6 text-neutral/65">{t(answer)}</p>
+                </div>
+              </div>
             </details>
           ))}
           {filteredFaq.length === 0 ? (

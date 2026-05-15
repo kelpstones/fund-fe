@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { compactCurrency, percent } from "../../lib/format";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
+import { useScrollReveal } from "../../lib/ui/useScrollReveal";
 
 const proofPoints = [
   { label: "homeProofFunding", value: compactCurrency(1250000000) },
@@ -200,6 +201,7 @@ function PhoneMockup() {
 export function HomePage() {
   const { t } = useLanguage();
   const heroRef = useRef<HTMLDivElement | null>(null);
+  useScrollReveal();
 
   useEffect(() => {
     const context = gsap.context(() => {
@@ -287,7 +289,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="border-y border-base-300 bg-white">
+      <section className="border-y border-base-300 bg-white" data-reveal>
         <div className="mx-auto grid max-w-7xl gap-4 px-4 py-8 sm:px-6 md:grid-cols-[0.7fr_1.3fr] md:items-center lg:px-8">
           <div>
             <p className="mt-2 text-sm leading-6 text-neutral/60">
@@ -312,7 +314,11 @@ export function HomePage() {
         </div>
       </section>
 
-      <section id="features" className="border-y border-base-300 bg-base-200">
+      <section
+        id="features"
+        className="border-y border-base-300 bg-base-200"
+        data-reveal
+      >
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="max-w-3xl">
             <h2 className="text-4xl font-black tracking-normal">
@@ -323,12 +329,14 @@ export function HomePage() {
             </p>
           </div>
           <div className="mt-8 grid max-w-4xl gap-5">
-            {steps.map((step) => {
+            {steps.map((step, index) => {
               const Icon = step.icon;
               return (
                 <div
                   key={step.title}
                   className="relative rounded-md bg-white p-6 shadow-sm"
+                  data-reveal
+                  data-reveal-delay={String(index * 40)}
                 >
                   <div className="flex items-start gap-4">
                     <div className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
@@ -348,7 +356,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="bg-white">
+      <section className="bg-white" data-reveal>
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
@@ -376,7 +384,8 @@ export function HomePage() {
               return (
                 <article
                   key={item.name}
-                  className="rounded-md border border-base-300 bg-white p-5 shadow-sm"
+                  className="rounded-md border border-base-300 bg-white p-5 shadow-sm transition-[transform,box-shadow] duration-200 ease-out md:hover:-translate-y-0.5 md:hover:shadow-md"
+                  data-reveal
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -415,7 +424,7 @@ export function HomePage() {
                     </div>
                     <div className="h-3 rounded-full bg-base-200">
                       <div
-                        className="h-3 rounded-full bg-primary"
+                        className="h-3 rounded-full bg-primary transition-[width] duration-[420ms] ease-out"
                         style={{ width: `${progress}%` }}
                       />
                     </div>
@@ -427,7 +436,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="border-y border-base-300 bg-base-200">
+      <section className="border-y border-base-300 bg-base-200" data-reveal>
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="max-w-3xl">
             <h2 className="text-4xl font-black tracking-normal">
@@ -441,7 +450,8 @@ export function HomePage() {
             {roleCards.map((roleCard) => (
               <article
                 key={roleCard.title}
-                className="overflow-hidden rounded-md border border-base-300 bg-white shadow-sm"
+                className="overflow-hidden rounded-md border border-base-300 bg-white shadow-sm transition-[transform,box-shadow] duration-200 ease-out md:hover:-translate-y-0.5 md:hover:shadow-md"
+                data-reveal
               >
                 <div className="aspect-[16/8] overflow-hidden bg-base-200">
                   <img
@@ -465,7 +475,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="bg-white">
+      <section className="bg-white" data-reveal>
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div>
             <h2 className="mt-3 text-4xl font-black tracking-normal">
@@ -476,7 +486,8 @@ export function HomePage() {
             {testimonials.map((item) => (
               <article
                 key={item.name}
-                className="rounded-md border border-base-300 bg-white p-6 shadow-sm"
+                className="rounded-md border border-base-300 bg-white p-6 shadow-sm transition-[transform,box-shadow] duration-200 ease-out md:hover:-translate-y-0.5 md:hover:shadow-md"
+                data-reveal
               >
                 <Quote className="text-primary" size={24} />
                 <p className="mt-5 text-sm leading-6 text-neutral/65">
@@ -504,7 +515,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pb-16 sm:px-6 lg:px-8">
+      <section className="bg-white px-4 pb-16 sm:px-6 lg:px-8" data-reveal>
         <div className="mx-auto max-w-7xl rounded-md bg-neutral p-8 text-white lg:p-10">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>

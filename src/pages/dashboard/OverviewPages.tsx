@@ -111,7 +111,10 @@ function MatchList({ submissions, isLoading = false }: { submissions: Entity[]; 
                 <span className="badge badge-secondary badge-lg text-white">{score}%</span>
               </div>
               <div className="mt-4 h-2 rounded-full bg-base-200">
-                <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.min(score, 100)}%` }} />
+                <div
+                  className="h-2 rounded-full bg-primary transition-[width] duration-[420ms] ease-out"
+                  style={{ width: `${Math.min(score, 100)}%` }}
+                />
               </div>
             </div>
           );
@@ -228,7 +231,10 @@ export function UmkmOverviewPage() {
                 <span>{onboardingProgress}%</span>
               </div>
               <div className="h-2 rounded-full bg-base-200">
-                <div className="h-2 rounded-full bg-primary" style={{ width: `${onboardingProgress}%` }} />
+                <div
+                  className="h-2 rounded-full bg-primary transition-[width] duration-[420ms] ease-out"
+                  style={{ width: `${onboardingProgress}%` }}
+                />
               </div>
             </div>
             <Link to="/dashboard/umkm/onboarding" className="btn btn-primary rounded-md text-white">

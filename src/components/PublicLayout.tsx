@@ -53,7 +53,7 @@ export function PublicLayout() {
                 to={link.to}
                 className={({ isActive }) =>
                   [
-                    "inline-flex h-10 items-center justify-center px-2 text-center transition",
+                    "inline-flex h-10 items-center justify-center px-2 text-center transition-colors duration-150 ease-out",
                     isActive ? "text-primary" : "text-neutral hover:text-primary",
                   ].join(" ")
                 }
@@ -117,7 +117,7 @@ export function PublicLayout() {
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={({ isActive }) =>
                   [
-                    "flex h-12 items-center rounded-md px-4 text-sm font-bold transition",
+                    "flex h-12 items-center rounded-md px-4 text-sm font-bold transition-colors duration-150 ease-out",
                     isActive
                       ? "bg-primary text-white"
                       : "text-neutral/70 hover:bg-base-200 hover:text-neutral",

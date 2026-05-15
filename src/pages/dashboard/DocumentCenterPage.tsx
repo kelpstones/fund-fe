@@ -113,7 +113,10 @@ export function DocumentCenterPage() {
               <span>{progress}%</span>
             </div>
             <div className="h-3 rounded-full bg-base-200">
-              <div className="h-3 rounded-full bg-primary" style={{ width: `${progress}%` }} />
+              <div
+                className="h-3 rounded-full bg-primary transition-[width] duration-[420ms] ease-out"
+                style={{ width: `${progress}%` }}
+              />
             </div>
           </div>
         </div>

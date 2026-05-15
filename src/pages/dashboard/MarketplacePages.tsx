@@ -203,7 +203,7 @@ function OpportunityCard({
   const score = matchScore(item);
 
   return (
-    <article className="flex h-full flex-col rounded-md border border-base-300 bg-white p-5 shadow-sm">
+    <article className="flex h-full flex-col rounded-md border border-base-300 bg-white p-5 shadow-sm transition-[transform,box-shadow] duration-200 ease-out md:hover:-translate-y-0.5 md:hover:shadow-md">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-black uppercase tracking-wide text-neutral/40">{sector(item)}</p>
@@ -1100,7 +1100,7 @@ export function AdminReviewQueuePage() {
       ) : null}
       <div className="grid gap-4">
         {reviewItems.map((item) => (
-          <article key={item.id} className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+          <article key={item.id} className="rounded-md border border-base-300 bg-white p-5 shadow-sm transition-[transform,box-shadow] duration-200 ease-out md:hover:-translate-y-0.5 md:hover:shadow-md">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h3 className="text-xl font-black">{businessName(item)}</h3>

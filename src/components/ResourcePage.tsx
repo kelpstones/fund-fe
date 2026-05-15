@@ -698,7 +698,7 @@ export function ResourcePage<T extends Entity>({
 
       {isFormOpen ? (
         <div className="modal modal-open">
-          <div className="modal-box max-w-2xl rounded-md">
+          <div className="modal-box fr-modal-panel max-w-2xl rounded-md">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-xl font-black">{editing ? t("editData") : t(createLabel)}</h3>
@@ -769,7 +769,7 @@ export function ResourcePage<T extends Entity>({
               </div>
             </form>
           </div>
-          <button className="modal-backdrop" onClick={closeForm}>
+          <button className="modal-backdrop fr-modal-backdrop" onClick={closeForm}>
             close
           </button>
         </div>
@@ -777,7 +777,7 @@ export function ResourcePage<T extends Entity>({
 
       {confirmDialog ? (
         <div className="modal modal-open">
-          <div className="modal-box max-w-md rounded-md">
+          <div className="modal-box fr-modal-panel max-w-md rounded-md">
             <div className="flex gap-4">
               <div
                 className={[
@@ -818,7 +818,7 @@ export function ResourcePage<T extends Entity>({
               </button>
             </div>
           </div>
-          <button className="modal-backdrop" onClick={() => setConfirmDialog(null)}>
+          <button className="modal-backdrop fr-modal-backdrop" onClick={() => setConfirmDialog(null)}>
             close
           </button>
         </div>
@@ -826,7 +826,7 @@ export function ResourcePage<T extends Entity>({
 
       {resultModal ? (
         <div className="modal modal-open">
-          <div className="modal-box max-w-3xl rounded-md">
+          <div className="modal-box fr-modal-panel max-w-3xl rounded-md">
             <div className="mb-4 flex items-start justify-between gap-4">
               <h3 className="text-xl font-black">{resultModal.title}</h3>
               <button className="btn btn-square btn-ghost btn-sm" onClick={() => setResultModal(null)}>
@@ -835,7 +835,7 @@ export function ResourcePage<T extends Entity>({
             </div>
             <DataPreview data={resultModal.data} />
           </div>
-          <button className="modal-backdrop" onClick={() => setResultModal(null)}>
+          <button className="modal-backdrop fr-modal-backdrop" onClick={() => setResultModal(null)}>
             close
           </button>
         </div>
@@ -843,7 +843,7 @@ export function ResourcePage<T extends Entity>({
 
       {loadingAlert ? (
         <div className="modal modal-open">
-          <div className="modal-box max-w-sm rounded-md text-center">
+          <div className="modal-box fr-modal-panel max-w-sm rounded-md text-center">
             <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-primary/10 text-primary">
               <Loader2 className="animate-spin" size={34} />
             </div>

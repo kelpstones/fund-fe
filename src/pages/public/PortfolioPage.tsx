@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Bookmark, Scale, Search, Store, X } from "lucide-react";
 import { compactCurrency, percent } from "../../lib/format";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
+import { useScrollReveal } from "../../lib/ui/useScrollReveal";
 
 const portfolios = [
   {
@@ -65,6 +66,7 @@ function BusinessVisual({ name, sector, city }: { name: string; sector: string; 
 
 export function PortfolioPage() {
   const { t } = useLanguage();
+  useScrollReveal();
   const [search, setSearch] = useState("");
   const [risk, setRisk] = useState("all");
   const [sector, setSector] = useState("all");
@@ -90,7 +92,10 @@ export function PortfolioPage() {
 
   return (
     <main className="bg-white">
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      <section
+        className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8"
+        data-reveal
+      >
         <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
             <h1 className="font-display text-5xl font-black leading-tight tracking-normal">
@@ -139,7 +144,11 @@ export function PortfolioPage() {
             const progress = Math.min(100, Math.round((item.raised / item.target) * 100));
             const isCompared = compareItems.some((entry) => entry.name === item.name);
             return (
-              <article key={item.name} className="rounded-md border border-base-300 bg-white p-6 shadow-sm">
+              <article
+                key={item.name}
+                className="rounded-md border border-base-300 bg-white p-6 shadow-sm transition-[transform,box-shadow] duration-200 ease-out md:hover:-translate-y-0.5 md:hover:shadow-md"
+                data-reveal
+              >
                 <BusinessVisual name={item.name} sector={t(item.sectorKey)} city={item.city} />
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -172,7 +181,10 @@ export function PortfolioPage() {
                     <span>{progress}%</span>
                   </div>
                   <div className="h-3 rounded-full bg-base-200">
-                    <div className="h-3 rounded-full bg-primary" style={{ width: `${progress}%` }} />
+                    <div
+                      className="h-3 rounded-full bg-primary transition-[width] duration-[420ms] ease-out"
+                      style={{ width: `${progress}%` }}
+                    />
                   </div>
                 </div>
                 <div className="mt-6 flex gap-2">
@@ -197,7 +209,10 @@ export function PortfolioPage() {
           ) : null}
         </div>
 
-        <section className="mt-16 rounded-md border border-base-300 bg-neutral p-8 text-white">
+        <section
+          className="mt-16 rounded-md border border-base-300 bg-neutral p-8 text-white"
+          data-reveal
+        >
           <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div>
               <h2 className="text-3xl font-black tracking-normal">{t("portfolioMarketplaceTitle")}</h2>
@@ -218,7 +233,7 @@ export function PortfolioPage() {
       </section>
       {compareItems.length > 0 ? (
         <div className="modal modal-open">
-          <div className="modal-box max-w-4xl rounded-md">
+          <div className="modal-box fr-modal-panel max-w-4xl rounded-md">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-2xl font-black">{t("portfolioCompareTitle")}</h3>
@@ -259,7 +274,7 @@ export function PortfolioPage() {
               </table>
             </div>
           </div>
-          <button className="modal-backdrop" onClick={() => setCompareItems([])}>{t("close")}</button>
+          <button className="modal-backdrop fr-modal-backdrop" onClick={() => setCompareItems([])}>{t("close")}</button>
         </div>
       ) : null}
     </main>
