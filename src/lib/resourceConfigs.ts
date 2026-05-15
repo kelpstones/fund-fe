@@ -115,6 +115,7 @@ export const myNegotiationConfig: ResourceConfig<Entity> = {
   ...negotiationConfig,
   key: "my-negotiations",
   listPath: "/businesses/proposals/negotiations/user",
+  notFoundIsEmpty: true,
 };
 
 export const invoiceConfig: ResourceConfig<Entity> = {

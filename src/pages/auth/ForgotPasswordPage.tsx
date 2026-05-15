@@ -7,28 +7,33 @@ import { apiClient } from "../../lib/api/client";
 import axios from "axios";
 import { LanguageSwitcher } from "../../components/LanguageSwitcher";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
+import { useToast } from "../../components/ToastProvider";
 
 export function ForgotPasswordPage() {
   const { t } = useLanguage();
+  const toast = useToast();
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
-    setError("");
     try {
       await apiClient.post("/user/forgot-password", { email });
       setSuccess(true);
+      toast.success(
+        `${t("forgotPasswordSuccessPrefix")} ${email}. ${t("forgotPasswordSuccessSuffix")}`,
+      );
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 404) {
-        setError(t("resetUnavailable"));
+        toast.error(t("resetUnavailable"));
       } else if (axios.isAxiosError(err) && err.response?.data?.message) {
-        setError(err.response.data.message as string);
+        toast.error(err.response.data.message as string, {
+          title: t("forgotPasswordError"),
+        });
       } else {
-        setError(t("forgotPasswordError"));
+        toast.error(t("forgotPasswordError"));
       }
     } finally {
       setIsSubmitting(false);
@@ -66,7 +71,6 @@ export function ForgotPasswordPage() {
                 required
               />
             </label>
-            {error ? <p className="text-sm font-semibold text-error">{error}</p> : null}
             <button className="btn btn-primary h-12 rounded-md text-white" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : null}
               {t("sendResetLink")}

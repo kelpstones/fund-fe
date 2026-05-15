@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { useLanguage, type Language } from "../lib/i18n/LanguageProvider";
 
 type LanguageSwitcherProps = {
@@ -55,37 +55,77 @@ const options: Array<{
 
 export function LanguageSwitcher({ compact = false, className = "" }: LanguageSwitcherProps) {
   const { language, languageLabel, setLanguage, t } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const activeOption = options.find((option) => option.value === language) ?? options[0];
   const ActiveFlag = activeOption.Flag;
 
+  useEffect(() => {
+    const onPointerDown = (event: MouseEvent) => {
+      if (!rootRef.current) return;
+      if (rootRef.current.contains(event.target as Node)) return;
+      setOpen(false);
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    window.addEventListener("mousedown", onPointerDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("mousedown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
+
   return (
-    <div className={`dropdown dropdown-end ${className}`}>
+    <div ref={rootRef} className={`relative ${className}`}>
       <button
-        className={`btn btn-outline btn-sm justify-start rounded-md bg-white ${compact ? "w-24" : "w-40"}`}
+        type="button"
+        className={`btn btn-outline btn-sm rounded-md bg-white ${
+          compact
+            ? "h-10 min-w-[96px] justify-center gap-2 px-3"
+            : "h-10 w-40 justify-start gap-3 px-3"
+        }`}
         aria-label={t("language")}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
       >
-        <ActiveFlag />
-        <span className={compact ? "w-6 text-left" : "w-24 text-left"}>
+        <ActiveFlag className="h-5 w-5" />
+        <span
+          className={`font-semibold leading-none ${
+            compact ? "min-w-[2ch] text-center" : "w-24 text-left"
+          }`}
+        >
           {compact ? activeOption.shortLabel : languageLabel}
         </span>
       </button>
-      <ul className="menu dropdown-content z-10 mt-2 w-44 rounded-md border border-base-300 bg-white p-2 shadow-soft">
-        {options.map((option) => {
-          const OptionFlag = option.Flag;
-          return (
-            <li key={option.value}>
-              <button
-                className={language === option.value ? "active" : ""}
-                onClick={() => setLanguage(option.value)}
-              >
-                <OptionFlag />
-                <span className="font-bold">{option.shortLabel}</span>
-                <span>{option.label}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      {open ? (
+        <ul className="menu absolute right-0 z-[1300] mt-2 w-44 rounded-md border border-base-300 bg-white p-2 shadow-soft">
+          {options.map((option) => {
+            const OptionFlag = option.Flag;
+            const active = language === option.value;
+            return (
+              <li key={option.value}>
+                <button
+                  type="button"
+                  className={active ? "active" : ""}
+                  onClick={() => {
+                    setLanguage(option.value);
+                    setOpen(false);
+                  }}
+                >
+                  <OptionFlag />
+                  <span className="font-bold">{option.shortLabel}</span>
+                  <span>{option.label}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
     </div>
   );
 }

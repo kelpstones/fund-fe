@@ -96,7 +96,8 @@ export function ProfilePage() {
   const { user, updateUser } = useAuth();
   const queryClient = useQueryClient();
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-  const canEditProfile = !isAdmin || user?.role === "superadmin";
+  const canEditProfile = isAdmin && user?.role === "superadmin";
+  const readonlyNotice = isAdmin ? t("adminProfileReadonly") : t("userProfileReadonly");
   const [saveMessage, setSaveMessage] = useState("");
   const [saveError, setSaveError] = useState("");
   const [form, setForm] = useState<{
@@ -228,7 +229,7 @@ export function ProfilePage() {
             </button>
           ) : (
             <div className="rounded-md border border-info/20 bg-info/10 px-4 py-3 text-sm font-semibold text-info">
-              {t("adminProfileReadonly")}
+              {readonlyNotice}
             </div>
           )}
           {saveMessage ? (
@@ -538,26 +539,6 @@ export function BusinessProfilePage() {
     },
   });
 
-  const classMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiClient.put(`/businesses/${activeBisnisId}/profile/class`, {
-        class: activeBusinessProfile.class,
-      });
-      return unwrap<unknown>(response.data);
-    },
-    onSuccess: async () => {
-      setForm(activeBusinessProfile);
-      setIsDirty(false);
-      setProfileMessage(t("businessClassUpdateSuccess"));
-      setProfileError("");
-      await queryClient.invalidateQueries({ queryKey: ["business-profile", activeBisnisId] });
-    },
-    onError: (err) => {
-      setProfileMessage("");
-      setProfileError(apiErrorMessage(err, t("businessClassUpdateError")));
-    },
-  });
-
   const profileData = asRecord(profileQuery.data);
   const savedBusinessProfile =
     profileData.net_profit_margin === undefined
@@ -681,14 +662,14 @@ export function BusinessProfilePage() {
                 <select
                   className="select select-bordered rounded-md"
                   value={activeBusinessProfile.class}
-                  onChange={(event) => updateNumber("class", event.target.value)}
-                  disabled={!isUmkm}
+                  disabled
                 >
                   <option value={0}>Critical</option>
                   <option value={1}>Struggling</option>
                   <option value={2}>Growth</option>
                   <option value={3}>Elite</option>
                 </select>
+                <span className="mt-2 text-xs font-semibold leading-5 text-neutral/45">{t("classPredictedByModel")}</span>
               </label>
             </div>
             {isUmkm ? (
@@ -700,13 +681,6 @@ export function BusinessProfilePage() {
                 >
                   {upsertMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                   {t("saveProfile")}
-                </button>
-                <button
-                  className="btn btn-secondary rounded-md text-white"
-                  onClick={() => classMutation.mutate()}
-                  disabled={!activeBisnisId || classMutation.isPending}
-                >
-                  {t("updateClass")}
                 </button>
               </div>
             ) : (

@@ -1,5 +1,6 @@
 import type { Entity, ResourceConfig } from "../../types";
 import { apiClient, unwrap } from "./client";
+import axios from "axios";
 
 export const pathFrom = <T extends Entity>(
   path: string | ((item: Partial<T> | T) => string) | undefined,
@@ -31,8 +32,19 @@ const unavailableEndpoint = (key: string) =>
 
 export const resourceApi = {
   async list<T extends Entity>(config: ResourceConfig<T>) {
-    const response = await apiClient.get(config.listPath);
-    return normalizeList<T>(unwrap<unknown>(response.data));
+    try {
+      const response = await apiClient.get(config.listPath);
+      return normalizeList<T>(unwrap<unknown>(response.data));
+    } catch (error) {
+      if (
+        config.notFoundIsEmpty &&
+        axios.isAxiosError(error) &&
+        error.response?.status === 404
+      ) {
+        return config.fallback;
+      }
+      throw error;
+    }
   },
 
   async create<T extends Entity>(config: ResourceConfig<T>, values: Partial<T>) {

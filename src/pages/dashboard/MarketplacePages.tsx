@@ -8,6 +8,7 @@ import {
   BookmarkCheck,
   CheckCircle2,
   CircleDollarSign,
+  Clock3,
   ClipboardCheck,
   FileText,
   Filter,
@@ -20,11 +21,19 @@ import {
   Sparkles,
   TrendingUp,
   XCircle,
+  NotebookPen,
+  Send,
 } from "lucide-react";
+import { EmptyState } from "../../components/EmptyState";
+import { CardSkeletonGrid, ListSkeleton } from "../../components/PageSkeleton";
 import { apiClient, unwrap } from "../../lib/api/client";
 import { resourceApi } from "../../lib/api/resources";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import {
+  businessConfig,
+  investorInvestmentConfig,
+  investorInvoiceConfig,
+  investorProfitConfig,
   myNegotiationConfig,
   publishedSubmissionConfig,
   submissionConfig,
@@ -32,10 +41,9 @@ import {
 import { currency, percent, readPath, statusTone, textValue } from "../../lib/format";
 import type { Entity } from "../../types";
 
-const savedKey = "fundraise_saved_opportunities";
-
 type SavedOpportunity = Entity & {
   saved_at?: string;
+  is_bookmark_only?: boolean;
 };
 
 const apiErrorMessage = (error: unknown, fallback: string) => {
@@ -45,20 +53,26 @@ const apiErrorMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
-const readSaved = (): SavedOpportunity[] => {
-  try {
-    const raw = localStorage.getItem(savedKey);
-    return raw ? (JSON.parse(raw) as SavedOpportunity[]) : [];
-  } catch {
-    return [];
+const asEntity = (value: unknown): Entity =>
+  value && typeof value === "object" ? (value as Entity) : { id: "" };
+
+const normalizeEntityList = (value: unknown) => {
+  if (Array.isArray(value)) return value as Entity[];
+  if (value && typeof value === "object") {
+    const objectValue = value as Record<string, unknown>;
+    if (Array.isArray(objectValue.items)) return objectValue.items as Entity[];
+    if (Array.isArray(objectValue.rows)) return objectValue.rows as Entity[];
+    if (Array.isArray(objectValue.results)) return objectValue.results as Entity[];
+    if (Array.isArray(objectValue.rekomendasi)) return objectValue.rekomendasi as Entity[];
+    if ("id" in objectValue || "pengajuan_id" in objectValue) return [objectValue as Entity];
   }
+  return [];
 };
 
-const writeSaved = (items: SavedOpportunity[]) => {
-  localStorage.setItem(savedKey, JSON.stringify(items));
-};
-
-const opportunityId = (item: Entity) => String(item.id ?? readPath(item, ["pengajuan.id"], ""));
+const opportunityId = (item: Entity) =>
+  textValue(readPath(item, ["pengajuan_id", "pengajuan.id", "id"], ""), "");
+const bookmarkKey = (item: Entity) =>
+  textValue(readPath(item, ["bisnis.id", "bisnis_id"], ""), "");
 const businessName = (item: Entity) =>
   textValue(readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "nama", "business_name", "bisnis_id"]));
 const sector = (item: Entity) =>
@@ -73,25 +87,72 @@ const matchScore = (item: Entity) => Number(readPath(item, ["match_score", "skor
 const progress = (item: Entity) => Math.min(100, Math.round((funded(item) / Math.max(target(item), 1)) * 100));
 
 function useSavedOpportunities() {
-  const [saved, setSaved] = useState<SavedOpportunity[]>(() => readSaved());
-  const savedIds = useMemo(() => new Set(saved.map((item) => opportunityId(item))), [saved]);
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: ["investor-bookmarks"],
+    queryFn: async () => {
+      const response = await apiClient.get("/user/investor/bookmarks");
+      return normalizeEntityList(unwrap<unknown>(response.data)).map((item) => {
+        const bisnis = asEntity(item.bisnis);
+        return {
+          ...item,
+          id: bisnis.id ? `bookmark-${bisnis.id}` : item.id,
+          bisnis,
+          is_bookmark_only: true,
+        } as SavedOpportunity;
+      });
+    },
+    retry: false,
+  });
 
-  const toggle = (item: Entity) => {
-    const id = opportunityId(item);
-    const next = savedIds.has(id)
-      ? saved.filter((current) => opportunityId(current) !== id)
-      : [{ ...item, saved_at: new Date().toISOString() }, ...saved];
-    setSaved(next);
-    writeSaved(next);
+  const saved = useMemo(() => query.data ?? [], [query.data]);
+  const savedIds = useMemo(
+    () => new Set(saved.map((item) => bookmarkKey(item)).filter(Boolean)),
+    [saved],
+  );
+
+  const mutation = useMutation({
+    mutationFn: async (item: Entity) => {
+      const bisnisId = bookmarkKey(item);
+      if (!bisnisId) throw new Error("bisnis_id is required");
+      if (savedIds.has(bisnisId)) {
+        await apiClient.delete(`/user/investor/bookmarks/${bisnisId}`);
+        return;
+      }
+      await apiClient.post("/user/investor/bookmarks", { bisnis_id: Number(bisnisId) });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["investor-bookmarks"] });
+    },
+  });
+
+  return {
+    saved,
+    savedIds,
+    toggle: (item: Entity) => mutation.mutate(item),
+    isLoading: query.isLoading,
+    isError: query.isError,
+    isSaving: mutation.isPending,
+    error: query.error ?? mutation.error,
   };
-
-  return { saved, savedIds, toggle };
 }
 
 function usePublishedOpportunities() {
   return useQuery({
     queryKey: ["marketplace", "published-opportunities"],
-    queryFn: () => resourceApi.list(publishedSubmissionConfig),
+    queryFn: async () => {
+      const [submissions, businesses] = await Promise.all([
+        resourceApi.list(publishedSubmissionConfig),
+        resourceApi.list(businessConfig).catch(() => []),
+      ]);
+      const businessById = new Map(businesses.map((item) => [String(item.id), item]));
+      return submissions.map((item) => {
+        const existingBusiness = readPath(item, ["bisnis.id"], "");
+        if (existingBusiness) return item;
+        const bisnis = businessById.get(String(item.bisnis_id ?? ""));
+        return bisnis ? { ...item, bisnis } : item;
+      });
+    },
     retry: false,
   });
 }
@@ -135,11 +196,14 @@ function OpportunityCard({
 }) {
   const { t } = useLanguage();
   const id = opportunityId(item);
-  const isSaved = savedIds.has(id);
+  const saveId = bookmarkKey(item);
+  const isSaved = Boolean(saveId && savedIds.has(saveId));
+  const canOpenDetail = !item.is_bookmark_only && Boolean(id);
+  const canSave = Boolean(saveId);
   const score = matchScore(item);
 
   return (
-    <article className="flex h-full flex-col rounded-md border border-base-300 bg-white p-5 shadow-sm">
+    <article className="flex h-full flex-col rounded-md border border-base-300 bg-white p-5 shadow-sm transition-[transform,box-shadow] duration-200 ease-out md:hover:-translate-y-0.5 md:hover:shadow-md">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-black uppercase tracking-wide text-neutral/40">{sector(item)}</p>
@@ -149,8 +213,9 @@ function OpportunityCard({
         <button
           className={`btn btn-square btn-sm rounded-md ${isSaved ? "btn-primary text-white" : "btn-outline"}`}
           onClick={() => onToggleSave(item)}
+          disabled={!canSave}
           aria-label={isSaved ? t("removeBookmark") : t("saveOpportunity")}
-          title={isSaved ? t("removeBookmark") : t("saveOpportunity")}
+          title={!canSave ? t("saveUnavailable") : isSaved ? t("removeBookmark") : t("saveOpportunity")}
         >
           {isSaved ? <BookmarkCheck size={17} /> : <Bookmark size={17} />}
         </button>
@@ -189,11 +254,17 @@ function OpportunityCard({
       </p>
 
       <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-        <Link to={`/dashboard/investor/peluang/${id}`} className="btn btn-primary flex-1 rounded-md text-white">
-          {t("detail")}
-          <ArrowRight size={17} />
-        </Link>
-        {onToggleCompare ? (
+        {canOpenDetail ? (
+          <Link to={`/dashboard/investor/peluang/${id}`} className="btn btn-primary flex-1 rounded-md text-white">
+            {t("detail")}
+            <ArrowRight size={17} />
+          </Link>
+        ) : (
+          <button className="btn btn-disabled flex-1 rounded-md">
+            {t("detail")}
+          </button>
+        )}
+        {onToggleCompare && canOpenDetail ? (
           <button
             className={`btn rounded-md ${compareSelected ? "btn-secondary text-white" : "btn-outline"}`}
             onClick={() => onToggleCompare(item)}
@@ -225,16 +296,9 @@ function CatalogGrid({
   compareIds?: Set<string>;
   onToggleCompare?: (item: Entity) => void;
 }) {
-  const { t } = useLanguage();
-
   if (items.length === 0) {
     return (
-      <div className="rounded-md border border-base-300 bg-white p-8 text-center shadow-sm">
-        <h3 className="text-xl font-black">{t("noOpportunities")}</h3>
-        <p className="mt-2 text-sm text-neutral/55">
-          {t("noOpportunitiesBody")}
-        </p>
-      </div>
+      <EmptyState title="noOpportunities" body="noOpportunitiesBody" />
     );
   }
 
@@ -257,7 +321,8 @@ function CatalogGrid({
 export function OpportunitiesPage() {
   const { t } = useLanguage();
   const { data = [], isLoading, isError, error } = usePublishedOpportunities();
-  const { saved, savedIds, toggle } = useSavedOpportunities();
+  const savedState = useSavedOpportunities();
+  const { saved, savedIds, toggle } = savedState;
   const [search, setSearch] = useState("");
   const [sectorFilter, setSectorFilter] = useState("all");
   const [riskFilter, setRiskFilter] = useState("all");
@@ -320,7 +385,12 @@ export function OpportunitiesPage() {
         <div className="grid gap-3 lg:grid-cols-[1.2fr_0.8fr_0.8fr_0.7fr]">
           <label className="input input-bordered flex items-center gap-2 rounded-md">
             <Search size={17} className="text-neutral/40" />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("searchUmkmSectorCity")} />
+            <input
+              className="w-full min-w-0 bg-transparent outline-none"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t("searchUmkmSectorCity")}
+            />
           </label>
           <label className="flex h-12 items-center gap-2 rounded-md border border-base-300 px-3">
             <Filter size={17} className="text-neutral/45" />
@@ -350,11 +420,16 @@ export function OpportunitiesPage() {
       </div>
 
       {isLoading ? (
-        <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">{t("loadingOpportunities")}</div>
+        <CardSkeletonGrid count={6} />
       ) : null}
       {isError ? (
         <div className="rounded-md border border-error/20 bg-error/10 p-4 text-sm font-semibold text-error">
           {apiErrorMessage(error, t("loadOpportunitiesError"))}
+        </div>
+      ) : null}
+      {savedState.isError ? (
+        <div className="rounded-md border border-warning/20 bg-warning/10 p-4 text-sm font-semibold text-warning">
+          {apiErrorMessage(savedState.error, t("bookmarkLoadError"))}
         </div>
       ) : null}
       {!isLoading && !isError ? (
@@ -374,7 +449,8 @@ export function AiRecommendationsPage() {
   const { t } = useLanguage();
   const [riskFilter, setRiskFilter] = useState("all");
   const [minScore, setMinScore] = useState(0);
-  const { saved, savedIds, toggle } = useSavedOpportunities();
+  const savedState = useSavedOpportunities();
+  const { saved, savedIds, toggle } = savedState;
   const queryClient = useQueryClient();
   const { data: payload = null, isLoading, isError, error } = useQuery({
     queryKey: ["ai-recommendations", "marketplace"],
@@ -438,19 +514,25 @@ export function AiRecommendationsPage() {
         </div>
       </div>
 
-      {isLoading ? <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">{t("loadingRecommendations")}</div> : null}
+      {isLoading ? <CardSkeletonGrid count={3} /> : null}
       {isError ? (
         <div className="rounded-md border border-warning/20 bg-warning/10 p-4 text-sm font-semibold text-warning">
           {apiErrorMessage(error, t("recommendationsUnavailable"))}
         </div>
       ) : null}
+      {savedState.isError ? (
+        <div className="rounded-md border border-warning/20 bg-warning/10 p-4 text-sm font-semibold text-warning">
+          {apiErrorMessage(savedState.error, t("bookmarkLoadError"))}
+        </div>
+      ) : null}
       {!isLoading && !isError && filtered.length === 0 ? (
-        <div className="rounded-md border border-base-300 bg-white p-8 text-center shadow-sm">
-          <h3 className="text-xl font-black">{t("noRecommendations")}</h3>
-          <p className="mt-2 text-sm text-neutral/55">{t("noRecommendationsBody")}</p>
-          <Link to="/dashboard/investor/survey" className="btn btn-primary mt-5 rounded-md text-white">
-            {t("startSurvey")}
-          </Link>
+        <div className="space-y-4">
+          <EmptyState title="noRecommendations" body="noRecommendationsBody" />
+          <div className="text-center">
+            <Link to="/dashboard/investor/survey" className="btn btn-primary rounded-md text-white">
+              {t("startSurvey")}
+            </Link>
+          </div>
         </div>
       ) : null}
       {!isLoading && !isError && filtered.length > 0 ? (
@@ -467,7 +549,18 @@ export function AiRecommendationsPage() {
 
 export function SavedOpportunitiesPage() {
   const { t } = useLanguage();
-  const { saved, savedIds, toggle } = useSavedOpportunities();
+  const opportunitiesQuery = usePublishedOpportunities();
+  const savedState = useSavedOpportunities();
+  const { saved, savedIds, toggle } = savedState;
+  const mergedSaved = useMemo(() => {
+    const opportunities = opportunitiesQuery.data ?? [];
+    return saved.map((bookmark) => {
+      const savedBusinessId = bookmarkKey(bookmark);
+      const matchingOpportunity = opportunities.find((item) => bookmarkKey(item) === savedBusinessId);
+      if (matchingOpportunity) return { ...matchingOpportunity, saved_at: bookmark.saved_at };
+      return bookmark;
+    });
+  }, [opportunitiesQuery.data, saved]);
 
   return (
     <section className="space-y-5">
@@ -480,7 +573,17 @@ export function SavedOpportunitiesPage() {
           </Link>
         }
       />
-      <CatalogGrid items={saved} savedIds={savedIds} onToggleSave={toggle} />
+      {savedState.isLoading ? (
+        <CardSkeletonGrid count={3} />
+      ) : null}
+      {savedState.isError ? (
+        <div className="rounded-md border border-error/20 bg-error/10 p-4 text-sm font-semibold text-error">
+          {apiErrorMessage(savedState.error, t("bookmarkLoadError"))}
+        </div>
+      ) : null}
+      {!savedState.isLoading && !savedState.isError ? (
+        <CatalogGrid items={mergedSaved} savedIds={savedIds} onToggleSave={toggle} />
+      ) : null}
     </section>
   );
 }
@@ -489,11 +592,33 @@ export function CompareOpportunitiesPage() {
   const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const ids = searchParams.get("ids")?.split(",").filter(Boolean) ?? [];
+  const joinedIds = ids.join(",");
   const { data = [] } = usePublishedOpportunities();
   const { saved } = useSavedOpportunities();
-  const source = [...data, ...saved];
+  const compareQuery = useQuery({
+    queryKey: ["compare-opportunities", joinedIds],
+    queryFn: async () => {
+      const response = await apiClient.get(`/user/investor/compare?ids=${encodeURIComponent(joinedIds)}`);
+      return normalizeEntityList(unwrap<unknown>(response.data));
+    },
+    enabled: ids.length >= 2,
+    retry: false,
+  });
+  const source = [
+    ...data,
+    ...saved.map((bookmark) => {
+      const savedBusinessId = bookmarkKey(bookmark);
+      const matchingOpportunity = data.find((item) => bookmarkKey(item) === savedBusinessId);
+      return matchingOpportunity ? { ...matchingOpportunity, saved_at: bookmark.saved_at } : bookmark;
+    }),
+  ];
   const unique = Array.from(new Map(source.map((item) => [opportunityId(item), item])).values());
-  const compared = ids.length > 0 ? unique.filter((item) => ids.includes(opportunityId(item))) : unique.slice(0, 4);
+  const compared =
+    compareQuery.data && compareQuery.data.length > 0
+      ? compareQuery.data
+      : ids.length > 0
+        ? unique.filter((item) => ids.includes(opportunityId(item)))
+        : unique.filter((item) => !item.is_bookmark_only).slice(0, 4);
 
   return (
     <section className="space-y-5">
@@ -502,11 +627,18 @@ export function CompareOpportunitiesPage() {
         description="compareUmkmBody"
         actions={<Link to="/dashboard/investor/peluang" className="btn btn-outline rounded-md">{t("addOpportunity")}</Link>}
       />
-      {compared.length === 0 ? (
-        <div className="rounded-md border border-base-300 bg-white p-8 text-center shadow-sm">
-          <h3 className="text-xl font-black">{t("noCompareItems")}</h3>
-          <p className="mt-2 text-sm text-neutral/55">{t("noCompareItemsBody")}</p>
+      {ids.length === 1 ? (
+        <div className="rounded-md border border-warning/20 bg-warning/10 p-4 text-sm font-semibold text-warning">
+          {t("compareMinimumWarning")}
         </div>
+      ) : null}
+      {compareQuery.isError ? (
+        <div className="rounded-md border border-warning/20 bg-warning/10 p-4 text-sm font-semibold text-warning">
+          {apiErrorMessage(compareQuery.error, t("compareBackendFallback"))}
+        </div>
+      ) : null}
+      {compared.length === 0 ? (
+        <EmptyState title="noCompareItems" body="noCompareItemsBody" />
       ) : (
         <div className="overflow-x-auto rounded-md border border-base-300 bg-white shadow-sm">
           <table className="table">
@@ -558,8 +690,8 @@ export function OpportunityDetailPage() {
   const { id = "" } = useParams();
   const queryClient = useQueryClient();
   const { data = [], isLoading } = usePublishedOpportunities();
-  const { saved, savedIds, toggle } = useSavedOpportunities();
-  const opportunity = [...data, ...saved].find((item) => opportunityId(item) === id);
+  const { savedIds, toggle } = useSavedOpportunities();
+  const opportunity = data.find((item) => opportunityId(item) === id);
   const [form, setForm] = useState({
     penawaran_nominal: "",
     penawaran_return: "",
@@ -590,7 +722,7 @@ export function OpportunityDetailPage() {
   });
 
   if (isLoading && !opportunity) {
-    return <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">{t("loadingOpportunityDetail")}</div>;
+    return <ListSkeleton rows={3} />;
   }
 
   if (!opportunity) {
@@ -602,7 +734,7 @@ export function OpportunityDetailPage() {
     );
   }
 
-  const isSaved = savedIds.has(opportunityId(opportunity));
+  const isSaved = savedIds.has(bookmarkKey(opportunity));
 
   return (
     <section className="space-y-5">
@@ -732,6 +864,63 @@ export function DealRoomPage() {
   });
   const deal = data.find((item) => opportunityId(item) === id || String(item.id) === id) ?? data[0];
   const status = textValue(readPath(deal ?? {}, ["status", "negosiasi_terakhir.status"]), "draft");
+  const proposalId = textValue(readPath(deal ?? {}, ["pengajuans_id", "pengajuan.id", "detail_pengajuan.id"], ""), "");
+  const noteStorageKey = `fundraise_deal_notes_${id || "active"}`;
+  const [noteDraft, setNoteDraft] = useState("");
+  const [notes, setNotes] = useState<Array<{ id: number; body: string; created_at: string }>>(() => {
+    try {
+      const raw = localStorage.getItem(noteStorageKey);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+  const invoiceQuery = useQuery({
+    queryKey: ["deal-room", "invoices", id],
+    queryFn: () => resourceApi.list(investorInvoiceConfig),
+    enabled: Boolean(deal),
+    retry: false,
+  });
+  const investmentQuery = useQuery({
+    queryKey: ["deal-room", "investments", id],
+    queryFn: () => resourceApi.list(investorInvestmentConfig),
+    enabled: Boolean(deal),
+    retry: false,
+  });
+  const profitQuery = useQuery({
+    queryKey: ["deal-room", "profits", id],
+    queryFn: () => resourceApi.list(investorProfitConfig),
+    enabled: Boolean(deal),
+    retry: false,
+  });
+  const invoiceItems = (invoiceQuery.data ?? []).filter((item) => {
+    if (!proposalId) return true;
+    return String(readPath(item, ["detail_pengajuan.id", "pengajuans_id", "pengajuan_id"], "")) === proposalId;
+  });
+  const investmentItems = (investmentQuery.data ?? []).filter((item) => {
+    if (!proposalId) return true;
+    return String(readPath(item, ["pengajuans_id", "pengajuan.id", "pengajuan_id"], "")) === proposalId;
+  });
+  const profitItems = profitQuery.data ?? [];
+  const timeline = [
+    ["negotiation", "dealTimelineNegotiation", Handshake, "active", true],
+    ["invoice", "dealTimelineInvoice", Receipt, invoiceItems.length > 0 ? "active" : "pending", invoiceItems.length > 0],
+    ["payment", "dealTimelinePayment", CheckCircle2, invoiceItems.some((item) => String(item.status).toLowerCase() === "paid") ? "active" : "pending", invoiceItems.some((item) => String(item.status).toLowerCase() === "paid")],
+    ["investment", "dealTimelineInvestment", TrendingUp, investmentItems.length > 0 ? "active" : "pending", investmentItems.length > 0],
+    ["profit", "dealTimelineProfit", CircleDollarSign, profitItems.length > 0 ? "active" : "pending", profitItems.length > 0],
+  ] as const;
+
+  const addNote = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!noteDraft.trim()) return;
+    const next = [
+      { id: Date.now(), body: noteDraft.trim(), created_at: new Date().toISOString() },
+      ...notes,
+    ];
+    setNotes(next);
+    setNoteDraft("");
+    localStorage.setItem(noteStorageKey, JSON.stringify(next));
+  };
 
   return (
     <section className="space-y-5">
@@ -740,54 +929,131 @@ export function DealRoomPage() {
         description="dealRoomBody"
         actions={<Link to="/dashboard/investor/negosiasi" className="btn btn-outline rounded-md">{t("allNegotiations")}</Link>}
       />
-      {isLoading ? <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">{t("loadingDealRoom")}</div> : null}
-      {isError || !deal ? (
-        <div className="rounded-md border border-base-300 bg-white p-8 text-center shadow-sm">
-          <h3 className="text-xl font-black">{t("noActiveDeal")}</h3>
-          <p className="mt-2 text-sm text-neutral/55">{t("noActiveDealBody")}</p>
-        </div>
+      {isLoading ? <ListSkeleton rows={4} /> : null}
+      {!isLoading && (isError || !deal) ? (
+        <EmptyState title="noActiveDeal" body="noActiveDealBody" />
       ) : (
-        <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-          <div className="rounded-md border border-base-300 bg-white p-6 shadow-sm">
-            <h3 className="text-xl font-black">{businessName(deal)}</h3>
-            <p className="mt-2 text-sm text-neutral/55">{t("currentStatus")}</p>
-            <span className={`badge mt-3 ${statusTone(status)}`}>{status}</span>
-            <div className="mt-6 grid gap-3">
-              {[
-                ["nominal", currency(readPath(deal, ["negosiasi_terakhir.penawaran_nominal", "penawaran_nominal"], "0"))],
-                ["metricReturn", percent(readPath(deal, ["negosiasi_terakhir.penawaran_return", "penawaran_return"], "0"))],
-                ["notes", textValue(readPath(deal, ["negosiasi_terakhir.catatan", "catatan"]))],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-md border border-base-300 p-4">
-                  <p className="text-xs font-bold uppercase tracking-wide text-neutral/45">{t(label)}</p>
-                  <p className="mt-2 font-black">{value}</p>
+        <div className="grid gap-5">
+          <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
+            <div className="rounded-md border border-base-300 bg-white p-6 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-black">{businessName(deal)}</h3>
+                  <p className="mt-2 text-sm text-neutral/55">{t("currentStatus")}</p>
                 </div>
-              ))}
+                <span className={`badge ${statusTone(status)}`}>{status}</span>
+              </div>
+              <div className="mt-6 grid gap-3">
+                {[
+                  ["nominal", currency(readPath(deal, ["negosiasi_terakhir.penawaran_nominal", "penawaran_nominal"], "0"))],
+                  ["metricReturn", percent(readPath(deal, ["negosiasi_terakhir.penawaran_return", "penawaran_return"], "0"))],
+                  ["submissionId", proposalId ? `#${proposalId}` : "-"],
+                  ["notes", textValue(readPath(deal, ["negosiasi_terakhir.catatan", "catatan"]))],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-md border border-base-300 p-4">
+                    <p className="text-xs font-bold uppercase tracking-wide text-neutral/45">{t(label)}</p>
+                    <p className="mt-2 font-black">{value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-md border border-base-300 bg-white p-6 shadow-sm">
+              <h3 className="text-xl font-black">{t("dealPipeline")}</h3>
+              <div className="mt-5 grid gap-3">
+                {timeline.map(([title, body, Icon, tone, completed]) => {
+                  const StepIcon = Icon as typeof Handshake;
+                  return (
+                    <div key={String(title)} className="flex gap-4 rounded-md border border-base-300 p-4">
+                      <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-md ${tone === "active" ? "bg-primary text-white" : "bg-base-200 text-neutral/45"}`}>
+                        <StepIcon size={20} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="font-black">{t(String(title))}</p>
+                          <span className={`badge ${completed ? "badge-success" : "badge-warning"} text-white`}>
+                            {completed ? t("completed") : t("pending")}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-sm leading-6 text-neutral/55">{t(String(body))}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-5 xl:grid-cols-3">
+            <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+              <Receipt className="text-primary" size={24} />
+              <h3 className="mt-4 font-black">{t("dealInvoicePayment")}</h3>
+              <div className="mt-4 grid gap-3">
+                {(invoiceItems.length > 0 ? invoiceItems : [{ id: "empty-invoice" } as Entity]).slice(0, 3).map((item) => (
+                  <div key={String(item.id)} className="rounded-md bg-base-200 p-3">
+                    <p className="font-black">{textValue(item.kode_pembayaran || item.id, t("dataUnavailable"))}</p>
+                    <p className="mt-1 text-sm text-neutral/55">
+                      {currency(item.total_nominal || item.nominal_tagihan)} - {textValue(item.status)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+              <TrendingUp className="text-primary" size={24} />
+              <h3 className="mt-4 font-black">{t("dealInvestmentProfit")}</h3>
+              <div className="mt-4 grid gap-3">
+                <div className="rounded-md bg-base-200 p-3">
+                  <p className="text-sm font-semibold text-neutral/55">{t("investments")}</p>
+                  <p className="mt-1 text-xl font-black">{investmentItems.length}</p>
+                </div>
+                <div className="rounded-md bg-base-200 p-3">
+                  <p className="text-sm font-semibold text-neutral/55">{t("profit")}</p>
+                  <p className="mt-1 text-xl font-black">{profitItems.length}</p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+              <FileText className="text-primary" size={24} />
+              <h3 className="mt-4 font-black">{t("dealDocuments")}</h3>
+              <div className="mt-4 grid gap-3">
+                {["dealDocInvoice", "dealDocPaymentProof", "dealDocAgreement", "dealDocProfitReport"].map((item) => (
+                  <div key={item} className="flex items-center gap-3 rounded-md bg-base-200 p-3">
+                    <Clock3 className="text-primary" size={17} />
+                    <span className="text-sm font-semibold">{t(item)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
           <div className="rounded-md border border-base-300 bg-white p-6 shadow-sm">
-            <h3 className="text-xl font-black">{t("dealPipeline")}</h3>
+            <div className="flex items-center gap-3">
+              <NotebookPen className="text-primary" size={24} />
+              <h3 className="text-xl font-black">{t("dealNotesTitle")}</h3>
+            </div>
+            <form className="mt-5 flex flex-col gap-3 sm:flex-row" onSubmit={addNote}>
+              <input
+                className="input input-bordered flex-1 rounded-md"
+                value={noteDraft}
+                onChange={(event) => setNoteDraft(event.target.value)}
+                placeholder={t("dealNotesPlaceholder")}
+              />
+              <button className="btn btn-primary rounded-md text-white">
+                <Send size={17} />
+                {t("send")}
+              </button>
+            </form>
             <div className="mt-5 grid gap-3">
-              {[
-                ["negotiation", "dealPipelineNegotiation", Handshake, "active"],
-                ["invoice", "dealPipelineInvoice", Receipt, status === "deal" ? "active" : "pending"],
-                ["investment", "dealPipelineInvestment", TrendingUp, "pending"],
-                ["profit", "dealPipelineProfit", CircleDollarSign, "pending"],
-              ].map(([title, body, Icon, tone]) => {
-                const StepIcon = Icon as typeof Handshake;
-                return (
-                  <div key={String(title)} className="flex gap-4 rounded-md border border-base-300 p-4">
-                    <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-md ${tone === "active" ? "bg-primary text-white" : "bg-base-200 text-neutral/45"}`}>
-                      <StepIcon size={20} />
-                    </div>
-                    <div>
-                      <p className="font-black">{t(String(title))}</p>
-                      <p className="mt-1 text-sm leading-6 text-neutral/55">{t(String(body))}</p>
-                    </div>
-                  </div>
-                );
-              })}
+              {notes.length === 0 ? (
+                <EmptyState title="dataUnavailable" body="dealNotesEmpty" compact />
+              ) : null}
+              {notes.map((note) => (
+                <div key={note.id} className="rounded-md border border-base-300 p-4">
+                  <p className="text-sm font-semibold leading-6 text-neutral/70">{note.body}</p>
+                  <p className="mt-2 text-xs font-bold text-neutral/40">{new Date(note.created_at).toLocaleString()}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -823,22 +1089,18 @@ export function AdminReviewQueuePage() {
         description="adminReviewQueueBody"
         actions={<Link to="/dashboard/admin/pengajuan" className="btn btn-outline rounded-md">{t("viewAllSubmissions")}</Link>}
       />
-      {isLoading ? <div className="rounded-md border border-base-300 bg-white p-6 text-sm font-semibold text-neutral/55">{t("loadingReviewQueue")}</div> : null}
+      {isLoading ? <ListSkeleton rows={4} /> : null}
       {isError ? (
         <div className="rounded-md border border-error/20 bg-error/10 p-4 text-sm font-semibold text-error">
           {apiErrorMessage(error, t("loadReviewQueueError"))}
         </div>
       ) : null}
       {!isLoading && !isError && reviewItems.length === 0 ? (
-        <div className="rounded-md border border-base-300 bg-white p-8 text-center shadow-sm">
-          <ClipboardCheck className="mx-auto text-success" size={34} />
-          <h3 className="mt-4 text-xl font-black">{t("noPendingSubmissions")}</h3>
-          <p className="mt-2 text-sm text-neutral/55">{t("noPendingSubmissionsBody")}</p>
-        </div>
+        <EmptyState title="noPendingSubmissions" body="noPendingSubmissionsBody" icon={ClipboardCheck} />
       ) : null}
       <div className="grid gap-4">
         {reviewItems.map((item) => (
-          <article key={item.id} className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+          <article key={item.id} className="rounded-md border border-base-300 bg-white p-5 shadow-sm transition-[transform,box-shadow] duration-200 ease-out md:hover:-translate-y-0.5 md:hover:shadow-md">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h3 className="text-xl font-black">{businessName(item)}</h3>

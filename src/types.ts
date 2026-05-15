@@ -70,6 +70,7 @@ export type ResourceConfig<T extends Entity> = {
   deletePath?: string | ((item: T) => string);
   detailPath?: string | ((item: T) => string);
   fallback: T[];
+  notFoundIsEmpty?: boolean;
   createBody?: (values: Partial<T>) => Partial<T>;
   updateBody?: (item: T) => Partial<T>;
 };

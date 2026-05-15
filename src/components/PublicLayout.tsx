@@ -6,11 +6,20 @@ import { useAuth } from "../lib/auth/AuthProvider";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useLanguage } from "../lib/i18n/LanguageProvider";
 
-const links = [
+const headerLinks = [
+  { to: "/", labelKey: "navHome" },
+  { to: "/tentang", labelKey: "navAbout" },
+  { to: "/portfolio", labelKey: "navPortfolio" },
+  { to: "/kontak", labelKey: "navContact" },
+] as const;
+
+const footerLinks = [
   { to: "/", labelKey: "navHome" },
   { to: "/tentang", labelKey: "navAbout" },
   { to: "/layanan", labelKey: "navServices" },
   { to: "/portfolio", labelKey: "navPortfolio" },
+  { to: "/bantuan", labelKey: "navHelp" },
+  { to: "/keamanan", labelKey: "navTrust" },
   { to: "/kontak", labelKey: "navContact" },
 ] as const;
 
@@ -37,14 +46,14 @@ export function PublicLayout() {
       <header className="sticky top-0 z-40 border-b border-base-300/80 bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Logo />
-          <nav className="hidden items-center gap-4 text-sm font-semibold lg:flex">
-            {links.map((link) => (
+          <nav className="hidden items-center gap-3 text-sm font-semibold lg:flex">
+            {headerLinks.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}
                 className={({ isActive }) =>
                   [
-                    "inline-flex h-10 w-20 items-center justify-center text-center transition",
+                    "inline-flex h-10 items-center justify-center px-2 text-center transition-colors duration-150 ease-out",
                     isActive ? "text-primary" : "text-neutral hover:text-primary",
                   ].join(" ")
                 }
@@ -101,14 +110,14 @@ export function PublicLayout() {
         </div>
         <nav className="flex-1 px-4 py-5">
           <div className="grid gap-1">
-            {links.map((link) => (
+            {headerLinks.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={({ isActive }) =>
                   [
-                    "flex h-12 items-center rounded-md px-4 text-sm font-bold transition",
+                    "flex h-12 items-center rounded-md px-4 text-sm font-bold transition-colors duration-150 ease-out",
                     isActive
                       ? "bg-primary text-white"
                       : "text-neutral/70 hover:bg-base-200 hover:text-neutral",
@@ -155,7 +164,7 @@ export function PublicLayout() {
           <div>
             <h3 className="text-sm font-bold text-white">{t("navigation")}</h3>
             <div className="mt-4 grid gap-2 text-sm text-white/65">
-              {links.map((link) => (
+              {footerLinks.map((link) => (
                 <Link key={link.to} to={link.to} className="hover:text-accent">
                   {t(link.labelKey)}
                 </Link>
@@ -186,7 +195,11 @@ export function PublicLayout() {
         <div className="border-t border-white/10">
           <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-sm text-white/55 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
             <p>{t("footerCopyright", { year: currentYear })}</p>
-            <p>{t("footerBuiltBy")}</p>
+            <div className="flex flex-wrap items-center gap-4">
+              <Link to="/syarat" className="hover:text-white/80 transition">{t("navTerms")}</Link>
+              <Link to="/privasi" className="hover:text-white/80 transition">{t("navPrivacy")}</Link>
+              <span>{t("footerBuiltBy")}</span>
+            </div>
           </div>
         </div>
       </footer>

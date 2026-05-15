@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import {
   AlertTriangle,
-  CheckCircle2,
   Edit3,
   Eye,
   Loader2,
@@ -22,6 +21,9 @@ import type {
 } from "../types";
 import { resourceApi } from "../lib/api/resources";
 import { useLanguage } from "../lib/i18n/LanguageProvider";
+import { useToast } from "./ToastProvider";
+import { EmptyState } from "./EmptyState";
+import { ListSkeleton, TableRowSkeleton } from "./PageSkeleton";
 
 type ResourcePageProps<T extends Entity> = {
   title: string;
@@ -51,12 +53,6 @@ type ConfirmDialog = {
 };
 
 type LoadingAlert = {
-  title: string;
-  message: string;
-};
-
-type Notice = {
-  tone: "success" | "error";
   title: string;
   message: string;
 };
@@ -131,7 +127,6 @@ const uiCopy = {
     showing: "Menampilkan",
     from: "dari",
     data: "data",
-    closeAlert: "Tutup alert",
   },
   en: {
     allStatus: "All statuses",
@@ -151,7 +146,6 @@ const uiCopy = {
     showing: "Showing",
     from: "of",
     data: "records",
-    closeAlert: "Close alert",
   },
 };
 
@@ -229,6 +223,7 @@ export function ResourcePage<T extends Entity>({
   staticData,
 }: ResourcePageProps<T>) {
   const { language, t } = useLanguage();
+  const toast = useToast();
   const copy = uiCopy[language];
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -239,7 +234,6 @@ export function ResourcePage<T extends Entity>({
   const [resultModal, setResultModal] = useState<{ title: string; data: unknown } | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog | null>(null);
   const [loadingAlert, setLoadingAlert] = useState<LoadingAlert | null>(null);
-  const [notice, setNotice] = useState<Notice | null>(null);
   const [formValues, setFormValues] = useState<Record<string, string | number>>(() =>
     emptyForm(fields),
   );
@@ -248,6 +242,7 @@ export function ResourcePage<T extends Entity>({
     queryKey: ["resource", config.key],
     queryFn: () => resourceApi.list(config),
     enabled: !staticData,
+    retry: false,
   });
 
   const invalidate = async () => {
@@ -287,21 +282,15 @@ export function ResourcePage<T extends Entity>({
   const runWithLoading = async (
     loading: LoadingAlert,
     task: () => Promise<void>,
-    success: Notice,
+    success: { title: string; message: string },
   ) => {
     setLoadingAlert(loading);
-    setNotice(null);
     try {
       await task();
-      setNotice(success);
+      toast.success(success.message, { title: success.title });
     } catch (error) {
-      setNotice({
-        tone: "error",
+      toast.error(apiErrorMessage(error, t("actionFailedMessage")), {
         title: t("actionFailed"),
-        message: apiErrorMessage(
-          error,
-          t("actionFailedMessage"),
-        ),
       });
     } finally {
       setLoadingAlert(null);
@@ -370,32 +359,22 @@ export function ResourcePage<T extends Entity>({
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const values = coerceValues(fields, formValues);
-    setNotice(null);
     try {
       if (editing) {
         await updateMutation.mutateAsync({ ...editing, ...values });
-        setNotice({
-          tone: "success",
+        toast.success(t("resourceUpdateSuccess", { title: t(title) }), {
           title: t("dataUpdated"),
-          message: t("resourceUpdateSuccess", { title: t(title) }),
         });
       } else {
         await createMutation.mutateAsync(values);
-        setNotice({
-          tone: "success",
+        toast.success(t("resourceCreateSuccess", { title: t(title) }), {
           title: t("dataAdded"),
-          message: t("resourceCreateSuccess", { title: t(title) }),
         });
       }
       closeForm();
     } catch (error) {
-      setNotice({
-        tone: "error",
+      toast.error(apiErrorMessage(error, t("saveFailedMessage")), {
         title: t("saveFailed"),
-        message: apiErrorMessage(
-          error,
-          t("saveFailedMessage"),
-        ),
       });
     }
   };
@@ -416,7 +395,6 @@ export function ResourcePage<T extends Entity>({
             await deleteMutation.mutateAsync(item);
           },
           {
-            tone: "success",
             title: t("dataDeleted"),
             message: t("resourceDeleteSuccess", { title: t(title) }),
           },
@@ -439,7 +417,6 @@ export function ResourcePage<T extends Entity>({
           }
         },
         {
-          tone: "success",
           title: t("actionSuccess"),
           message: t("actionSuccessMessage", { action: t(action.label) }),
         },
@@ -471,7 +448,6 @@ export function ResourcePage<T extends Entity>({
         setResultModal({ title: t("detailData"), data });
       },
       {
-        tone: "success",
         title: t("detailReady"),
         message: t("detailReadyMessage"),
       },
@@ -547,36 +523,6 @@ export function ResourcePage<T extends Entity>({
 
   return (
     <section className="space-y-5">
-      {notice ? (
-        <div
-          className={[
-            "flex items-start justify-between gap-4 rounded-md border p-4 shadow-sm",
-            notice.tone === "success"
-              ? "border-success/20 bg-success/10 text-success"
-              : "border-error/20 bg-error/10 text-error",
-          ].join(" ")}
-        >
-          <div className="flex gap-3">
-            {notice.tone === "success" ? (
-              <CheckCircle2 className="mt-0.5 shrink-0" size={20} />
-            ) : (
-              <AlertTriangle className="mt-0.5 shrink-0" size={20} />
-            )}
-            <div>
-              <p className="font-black">{notice.title}</p>
-              <p className="mt-1 text-sm font-semibold opacity-80">{notice.message}</p>
-            </div>
-          </div>
-          <button
-            className="btn btn-square btn-ghost btn-sm"
-            onClick={() => setNotice(null)}
-            aria-label={copy.closeAlert}
-          >
-            <X size={16} />
-          </button>
-        </div>
-      ) : null}
-
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h2 className="text-2xl font-black tracking-normal text-neutral">{t(title)}</h2>
@@ -641,14 +587,7 @@ export function ResourcePage<T extends Entity>({
             </thead>
             <tbody>
               {query.isLoading && !staticData ? (
-                <tr>
-                  <td colSpan={colSpan}>
-                    <div className="flex h-28 items-center justify-center gap-2 text-neutral/50">
-                      <Loader2 className="animate-spin" size={18} />
-                      {copy.loading}
-                    </div>
-                  </td>
-                </tr>
+                <TableRowSkeleton rows={6} cols={colSpan} />
               ) : query.isError && !staticData ? (
                 <tr>
                   <td colSpan={colSpan}>
@@ -660,13 +599,11 @@ export function ResourcePage<T extends Entity>({
               ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={colSpan}>
-                    <div className="flex h-36 flex-col items-center justify-center px-6 text-center">
-                      <p className="font-black text-neutral">{t(emptyTitle)}</p>
-                      <p className="mt-2 max-w-lg text-sm leading-6 text-neutral/55">
-                        {search || statusFilter !== "all"
-                          ? copy.noFilterMatch
-                          : t(emptyDescription)}
-                      </p>
+                    <div className="py-6">
+                      <EmptyState
+                        title={emptyTitle}
+                        body={search || statusFilter !== "all" ? "noFilterMatchInline" : emptyDescription}
+                      />
                     </div>
                   </td>
                 </tr>
@@ -694,23 +631,17 @@ export function ResourcePage<T extends Entity>({
 
         <div className="grid gap-3 p-3 md:hidden">
           {query.isLoading && !staticData ? (
-            <div className="flex h-28 items-center justify-center gap-2 text-neutral/50">
-              <Loader2 className="animate-spin" size={18} />
-              {copy.loading}
-            </div>
+            <ListSkeleton rows={4} />
           ) : query.isError && !staticData ? (
             <div className="flex min-h-28 items-center justify-center rounded-md border border-error/20 bg-error/10 p-4 text-center text-sm font-semibold text-error">
               {apiErrorMessage(query.error, copy.loadError)}
             </div>
           ) : rows.length === 0 ? (
-            <div className="flex min-h-36 flex-col items-center justify-center rounded-md border border-base-300 p-4 text-center">
-              <p className="font-black text-neutral">{t(emptyTitle)}</p>
-              <p className="mt-2 text-sm leading-6 text-neutral/55">
-                {search || statusFilter !== "all"
-                  ? copy.noFilterMatch
-                  : t(emptyDescription)}
-              </p>
-            </div>
+            <EmptyState
+              title={emptyTitle}
+              body={search || statusFilter !== "all" ? "noFilterMatchInline" : emptyDescription}
+              compact
+            />
           ) : (
             visibleRows.map((item) => (
               <article key={item.id} className="rounded-md border border-base-300 p-4">
@@ -768,7 +699,7 @@ export function ResourcePage<T extends Entity>({
 
       {isFormOpen ? (
         <div className="modal modal-open">
-          <div className="modal-box max-w-2xl rounded-md">
+          <div className="modal-box fr-modal-panel max-w-2xl rounded-md">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-xl font-black">{editing ? t("editData") : t(createLabel)}</h3>
@@ -839,7 +770,7 @@ export function ResourcePage<T extends Entity>({
               </div>
             </form>
           </div>
-          <button className="modal-backdrop" onClick={closeForm}>
+          <button className="modal-backdrop fr-modal-backdrop" onClick={closeForm}>
             close
           </button>
         </div>
@@ -847,7 +778,7 @@ export function ResourcePage<T extends Entity>({
 
       {confirmDialog ? (
         <div className="modal modal-open">
-          <div className="modal-box max-w-md rounded-md">
+          <div className="modal-box fr-modal-panel max-w-md rounded-md">
             <div className="flex gap-4">
               <div
                 className={[
@@ -888,7 +819,7 @@ export function ResourcePage<T extends Entity>({
               </button>
             </div>
           </div>
-          <button className="modal-backdrop" onClick={() => setConfirmDialog(null)}>
+          <button className="modal-backdrop fr-modal-backdrop" onClick={() => setConfirmDialog(null)}>
             close
           </button>
         </div>
@@ -896,7 +827,7 @@ export function ResourcePage<T extends Entity>({
 
       {resultModal ? (
         <div className="modal modal-open">
-          <div className="modal-box max-w-3xl rounded-md">
+          <div className="modal-box fr-modal-panel max-w-3xl rounded-md">
             <div className="mb-4 flex items-start justify-between gap-4">
               <h3 className="text-xl font-black">{resultModal.title}</h3>
               <button className="btn btn-square btn-ghost btn-sm" onClick={() => setResultModal(null)}>
@@ -905,7 +836,7 @@ export function ResourcePage<T extends Entity>({
             </div>
             <DataPreview data={resultModal.data} />
           </div>
-          <button className="modal-backdrop" onClick={() => setResultModal(null)}>
+          <button className="modal-backdrop fr-modal-backdrop" onClick={() => setResultModal(null)}>
             close
           </button>
         </div>
@@ -913,7 +844,7 @@ export function ResourcePage<T extends Entity>({
 
       {loadingAlert ? (
         <div className="modal modal-open">
-          <div className="modal-box max-w-sm rounded-md text-center">
+          <div className="modal-box fr-modal-panel max-w-sm rounded-md text-center">
             <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-primary/10 text-primary">
               <Loader2 className="animate-spin" size={34} />
             </div>

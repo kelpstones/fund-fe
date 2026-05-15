@@ -57,3 +57,91 @@ textarea {
     white-space: normal;
   }
 }
+
+@layer utilities {
+  [data-reveal] {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+    transition-property: opacity, transform;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: opacity, transform;
+  }
+
+  [data-reveal][data-reveal-state="visible"] {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  .fr-toast-enter {
+    animation: fr-toast-in 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .fr-toast-exit {
+    animation: fr-toast-out 160ms ease-in forwards;
+  }
+
+  .fr-modal-panel {
+    animation: fr-modal-in 170ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .fr-modal-backdrop {
+    animation: fr-backdrop-in 170ms ease-out;
+  }
+}
+
+@keyframes fr-toast-in {
+  from {
+    opacity: 0;
+    transform: translate3d(16px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fr-toast-out {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(14px, 0, 0);
+  }
+}
+
+@keyframes fr-modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fr-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .fr-toast-enter,
+  .fr-toast-exit,
+  .fr-modal-panel,
+  .fr-modal-backdrop {
+    animation: none;
+  }
+}

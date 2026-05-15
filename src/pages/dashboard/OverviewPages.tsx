@@ -1,12 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
+  AlertCircle,
   BarChart3,
   Bell,
   Building2,
+  CheckCircle2,
   CircleDollarSign,
   FileCheck2,
   Handshake,
+  Lock,
   Receipt,
   Rocket,
   Scale,
@@ -14,8 +17,11 @@ import {
   Users,
 } from "lucide-react";
 import { StatCard } from "../../components/StatCard";
+import { EmptyState } from "../../components/EmptyState";
+import { ListSkeleton } from "../../components/PageSkeleton";
 import { directApi } from "../../lib/api/direct";
 import { resourceApi } from "../../lib/api/resources";
+import { useAuth } from "../../lib/auth/AuthProvider";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import {
   adminConfig,
@@ -26,7 +32,6 @@ import {
   myBusinessConfig,
   myNegotiationConfig,
   notificationConfig,
-  salesConfig,
   submissionConfig,
 } from "../../lib/resourceConfigs";
 import { compactCurrency, currency, percent, readPath, statusTone, textValue } from "../../lib/format";
@@ -36,12 +41,14 @@ const useResource = (config: ResourceConfig<Entity>) =>
   useQuery({
     queryKey: ["overview", config.key],
     queryFn: () => resourceApi.list(config),
+    retry: false,
   });
 
 const useDashboard = (role: "umkm" | "investor" | "admin") =>
   useQuery({
     queryKey: ["dashboard-summary", role],
     queryFn: () => directApi.get(`/dashboard/${role}`, null),
+    retry: false,
   });
 
 const asRecord = (value: unknown): Record<string, unknown> =>
@@ -50,6 +57,16 @@ const asRecord = (value: unknown): Record<string, unknown> =>
     : {};
 
 const asEntityArray = (value: unknown): Entity[] => (Array.isArray(value) ? (value as Entity[]) : []);
+
+type OverviewStep = {
+  key: string;
+  titleKey: string;
+  helperKey: string;
+  href: string;
+  done: boolean;
+  locked?: boolean;
+  helperParams?: Record<string, string | number>;
+};
 
 function PageHeader({
   title,
@@ -72,7 +89,7 @@ function PageHeader({
   );
 }
 
-function MatchList({ submissions }: { submissions: Entity[] }) {
+function MatchList({ submissions, isLoading = false }: { submissions: Entity[]; isLoading?: boolean }) {
   const { t } = useLanguage();
   const sorted = [...submissions].sort(
     (a, b) =>
@@ -89,10 +106,9 @@ function MatchList({ submissions }: { submissions: Entity[] }) {
         <Scale className="text-primary" size={24} />
       </div>
       <div className="mt-5 grid gap-3">
-        {sorted.length === 0 ? (
-          <div className="rounded-md border border-base-300 p-4 text-sm font-semibold text-neutral/55">
-            {t("matchDataEmpty")}
-          </div>
+        {isLoading ? <ListSkeleton rows={3} /> : null}
+        {!isLoading && sorted.length === 0 ? (
+          <EmptyState title="dataUnavailable" body="matchDataEmpty" compact icon={Scale} />
         ) : null}
         {sorted.slice(0, 4).map((item) => {
           const score = Number(item.match_score || item.skor_kecocokan || 0);
@@ -110,7 +126,10 @@ function MatchList({ submissions }: { submissions: Entity[] }) {
                 <span className="badge badge-secondary badge-lg text-white">{score}%</span>
               </div>
               <div className="mt-4 h-2 rounded-full bg-base-200">
-                <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.min(score, 100)}%` }} />
+                <div
+                  className="h-2 rounded-full bg-primary transition-[width] duration-[420ms] ease-out"
+                  style={{ width: `${Math.min(score, 100)}%` }}
+                />
               </div>
             </div>
           );
@@ -120,7 +139,7 @@ function MatchList({ submissions }: { submissions: Entity[] }) {
   );
 }
 
-function ActivityPanel({ items }: { items: Entity[] }) {
+function ActivityPanel({ items, isLoading = false }: { items: Entity[]; isLoading?: boolean }) {
   const { t } = useLanguage();
 
   return (
@@ -132,10 +151,9 @@ function ActivityPanel({ items }: { items: Entity[] }) {
         <Bell className="text-primary" size={24} />
       </div>
       <div className="mt-5 grid gap-3">
-        {items.length === 0 ? (
-          <div className="rounded-md border border-base-300 p-4 text-sm font-semibold text-neutral/55">
-            {t("latestUpdatesEmpty")}
-          </div>
+        {isLoading ? <ListSkeleton rows={3} /> : null}
+        {!isLoading && items.length === 0 ? (
+          <EmptyState title="dataUnavailable" body="latestUpdatesEmpty" compact icon={Bell} />
         ) : null}
         {items.slice(0, 4).map((item) => (
           <div key={item.id} className="flex items-start gap-3 rounded-md bg-base-200 p-3">
@@ -153,8 +171,112 @@ function ActivityPanel({ items }: { items: Entity[] }) {
   );
 }
 
+function OnboardingBadge({ done, locked }: { done: boolean; locked?: boolean }) {
+  const { t } = useLanguage();
+
+  if (done) {
+    return (
+      <span className="badge badge-success gap-1 text-white">
+        <CheckCircle2 size={12} />
+        {t("done")}
+      </span>
+    );
+  }
+
+  if (locked) {
+    return (
+      <span className="badge badge-neutral gap-1">
+        <Lock size={12} />
+        {t("locked")}
+      </span>
+    );
+  }
+
+  return (
+    <span className="badge badge-warning gap-1">
+      <AlertCircle size={12} />
+      {t("next")}
+    </span>
+  );
+}
+
+function OnboardingOverviewCard({
+  titleKey,
+  bodyKey,
+  progress,
+  icon: Icon,
+  steps,
+  primaryHref,
+}: {
+  titleKey: string;
+  bodyKey: string;
+  progress: number;
+  icon: typeof Rocket;
+  steps: OverviewStep[];
+  primaryHref: string;
+}) {
+  const { t } = useLanguage();
+
+  return (
+    <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex items-start gap-4">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+            <Icon size={24} />
+          </div>
+          <div>
+            <h3 className="text-xl font-black">{t(titleKey)}</h3>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-neutral/60">{t(bodyKey)}</p>
+          </div>
+        </div>
+        <div className="flex min-w-52 flex-col gap-3">
+          <div>
+            <div className="mb-2 flex items-center justify-between text-xs font-black text-neutral/55">
+              <span>{t("progress")}</span>
+              <span>{progress}%</span>
+            </div>
+            <div className="h-2 rounded-full bg-base-200">
+              <div
+                className="h-2 rounded-full bg-primary transition-[width] duration-[420ms] ease-out"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+          <Link to={primaryHref} className="btn btn-primary h-10 rounded-md text-white">
+            {t("openOnboarding")}
+          </Link>
+        </div>
+      </div>
+      <div className="mt-5 grid gap-2">
+        {steps.map((step) => {
+          const content = (
+            <div className="flex items-start justify-between gap-4 rounded-md border border-base-300 px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-neutral">{t(step.titleKey)}</p>
+                <p className="mt-1 text-xs text-neutral/55">{t(step.helperKey, step.helperParams)}</p>
+              </div>
+              <OnboardingBadge done={step.done} locked={step.locked} />
+            </div>
+          );
+
+          if (step.locked) {
+            return <div key={step.key}>{content}</div>;
+          }
+
+          return (
+            <Link key={step.key} to={step.href} className="transition hover:-translate-y-0.5">
+              {content}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function UmkmOverviewPage() {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const dashboardQuery = useDashboard("umkm");
   const dashboard = dashboardQuery.data;
   const d = asRecord(dashboard);
@@ -163,34 +285,121 @@ export function UmkmOverviewPage() {
   const dashboardInvestor = asRecord(d.investor);
   const penjualanChart = asEntityArray(d.penjualan_chart);
 
-  const businesses = useResource(myBusinessConfig).data ?? [];
-  const submissions = useResource(submissionConfig).data ?? [];
-  const sales = useResource(salesConfig).data ?? [];
-  const negotiations = useResource(myNegotiationConfig).data ?? [];
+  const businessesQuery = useResource(myBusinessConfig);
+  const submissionsQuery = useResource(submissionConfig);
+  const negotiationsQuery = useResource(myNegotiationConfig);
+  const businesses = businessesQuery.data ?? [];
+  const submissions = submissionsQuery.data ?? [];
+  const negotiations = negotiationsQuery.data ?? [];
+  const primaryBusinessId = businesses[0]?.id ? String(businesses[0].id) : "";
+
+  const modelProfileQuery = useQuery({
+    queryKey: ["overview", "umkm-profile", primaryBusinessId],
+    queryFn: async () => {
+      try {
+        return await directApi.get(`/businesses/${primaryBusinessId}/profile`, null);
+      } catch {
+        return null;
+      }
+    },
+    enabled: Boolean(primaryBusinessId),
+    retry: false,
+  });
+  const modelProfile = asRecord(modelProfileQuery.data);
 
   const totalSales =
     penjualanChart.reduce((sum, item) => sum + Number(item.total_penjualan || 0), 0) ||
-    sales.reduce((sum, item) => sum + Number(item.total_penjualan || 0), 0);
+    Number(d.total_penjualan ?? 0);
   const funded =
     Number(dashboardSubmission.total_pendanaan ?? 0) ||
     submissions.reduce((sum, item) => sum + Number(item.total_pendanaan || 0), 0);
   const bisnisCount = dashboardBusiness.id ? 1 : businesses.length;
   const investorCount = Number(dashboardInvestor.total ?? 0) || negotiations.length;
+  const hasBusiness = bisnisCount > 0;
+  const hasProfileIdentity = Boolean(user?.nama && user?.email && user?.no_telp);
+  const hasModelProfile = Boolean(
+    modelProfile.net_profit_margin !== undefined ||
+      modelProfile.year_revenue !== undefined ||
+      modelProfile.digital_adoption_score !== undefined,
+  );
+  const hasSubmission = submissions.length > 0;
+  const hasPendingSubmission = submissions.some(
+    (item) =>
+      String(readPath(item, ["approval.status", "approval_status", "status"], "draft")).toLowerCase() ===
+      "pending",
+  );
   const hasApprovedSubmission = submissions.some((item) =>
     ["approved", "published", "funded"].includes(
       String(readPath(item, ["approval.status", "approval_status", "status"])).toLowerCase(),
     ),
   );
-  const onboardingChecks = [
-    bisnisCount > 0,
-    totalSales > 0,
-    submissions.length > 0,
-    hasApprovedSubmission,
-    negotiations.length > 0,
+  const hasNegotiation = negotiations.length > 0;
+
+  const onboardingSteps: OverviewStep[] = [
+    {
+      key: "account",
+      titleKey: "onboardingAccountTitle",
+      helperKey: hasProfileIdentity ? "onboardingAccountDone" : "onboardingAccountTodo",
+      href: "/dashboard/umkm/profile",
+      done: hasProfileIdentity,
+    },
+    {
+      key: "business",
+      titleKey: "onboardingBusinessTitle",
+      helperKey: hasBusiness ? "onboardingBusinessDone" : "onboardingBusinessTodo",
+      helperParams: { count: bisnisCount },
+      href: "/dashboard/umkm/bisnis",
+      done: hasBusiness,
+    },
+    {
+      key: "model",
+      titleKey: "onboardingModelTitle",
+      helperKey: hasBusiness
+        ? hasModelProfile
+          ? "onboardingModelDone"
+          : "onboardingModelTodo"
+        : "createBusinessFirst",
+      href: "/dashboard/umkm/bisnis-profile",
+      done: hasModelProfile,
+      locked: !hasBusiness,
+    },
+    {
+      key: "submission",
+      titleKey: "onboardingSubmissionTitle",
+      helperKey: hasSubmission ? "onboardingSubmissionDone" : "onboardingSubmissionTodo",
+      helperParams: { count: submissions.length },
+      href: "/dashboard/umkm/pengajuan",
+      done: hasSubmission,
+      locked: !hasBusiness,
+    },
+    {
+      key: "review",
+      titleKey: "onboardingReviewTitle",
+      helperKey: hasApprovedSubmission
+        ? "onboardingReviewDone"
+        : hasPendingSubmission
+          ? "onboardingReviewPending"
+          : "onboardingReviewTodo",
+      href: "/dashboard/umkm/pengajuan",
+      done: hasApprovedSubmission,
+      locked: !hasSubmission,
+    },
+    {
+      key: "negotiation",
+      titleKey: "onboardingNegotiationTitle",
+      helperKey: hasNegotiation ? "onboardingNegotiationDone" : "onboardingNegotiationTodo",
+      helperParams: { count: negotiations.length },
+      href: "/dashboard/umkm/negosiasi",
+      done: hasNegotiation,
+      locked: !hasApprovedSubmission,
+    },
   ];
+
+  const onboardingChecks = onboardingSteps.map((step) => step.done);
   const onboardingProgress = Math.round(
     (onboardingChecks.filter(Boolean).length / onboardingChecks.length) * 100,
   );
+  const nextStep = onboardingSteps.find((step) => !step.done && !step.locked);
 
   return (
     <div className="space-y-6">
@@ -204,38 +413,17 @@ export function UmkmOverviewPage() {
         <StatCard label={t("sales")} value={compactCurrency(totalSales)} helper={t("fromReports")} icon={BarChart3} tone="amber" loading={dashboardQuery.isLoading} />
         <StatCard label={t("investor")} value={String(investorCount)} helper={t("relatedInvestors")} icon={Handshake} loading={dashboardQuery.isLoading} />
       </div>
-      <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
-              <Rocket size={24} />
-            </div>
-            <div>
-              <h3 className="text-xl font-black">{t("umkmReadinessTitle")}</h3>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-neutral/60">
-                {t("umkmReadinessBody")}
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="min-w-48">
-              <div className="mb-2 flex items-center justify-between text-xs font-black text-neutral/55">
-                <span>{t("progress")}</span>
-                <span>{onboardingProgress}%</span>
-              </div>
-              <div className="h-2 rounded-full bg-base-200">
-                <div className="h-2 rounded-full bg-primary" style={{ width: `${onboardingProgress}%` }} />
-              </div>
-            </div>
-            <Link to="/dashboard/umkm/onboarding" className="btn btn-primary rounded-md text-white">
-              {t("openOnboarding")}
-            </Link>
-          </div>
-        </div>
-      </div>
+      <OnboardingOverviewCard
+        titleKey="umkmReadinessTitle"
+        bodyKey="umkmReadinessBody"
+        progress={onboardingProgress}
+        icon={Rocket}
+        steps={onboardingSteps}
+        primaryHref={nextStep?.href ?? "/dashboard/umkm/penjualan"}
+      />
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <MatchList submissions={submissions} />
-        <ActivityPanel items={negotiations} />
+        <MatchList submissions={submissions} isLoading={submissionsQuery.isLoading} />
+        <ActivityPanel items={negotiations} isLoading={negotiationsQuery.isLoading} />
       </div>
     </div>
   );
@@ -243,6 +431,7 @@ export function UmkmOverviewPage() {
 
 export function InvestorOverviewPage() {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const dashboardQuery = useDashboard("investor");
   const dashboard = dashboardQuery.data;
   const d = asRecord(dashboard);
@@ -250,10 +439,27 @@ export function InvestorOverviewPage() {
   const dashboardProfit = asRecord(d.profit);
   const recentDistribution = asEntityArray(d.recent_distribusi);
 
-  const submissions = useResource(submissionConfig).data ?? [];
-  const investments = useResource(investorInvestmentConfig).data ?? [];
-  const invoices = useResource(investorInvoiceConfig).data ?? [];
-  const profits = useResource(investorProfitConfig).data ?? [];
+  const submissionsQuery = useResource(submissionConfig);
+  const investmentsQuery = useResource(investorInvestmentConfig);
+  const invoicesQuery = useResource(investorInvoiceConfig);
+  const profitsQuery = useResource(investorProfitConfig);
+  const negotiationsQuery = useResource(myNegotiationConfig);
+  const preferencesQuery = useQuery({
+    queryKey: ["overview", "investor-preferences"],
+    queryFn: async () => {
+      try {
+        return await directApi.get("/user/investor/preferences", null);
+      } catch {
+        return null;
+      }
+    },
+    retry: false,
+  });
+  const submissions = submissionsQuery.data ?? [];
+  const investments = investmentsQuery.data ?? [];
+  const invoices = invoicesQuery.data ?? [];
+  const profits = profitsQuery.data ?? [];
+  const negotiations = negotiationsQuery.data ?? [];
 
   const invested =
     Number(dashboardInvestment.total_nominal ?? 0) ||
@@ -265,6 +471,58 @@ export function InvestorOverviewPage() {
   const peluangCount = Number(d.total_peluang ?? 0) || submissions.length;
   const investmentCount = Number(dashboardInvestment.jumlah_aktif ?? 0) || investments.length;
   const invoiceCount = Number(d.total_invoice ?? 0) || invoices.length;
+  const accountReady = Boolean(user?.nama && user?.email);
+  const hasPreferences = Boolean(preferencesQuery.data);
+  const hasNegotiation = negotiations.length > 0;
+  const hasInvestment = investmentCount > 0;
+
+  const onboardingSteps: OverviewStep[] = [
+    {
+      key: "profile",
+      titleKey: "investorStepProfileTitle",
+      helperKey: accountReady ? "investorStepProfileDone" : "investorStepProfileTodo",
+      href: "/dashboard/investor/profile",
+      done: accountReady,
+    },
+    {
+      key: "preferences",
+      titleKey: "investorStepPreferenceTitle",
+      helperKey: hasPreferences ? "investorStepPreferenceDone" : "investorStepPreferenceTodo",
+      href: "/dashboard/investor/preferensi",
+      done: hasPreferences,
+    },
+    {
+      key: "survey",
+      titleKey: "investorStepSurveyTitle",
+      helperKey: "investorStepSurveyTodo",
+      href: "/dashboard/investor/survey",
+      done: hasPreferences,
+      locked: !hasPreferences,
+    },
+    {
+      key: "negotiation",
+      titleKey: "investorStepNegotiationTitle",
+      helperKey: hasNegotiation ? "investorStepNegotiationDone" : "investorStepNegotiationTodo",
+      helperParams: { count: negotiations.length },
+      href: "/dashboard/investor/negosiasi",
+      done: hasNegotiation,
+      locked: !hasPreferences,
+    },
+    {
+      key: "portfolio",
+      titleKey: "investorStepPortfolioTitle",
+      helperKey: hasInvestment ? "investorStepPortfolioDone" : "investorStepPortfolioTodo",
+      helperParams: { count: investmentCount },
+      href: "/dashboard/investor/portfolio",
+      done: hasInvestment,
+      locked: !hasNegotiation,
+    },
+  ];
+
+  const onboardingProgress = Math.round(
+    (onboardingSteps.filter((step) => step.done).length / onboardingSteps.length) * 100,
+  );
+  const nextStep = onboardingSteps.find((step) => !step.done && !step.locked);
 
   return (
     <div className="space-y-6">
@@ -278,12 +536,30 @@ export function InvestorOverviewPage() {
         <StatCard label={t("profit")} value={compactCurrency(profitTotal)} helper={t("pendingAmount", { amount: compactCurrency(pendingProfit) })} icon={CircleDollarSign} tone="amber" loading={dashboardQuery.isLoading} />
         <StatCard label={t("invoice")} value={String(invoiceCount)} helper={t("investorBills")} icon={Receipt} loading={dashboardQuery.isLoading} />
       </div>
+      <OnboardingOverviewCard
+        titleKey="investorOnboardingTitle"
+        bodyKey="investorOnboardingBody"
+        progress={onboardingProgress}
+        icon={Rocket}
+        steps={onboardingSteps}
+        primaryHref={nextStep?.href ?? "/dashboard/investor/peluang"}
+      />
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <MatchList submissions={submissions} />
+        <MatchList submissions={submissions} isLoading={submissionsQuery.isLoading} />
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
           <h3 className="text-xl font-black">{t("activeInvestments")}</h3>
           <p className="mt-1 text-sm font-semibold text-neutral/55">{t("activeInvestmentCount", { count: investmentCount })}</p>
           <div className="mt-5 grid gap-3">
+            {!investmentsQuery.isLoading &&
+            recentDistribution.length === 0 &&
+            investments.length === 0 ? (
+              <EmptyState
+                title="noActiveInvestments"
+                body="noActiveInvestmentsBody"
+                compact
+                icon={TrendingUp}
+              />
+            ) : null}
             {(recentDistribution.length > 0 ? recentDistribution : investments).map((item) => (
               <div key={item.id} className="rounded-md border border-base-300 p-4">
                 <div className="flex justify-between gap-4">
@@ -317,10 +593,14 @@ export function AdminOverviewPage() {
   const submissionByStatus = asRecord(dashboardSubmission.by_status);
   const recentSubmissions = asEntityArray(d.recent_pengajuan);
 
-  const businesses = useResource(businessConfig).data ?? [];
-  const submissions = useResource(submissionConfig).data ?? [];
-  const admins = useResource(adminConfig).data ?? [];
-  const notifications = useResource(notificationConfig).data ?? [];
+  const businessesQuery = useResource(businessConfig);
+  const submissionsQuery = useResource(submissionConfig);
+  const adminsQuery = useResource(adminConfig);
+  const notificationsQuery = useResource(notificationConfig);
+  const businesses = businessesQuery.data ?? [];
+  const submissions = submissionsQuery.data ?? [];
+  const admins = adminsQuery.data ?? [];
+  const notifications = notificationsQuery.data ?? [];
 
   const bisnisCount = Number(dashboardBusiness.total ?? 0) || businesses.length;
   const submissionCount = Number(dashboardSubmission.total ?? 0) || submissions.length;
@@ -347,6 +627,16 @@ export function AdminOverviewPage() {
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
           <h3 className="text-xl font-black">{t("submissionStatus")}</h3>
           <div className="mt-5 grid gap-3">
+            {!submissionsQuery.isLoading &&
+            recentSubmissions.length === 0 &&
+            submissions.length === 0 ? (
+              <EmptyState
+                title="dataUnavailable"
+                body="latestUpdatesEmpty"
+                compact
+                icon={FileCheck2}
+              />
+            ) : null}
             {(recentSubmissions.length > 0 ? recentSubmissions : submissions).map((item) => (
               <div key={item.id} className="flex items-center justify-between gap-4 rounded-md border border-base-300 p-4">
                 <div>
@@ -362,7 +652,7 @@ export function AdminOverviewPage() {
             ))}
           </div>
         </div>
-        <ActivityPanel items={notifications} />
+        <ActivityPanel items={notifications} isLoading={notificationsQuery.isLoading} />
       </div>
     </div>
   );

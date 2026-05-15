@@ -6,9 +6,11 @@ import { apiClient } from "../../lib/api/client";
 import axios from "axios";
 import { LanguageSwitcher } from "../../components/LanguageSwitcher";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
+import { useToast } from "../../components/ToastProvider";
 
 export function VerifyEmailPage() {
   const { t } = useLanguage();
+  const toast = useToast();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") ?? "";
   const requestedTokenRef = useRef<string | null>(null);
@@ -35,21 +37,33 @@ export function VerifyEmailPage() {
         setStatus("success");
         setMessage("");
         setMessageKey("verifySuccessMessage");
+        toast.success(t("verifySuccessMessage"), {
+          title: t("verifySuccessTitle"),
+        });
       })
       .catch((err) => {
         setStatus("error");
         if (axios.isAxiosError(err) && err.response?.status === 404) {
           setMessage("");
           setMessageKey("verifyUnavailable");
+          toast.error(t("verifyUnavailable"), {
+            title: t("verifyFailedTitle"),
+          });
         } else if (axios.isAxiosError(err) && err.response?.data?.message) {
           setMessage(err.response.data.message as string);
           setMessageKey("");
+          toast.error(err.response.data.message as string, {
+            title: t("verifyFailedTitle"),
+          });
         } else {
           setMessage("");
           setMessageKey("verifyFailedMessage");
+          toast.error(t("verifyFailedMessage"), {
+            title: t("verifyFailedTitle"),
+          });
         }
       });
-  }, [token]);
+  }, [t, toast, token]);
 
   const resend = async () => {
     if (!resendEmail) return;
@@ -59,13 +73,19 @@ export function VerifyEmailPage() {
     try {
       await apiClient.post("/user/resend-verify", { email: resendEmail });
       setResendMessageKey("verifyResendSuccess");
+      toast.success(t("verifyResendSuccess"));
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 404) {
         setResendMessageKey("featureUnavailable");
+        toast.error(t("featureUnavailable"));
       } else if (axios.isAxiosError(err) && err.response?.data?.message) {
         setResendMessage(err.response.data.message as string);
+        toast.error(err.response.data.message as string, {
+          title: t("verifyResendError"),
+        });
       } else {
         setResendMessageKey("verifyResendError");
+        toast.error(t("verifyResendError"));
       }
     } finally {
       setIsResending(false);
