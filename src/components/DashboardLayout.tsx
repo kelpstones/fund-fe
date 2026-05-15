@@ -311,7 +311,6 @@ export function DashboardLayout() {
               <Menu size={22} />
             </label>
             <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-neutral/40">{t("workspaceTitle")}</p>
               <h1 className="text-lg font-bold text-neutral">{t(activeItem.labelKey)}</h1>
               <nav className="mt-1 flex items-center gap-1 text-xs font-semibold text-neutral/45">
                 <span>{t(activeGroup.labelKey)}</span>

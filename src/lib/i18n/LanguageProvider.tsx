@@ -1096,6 +1096,8 @@ Object.assign(translations.id, {
   saveProfile: "Simpan Profile",
   adminProfileReadonly:
     "Admin biasa hanya dapat melihat profile. Update admin hanya tersedia untuk superadmin.",
+  userProfileReadonly:
+    "Update profile sementara dinonaktifkan karena endpoint backend untuk update profile sedang bermasalah.",
   accountSummary: "Ringkasan Akun",
   accountSummaryDescription:
     "Informasi akun aktif yang tersambung ke dashboard.",
@@ -1152,6 +1154,8 @@ Object.assign(translations.en, {
   saveProfile: "Save Profile",
   adminProfileReadonly:
     "Regular admins can only view the profile. Admin updates are only available to superadmins.",
+  userProfileReadonly:
+    "Profile updates are temporarily disabled because the backend profile-update endpoint is currently unstable.",
   accountSummary: "Account Summary",
   accountSummaryDescription:
     "Active account information connected to the dashboard.",

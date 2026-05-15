@@ -96,7 +96,8 @@ export function ProfilePage() {
   const { user, updateUser } = useAuth();
   const queryClient = useQueryClient();
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-  const canEditProfile = !isAdmin || user?.role === "superadmin";
+  const canEditProfile = isAdmin && user?.role === "superadmin";
+  const readonlyNotice = isAdmin ? t("adminProfileReadonly") : t("userProfileReadonly");
   const [saveMessage, setSaveMessage] = useState("");
   const [saveError, setSaveError] = useState("");
   const [form, setForm] = useState<{
@@ -228,7 +229,7 @@ export function ProfilePage() {
             </button>
           ) : (
             <div className="rounded-md border border-info/20 bg-info/10 px-4 py-3 text-sm font-semibold text-info">
-              {t("adminProfileReadonly")}
+              {readonlyNotice}
             </div>
           )}
           {saveMessage ? (

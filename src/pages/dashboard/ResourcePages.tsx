@@ -990,10 +990,14 @@ export function ProfitsPage({ investor = false }: { investor?: boolean }) {
 
 export function ProfitsBySalesPage() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const isUmkm = user?.role === "umkm";
   const [penjualanId, setPenjualanId] = useState("");
   const salesQuery = useQuery({
     queryKey: ["profit-sales-options"],
     queryFn: () => resourceApi.list(salesConfig),
+    enabled: !isUmkm,
+    retry: false,
   });
   const salesOptions = asOptions(salesQuery.data ?? [], ["periode", "pengajuans_id"]);
 

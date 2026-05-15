@@ -28,7 +28,6 @@ import {
   myBusinessConfig,
   myNegotiationConfig,
   notificationConfig,
-  salesConfig,
   submissionConfig,
 } from "../../lib/resourceConfigs";
 import { compactCurrency, currency, percent, readPath, statusTone, textValue } from "../../lib/format";
@@ -38,12 +37,14 @@ const useResource = (config: ResourceConfig<Entity>) =>
   useQuery({
     queryKey: ["overview", config.key],
     queryFn: () => resourceApi.list(config),
+    retry: false,
   });
 
 const useDashboard = (role: "umkm" | "investor" | "admin") =>
   useQuery({
     queryKey: ["dashboard-summary", role],
     queryFn: () => directApi.get(`/dashboard/${role}`, null),
+    retry: false,
   });
 
 const asRecord = (value: unknown): Record<string, unknown> =>
@@ -168,16 +169,14 @@ export function UmkmOverviewPage() {
 
   const businessesQuery = useResource(myBusinessConfig);
   const submissionsQuery = useResource(submissionConfig);
-  const salesQuery = useResource(salesConfig);
   const negotiationsQuery = useResource(myNegotiationConfig);
   const businesses = businessesQuery.data ?? [];
   const submissions = submissionsQuery.data ?? [];
-  const sales = salesQuery.data ?? [];
   const negotiations = negotiationsQuery.data ?? [];
 
   const totalSales =
     penjualanChart.reduce((sum, item) => sum + Number(item.total_penjualan || 0), 0) ||
-    sales.reduce((sum, item) => sum + Number(item.total_penjualan || 0), 0);
+    Number(d.total_penjualan ?? 0);
   const funded =
     Number(dashboardSubmission.total_pendanaan ?? 0) ||
     submissions.reduce((sum, item) => sum + Number(item.total_pendanaan || 0), 0);

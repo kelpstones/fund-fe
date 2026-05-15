@@ -242,6 +242,7 @@ export function ResourcePage<T extends Entity>({
     queryKey: ["resource", config.key],
     queryFn: () => resourceApi.list(config),
     enabled: !staticData,
+    retry: false,
   });
 
   const invalidate = async () => {
