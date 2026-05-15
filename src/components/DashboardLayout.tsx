@@ -11,9 +11,7 @@ import {
   LogOut,
   Menu,
   Receipt,
-  Rocket,
   Scale,
-  ShieldCheck,
   SlidersHorizontal,
   TrendingUp,
   Users,
@@ -23,6 +21,7 @@ import {
   Bookmark,
   ClipboardCheck,
   ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { Logo } from "./Logo";
@@ -48,7 +47,6 @@ const navByRole: Record<UserRole, NavGroup[]> = {
       labelKey: "dashboardGroupMain",
       items: [
         { to: "/dashboard/umkm", labelKey: "dashboardOverview", icon: LayoutDashboard },
-        { to: "/dashboard/umkm/onboarding", labelKey: "dashboardOnboarding", icon: Rocket },
       ],
     },
     {
@@ -88,7 +86,6 @@ const navByRole: Record<UserRole, NavGroup[]> = {
       labelKey: "dashboardGroupMain",
       items: [
         { to: "/dashboard/investor", labelKey: "dashboardOverview", icon: LayoutDashboard },
-        { to: "/dashboard/investor/onboarding", labelKey: "dashboardOnboarding", icon: Rocket },
       ],
     },
     {
@@ -216,11 +213,26 @@ const navByRole: Record<UserRole, NavGroup[]> = {
   ],
 };
 
+const roleLabelKeyByRole: Record<UserRole, TranslationKey> = {
+  umkm: "roleUmkm",
+  investor: "roleInvestor",
+  admin: "roleAdmin",
+  superadmin: "roleSuperadmin",
+};
+
+const initialsFromName = (name?: string) => {
+  const value = (name || "").trim();
+  if (!value) return "FR";
+  const parts = value.split(/\s+/).slice(0, 2);
+  return parts.map((part) => part[0]?.toUpperCase() ?? "").join("") || "FR";
+};
+
 function Sidebar() {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
   const role = user?.role ?? "umkm";
   const groups = navByRole[role];
+  const roleLabelKey = roleLabelKeyByRole[role];
 
   return (
     <aside className="flex min-h-full w-72 flex-col border-r border-base-300 bg-white">
@@ -229,14 +241,10 @@ function Sidebar() {
       </div>
       <div className="flex-1 overflow-y-auto px-4 py-5">
         <div className="mb-5 rounded-md border border-base-300 bg-base-200 p-4">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-md bg-primary text-white">
-              <ShieldCheck size={19} />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold">{user?.nama}</p>
-              <p className="truncate text-xs text-neutral/55">{user?.email}</p>
-            </div>
+          <div className="min-w-0">
+            <span className="badge badge-primary badge-sm text-white">{t(roleLabelKey)}</span>
+            <p className="mt-3 truncate text-sm font-bold">{user?.nama}</p>
+            <p className="truncate text-xs text-neutral/55">{user?.email}</p>
           </div>
         </div>
         <nav className="grid gap-5">
@@ -276,7 +284,10 @@ function Sidebar() {
         <div className="mb-3 lg:hidden">
           <LanguageSwitcher compact />
         </div>
-        <button className="btn btn-ghost w-full justify-start rounded-md" onClick={logout}>
+        <button
+          className="btn btn-ghost w-full justify-start rounded-md text-error hover:bg-error/10 hover:text-error"
+          onClick={logout}
+        >
           <LogOut size={18} />
           {t("logout")}
         </button>
@@ -286,10 +297,11 @@ function Sidebar() {
 }
 
 export function DashboardLayout() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { t } = useLanguage();
   const location = useLocation();
   const role = user?.role ?? "umkm";
+  const roleLabelKey = roleLabelKeyByRole[role];
   const groups = navByRole[role];
   const flatNav = groups.flatMap((group) => group.items);
   const activeItem =
@@ -299,7 +311,9 @@ export function DashboardLayout() {
     flatNav[0];
   const activeGroup =
     groups.find((group) => group.items.some((item) => item.to === activeItem.to)) ?? groups[0];
+  const profilePath = `${dashboardPathFor(role)}/profile`;
   const notificationsPath = `${dashboardPathFor(role)}/notifikasi`;
+  const initials = initialsFromName(user?.nama);
 
   return (
     <div className="drawer min-h-screen bg-base-200 lg:drawer-open">
@@ -329,10 +343,39 @@ export function DashboardLayout() {
             >
               <Bell size={20} />
             </NavLink>
-            <div className="avatar placeholder">
-              <div className="w-10 rounded-md bg-neutral text-white">
-                <span className="text-sm">{user?.nama?.slice(0, 2).toUpperCase() ?? "FR"}</span>
-              </div>
+            <div className="dropdown dropdown-end">
+              <button tabIndex={0} className="btn btn-ghost h-10 rounded-md px-2">
+                <div className="avatar placeholder">
+                  <div className="w-9 rounded-md bg-neutral text-white">
+                    <span className="text-sm">{initials}</span>
+                  </div>
+                </div>
+                <ChevronDown size={16} className="text-neutral/60" />
+              </button>
+              <ul
+                tabIndex={0}
+                className="menu dropdown-content z-[1200] mt-2 w-56 rounded-md border border-base-300 bg-white p-2 shadow-lg"
+              >
+                <li className="menu-title px-2 py-1">
+                  <span className="truncate text-sm font-bold text-neutral">{user?.nama}</span>
+                  <span className="text-xs font-semibold text-neutral/55">{t(roleLabelKey)}</span>
+                </li>
+                <li>
+                  <NavLink to={profilePath} className="rounded-md">
+                    {t("dashboardProfile")}
+                  </NavLink>
+                </li>
+                <li className="mt-1 border-t border-base-300 pt-1">
+                  <button
+                    type="button"
+                    className="rounded-md text-error hover:bg-error/10 hover:text-error"
+                    onClick={logout}
+                  >
+                    <LogOut size={16} />
+                    {t("logout")}
+                  </button>
+                </li>
+              </ul>
             </div>
           </div>
         </header>
