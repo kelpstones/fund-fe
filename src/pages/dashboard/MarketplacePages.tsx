@@ -692,6 +692,7 @@ export function OpportunityDetailPage() {
   const { data = [], isLoading } = usePublishedOpportunities();
   const { savedIds, toggle } = useSavedOpportunities();
   const opportunity = data.find((item) => opportunityId(item) === id);
+  const opportunityBusinessId = opportunity ? bookmarkKey(opportunity) : "";
   const [form, setForm] = useState({
     penawaran_nominal: "",
     penawaran_return: "",
@@ -699,6 +700,19 @@ export function OpportunityDetailPage() {
   });
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const bookmarkStatusQuery = useQuery({
+    queryKey: ["investor-bookmark-status", opportunityBusinessId],
+    queryFn: async () => {
+      const response = await apiClient.get(`/user/investor/bookmarks/${opportunityBusinessId}`);
+      const payload = unwrap<unknown>(response.data);
+      if (payload && typeof payload === "object" && "isBookmarked" in payload) {
+        return Boolean((payload as Record<string, unknown>).isBookmarked);
+      }
+      return false;
+    },
+    enabled: Boolean(opportunityBusinessId),
+    retry: false,
+  });
 
   const negotiationMutation = useMutation({
     mutationFn: async () => {
@@ -734,7 +748,7 @@ export function OpportunityDetailPage() {
     );
   }
 
-  const isSaved = savedIds.has(bookmarkKey(opportunity));
+  const isSaved = bookmarkStatusQuery.data ?? savedIds.has(opportunityBusinessId);
 
   return (
     <section className="space-y-5">
@@ -743,7 +757,18 @@ export function OpportunityDetailPage() {
         description="opportunityDetailBody"
         actions={
           <>
-            <button className="btn btn-outline rounded-md" onClick={() => toggle(opportunity)}>
+            <button
+              className="btn btn-outline rounded-md"
+              disabled={!opportunityBusinessId}
+              onClick={() => {
+                toggle(opportunity);
+                if (opportunityBusinessId) {
+                  void queryClient.invalidateQueries({
+                    queryKey: ["investor-bookmark-status", opportunityBusinessId],
+                  });
+                }
+              }}
+            >
               {isSaved ? <BookmarkCheck size={17} /> : <Bookmark size={17} />}
               {isSaved ? t("saved") : t("save")}
             </button>

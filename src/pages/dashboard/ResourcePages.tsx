@@ -25,6 +25,7 @@ import {
   profitBySalesConfig,
   publishedSubmissionConfig,
   salesConfig,
+  salesByPengajuanConfig,
   submissionConfig,
   myBusinessConfig,
   myNegotiationConfig,
@@ -407,6 +408,7 @@ export function BusinessesPage({
     scope === "mine" ? myBusinessConfig : scope === "admin" ? adminBusinessConfig : businessConfig;
   const isAdminScope = scope === "admin";
   const isUmkmOwner = user?.role === "umkm" && !isAdminScope;
+  const canDelete = isUmkmOwner;
 
   return (
     <ResourcePage
@@ -418,7 +420,7 @@ export function BusinessesPage({
       createLabel="Tambah Bisnis"
       allowCreate={isUmkmOwner}
       allowEdit={false}
-      allowDelete={isUmkmOwner}
+      allowDelete={canDelete}
       emptyTitle={isUmkmOwner ? "Belum ada bisnis" : "Belum ada bisnis terdaftar"}
       emptyDescription={
         isUmkmOwner
@@ -500,6 +502,7 @@ export function SalesPage() {
 
 function UmkmSalesPage() {
   const { t } = useLanguage();
+  const queryClient = useQueryClient();
   const [form, setForm] = useState({
     pengajuans_id: "",
     periode: "",
@@ -520,6 +523,7 @@ function UmkmSalesPage() {
     "nama",
     "id",
   ]);
+  const selectedPengajuanId = form.pengajuans_id.trim();
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -533,17 +537,23 @@ function UmkmSalesPage() {
       });
       return unwrap<unknown>(response.data);
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      const selectedId = form.pengajuans_id;
       setMessage(t("salesReportSubmitSuccess"));
       setError("");
       setForm({
-        pengajuans_id: "",
+        pengajuans_id: selectedId,
         periode: "",
         total_penjualan: "",
         laba_kotor: "",
         laba_bersih: "",
         jumlah_transaksi: "",
       });
+      if (selectedId) {
+        await queryClient.invalidateQueries({
+          queryKey: ["resource", `sales-pengajuan-${selectedId}`],
+        });
+      }
     },
     onError: (err) => {
       setMessage("");
@@ -608,6 +618,22 @@ function UmkmSalesPage() {
           {error ? <span className="text-sm font-semibold text-error">{error}</span> : null}
         </div>
       </form>
+      {selectedPengajuanId ? (
+        <ResourcePage
+          title="Riwayat Penjualan Pengajuan"
+          description="Laporan penjualan untuk pengajuan yang sedang dipilih."
+          config={salesByPengajuanConfig(selectedPengajuanId)}
+          columns={salesColumns}
+          fields={[]}
+          readonly
+          allowCreate={false}
+          allowEdit={false}
+          allowDelete={false}
+          emptyTitle="Belum ada laporan untuk pengajuan ini"
+          emptyDescription="Tambahkan laporan penjualan untuk melihat riwayat pada pengajuan yang dipilih."
+          searchableFields={["periode", "total_penjualan", "laba_bersih", "jumlah_transaksi"]}
+        />
+      ) : null}
     </section>
   );
 }

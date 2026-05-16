@@ -71,6 +71,17 @@ textarea {
 }
 
 @layer utilities {
+  .fr-toast-stack {
+    top: calc(env(safe-area-inset-top) + 5.25rem);
+    right: max(0.5rem, env(safe-area-inset-right));
+  }
+
+  @media (min-width: 640px) {
+    .fr-toast-stack {
+      top: calc(env(safe-area-inset-top) + 5.5rem);
+    }
+  }
+
   [data-reveal] {
     opacity: 0;
     transform: translate3d(0, 10px, 0);

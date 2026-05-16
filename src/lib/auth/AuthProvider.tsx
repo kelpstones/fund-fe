@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -71,12 +72,32 @@ const saveSession = (user: AuthUser, token: string) => {
   localStorage.setItem(tokenKey, token);
 };
 
+const tokenExpiryMs = (token: string): number | null => {
+  try {
+    const raw = token.startsWith("Bearer ") ? token.slice(7) : token;
+    const payload = raw.split(".")[1];
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = JSON.parse(window.atob(normalized)) as { exp?: number };
+    if (!decoded.exp) return null;
+    return decoded.exp * 1000;
+  } catch {
+    return null;
+  }
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => {
     const storedUser = localStorage.getItem(userKey);
     return storedUser ? (JSON.parse(storedUser) as AuthUser) : null;
   });
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(tokenKey));
+
+  const applySession = useCallback((nextUser: AuthUser, nextToken: string) => {
+    saveSession(nextUser, nextToken);
+    setUser(nextUser);
+    setToken(nextToken);
+  }, []);
 
   const login = useCallback(async (payload: LoginPayload) => {
     const loginWithPath = async (path: string, fallbackRole: UserRole) => {
@@ -87,9 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, token: responseToken } = unwrapToken<Record<string, unknown>>(response.data);
       const nextUser = normalizeUser(data, payload.role ?? fallbackRole);
       if (!responseToken) throw new Error("Login response does not include token");
-      saveSession(nextUser, responseToken);
-      setUser(nextUser);
-      setToken(responseToken);
+      applySession(nextUser, responseToken);
       return nextUser;
     };
 
@@ -101,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       throw userError;
     }
-  }, []);
+  }, [applySession]);
 
   const register = useCallback(async (payload: RegisterPayload) => {
     const role_id = payload.role === "investor" ? 2 : 1;
@@ -137,6 +156,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setToken(null);
   }, []);
+
+  useEffect(() => {
+    if (!user || !token) return;
+
+    let cancelled = false;
+    let timeoutId: number | undefined;
+
+    const refreshSession = async () => {
+      try {
+        const isAdmin = user.role === "admin" || user.role === "superadmin";
+        const response = await apiClient.post(isAdmin ? "/admin/me" : "/user/me");
+        const { data, token: refreshedToken } = unwrapToken<Record<string, unknown>>(response.data);
+        if (cancelled) return;
+        const nextToken = refreshedToken ?? token;
+        const nextUser = normalizeUser(data, user.role);
+        applySession(nextUser, nextToken);
+      } catch {
+        if (cancelled) return;
+        logout();
+      }
+    };
+
+    const expiresAt = tokenExpiryMs(token);
+    const refreshDelay = expiresAt
+      ? Math.max(10_000, expiresAt - Date.now() - 60_000)
+      : 8 * 60_000;
+    timeoutId = window.setTimeout(() => {
+      void refreshSession();
+    }, refreshDelay);
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  }, [applySession, logout, token, user]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
