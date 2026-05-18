@@ -79,15 +79,15 @@ const featuredOpportunities = [
 const programLogos = [
   {
     name: "Coding Camp 2026",
-    image: "/partners/coding-camp.png",
+    image: "/partners/coding-camp.webp",
   },
   {
     name: "DBS Foundation",
-    image: "/partners/dbs-foundation.png",
+    image: "/partners/dbs-foundation.webp",
   },
   {
     name: "Dicoding",
-    image: "/partners/dicoding.png",
+    image: "/partners/dicoding.webp",
   },
 ];
 
@@ -96,31 +96,31 @@ const testimonials = [
     name: "Rani Prameswari",
     role: "homeTestimonialRoleUmkm",
     quote: "homeTestimonialRani",
-    image: "/testimonials/rani-prameswari.png",
+    image: "/testimonials/rani-prameswari.webp",
   },
   {
     name: "Dimas Arya",
     role: "homeTestimonialRoleInvestor",
     quote: "homeTestimonialDimas",
-    image: "/testimonials/dimas-arya.png",
+    image: "/testimonials/dimas-arya.webp",
   },
   {
     name: "Nadia Putri",
     role: "homeTestimonialRoleAdmin",
     quote: "homeTestimonialNadia",
-    image: "/testimonials/nadia-putri.png",
+    image: "/testimonials/nadia-putri.webp",
   },
 ];
 
 const roleCards = [
   {
     title: "homeRoleUmkmTitle",
-    image: "/images/roles/umkm.png",
+    image: "/images/roles/umkm.webp",
     points: ["homeRoleUmkmPoint1", "homeRoleUmkmPoint2", "homeRoleUmkmPoint3"],
   },
   {
     title: "homeRoleInvestorTitle",
-    image: "/images/roles/investor.png",
+    image: "/images/roles/investor.webp",
     points: [
       "homeRoleInvestorPoint1",
       "homeRoleInvestorPoint2",

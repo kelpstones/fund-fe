@@ -24,7 +24,7 @@ export function ContactPage() {
           </p>
           <div className="mt-8 aspect-[4/3] overflow-hidden rounded-md border border-base-300 bg-base-200 shadow-sm">
             <img
-              src="/images/contact.png"
+              src="/images/contact.webp"
               alt={t("contactImageAlt")}
               className="h-full w-full object-cover"
             />

@@ -5,47 +5,47 @@ const teamMembers = [
   {
     name: "M. Danendra Prawiraamijoyo",
     role: "Full-Stack Web Developer",
-    image: "/team/muhamad-danendra-prawiraamijoyo.png",
+    image: "/team/muhamad-danendra-prawiraamijoyo.webp",
   },
   {
     name: "Azra Hudaya",
     role: "Full-Stack Web Developer",
-    image: "/team/azra-hudaya.png",
+    image: "/team/azra-hudaya.webp",
   },
   {
     name: "Adam Kevin",
     role: "Data Scientist",
-    image: "/team/adam-kevin.png",
+    image: "/team/adam-kevin.webp",
   },
   {
     name: "Andika Ardiansyah",
     role: "Data Scientist",
-    image: "/team/andika-ardiansyah.png",
+    image: "/team/andika-ardiansyah.webp",
   },
   {
     name: "Aldi Kurnia Fadillah",
     role: "AI Engineer",
-    image: "/team/aldi-kurnia-fadillah.png",
+    image: "/team/aldi-kurnia-fadillah.webp",
   },
   {
     name: "Yazid Hilmi Allamsyah",
     role: "AI Engineer",
-    image: "/team/yazid-hilmi-allamsyah.png",
+    image: "/team/yazid-hilmi-allamsyah.webp",
   },
 ];
 
 const capstonePartners = [
   {
     name: "Coding Camp 2026",
-    logo: "/partners/coding-camp.png",
+    logo: "/partners/coding-camp.webp",
   },
   {
     name: "DBS Foundation",
-    logo: "/partners/dbs-foundation.png",
+    logo: "/partners/dbs-foundation.webp",
   },
   {
     name: "Dicoding",
-    logo: "/partners/dicoding.png",
+    logo: "/partners/dicoding.webp",
   },
 ];
 
@@ -96,12 +96,19 @@ export function AboutPage() {
               {t("aboutHeroBody")}
             </p>
           </div>
-          <div className="aspect-[4/3] overflow-hidden rounded-md border border-base-300 bg-base-200 shadow-sm">
-            <img
-              src="/images/about-new.png"
-              alt={t("aboutImageAlt")}
+          <div className="aspect-video overflow-hidden rounded-md border border-base-300 bg-base-200 shadow-sm">
+            <video
               className="h-full w-full object-cover"
-            />
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              poster="/images/about-new-first-frame.png"
+              aria-label={t("aboutImageAlt")}
+            >
+              <source src="/videos/about-new.webm" type="video/webm" />
+            </video>
           </div>
         </div>
       </section>
@@ -177,7 +184,7 @@ export function AboutPage() {
           >
             <div className="overflow-hidden rounded-md border border-base-300 bg-base-200">
               <img
-                src="/images/meong.png"
+                src="/images/meong.webp"
                 alt="Meong"
                 className="h-72 w-full object-cover"
                 loading="lazy"
