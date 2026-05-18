@@ -24,6 +24,7 @@ import { useLanguage } from "../lib/i18n/LanguageProvider";
 import { useToast } from "./ToastProvider";
 import { EmptyState } from "./EmptyState";
 import { ListSkeleton, TableRowSkeleton } from "./PageSkeleton";
+import { DashboardBreadcrumb } from "./DashboardBreadcrumb";
 
 type ResourcePageProps<T extends Entity> = {
   title: string;
@@ -526,6 +527,7 @@ export function ResourcePage<T extends Entity>({
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h2 className="text-2xl font-black tracking-normal text-neutral">{t(title)}</h2>
+          <DashboardBreadcrumb />
           <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">{t(description)}</p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">

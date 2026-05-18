@@ -17,6 +17,7 @@ import { apiClient } from "../../lib/api/client";
 import { resourceApi } from "../../lib/api/resources";
 import { useAuth } from "../../lib/auth/AuthProvider";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
+import { DashboardBreadcrumb } from "../../components/DashboardBreadcrumb";
 import {
   investorInvestmentConfig,
   myNegotiationConfig,
@@ -322,6 +323,7 @@ export function InvestorOnboardingPage() {
             <h2 className="text-3xl font-black tracking-normal text-neutral">
               {t("investorOnboardingTitle")}
             </h2>
+            <DashboardBreadcrumb />
             <p className="mt-3 max-w-3xl text-sm leading-6 text-neutral/60">
               {t("investorOnboardingBody")}
             </p>

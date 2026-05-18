@@ -22,7 +22,6 @@ import {
   ClipboardList,
   Bookmark,
   ClipboardCheck,
-  ChevronRight,
   ChevronDown,
   Lock,
 } from "lucide-react";
@@ -472,19 +471,9 @@ function Sidebar({ hasUnreadNotifications }: { hasUnreadNotifications: boolean }
 export function DashboardLayout() {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
-  const location = useLocation();
   const role = user?.role ?? "umkm";
   const isAdminRole = role === "admin" || role === "superadmin";
   const roleLabelKey = roleLabelKeyByRole[role];
-  const groups = navByRole[role];
-  const flatNav = groups.flatMap((group) => group.items);
-  const activeItem =
-    [...flatNav]
-      .sort((a, b) => b.to.length - a.to.length)
-      .find((item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)) ??
-    flatNav[0];
-  const activeGroup =
-    groups.find((group) => group.items.some((item) => item.to === activeItem.to)) ?? groups[0];
   const profilePath = `${dashboardPathFor(role)}/profile`;
   const notificationsPath = `${dashboardPathFor(role)}/notifikasi`;
   const initials = initialsFromName(user?.nama);
@@ -512,18 +501,10 @@ export function DashboardLayout() {
       <input id="dashboard-drawer" type="checkbox" className="drawer-toggle" />
       <div className="drawer-content flex min-h-screen flex-col">
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-base-300 bg-white/95 px-4 backdrop-blur lg:px-8">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center">
             <label htmlFor="dashboard-drawer" className="btn btn-square btn-ghost lg:hidden">
               <Menu size={22} />
             </label>
-            <div>
-              <h1 className="text-lg font-bold text-neutral">{t(activeItem.labelKey)}</h1>
-              <nav className="mt-1 flex items-center gap-1 text-xs font-semibold text-neutral/45">
-                <span>{t(activeGroup.labelKey)}</span>
-                <ChevronRight size={12} />
-                <span>{t(activeItem.labelKey)}</span>
-              </nav>
-            </div>
           </div>
           <div className="flex items-center gap-2">
             <LanguageSwitcher compact className="hidden sm:block" />

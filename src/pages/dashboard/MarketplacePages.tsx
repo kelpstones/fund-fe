@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { EmptyState } from "../../components/EmptyState";
 import { CardSkeletonGrid, ListSkeleton } from "../../components/PageSkeleton";
+import { DashboardBreadcrumb } from "../../components/DashboardBreadcrumb";
 import { apiClient, unwrap } from "../../lib/api/client";
 import { resourceApi } from "../../lib/api/resources";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
@@ -173,6 +174,7 @@ function MarketplaceHeader({
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="text-2xl font-black tracking-normal text-neutral">{t(title)}</h2>
+          <DashboardBreadcrumb />
           <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral/60">{t(description)}</p>
         </div>
         {actions ? <div className="flex flex-col gap-2 sm:flex-row">{actions}</div> : null}

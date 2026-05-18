@@ -13,6 +13,7 @@ import {
 import { Link } from "react-router-dom";
 import { EmptyState } from "../../components/EmptyState";
 import { ListSkeleton } from "../../components/PageSkeleton";
+import { DashboardBreadcrumb } from "../../components/DashboardBreadcrumb";
 import { apiClient, unwrap } from "../../lib/api/client";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import { dateShort, percent, readPath, textValue } from "../../lib/format";
@@ -220,6 +221,7 @@ export function InvestorSurveyPage() {
               <ClipboardList size={24} />
             </div>
             <h2 className="text-2xl font-black tracking-normal text-neutral">{t("investorSurveyTitle")}</h2>
+            <DashboardBreadcrumb />
             <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral/60">
               {t("investorSurveyBody")}
             </p>

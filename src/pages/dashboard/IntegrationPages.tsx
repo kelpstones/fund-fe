@@ -8,14 +8,17 @@ import { apiClient, unwrap } from "../../lib/api/client";
 import { resourceApi } from "../../lib/api/resources";
 import { businessConfig, myBusinessConfig } from "../../lib/resourceConfigs";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
+import { DashboardBreadcrumb } from "../../components/DashboardBreadcrumb";
 
 function Panel({
   title,
   description,
+  showBreadcrumb = false,
   children,
 }: {
   title: string;
   description?: string;
+  showBreadcrumb?: boolean;
   children: ReactNode;
 }) {
   const { t } = useLanguage();
@@ -24,6 +27,7 @@ function Panel({
     <section className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
       <div className="mb-5">
         <h2 className="text-xl font-black">{t(title)}</h2>
+        {showBreadcrumb ? <DashboardBreadcrumb /> : null}
         {description ? <p className="mt-2 text-sm leading-6 text-neutral/60">{t(description)}</p> : null}
       </div>
       {children}
@@ -233,6 +237,7 @@ export function ProfilePage() {
       <Panel
         title="Profile"
         description="profilePanelDescription"
+        showBreadcrumb
       >
         <form className="grid gap-4" onSubmit={submit}>
           <label className="form-control">
@@ -438,6 +443,7 @@ export function InvestorPreferencesPage() {
       <Panel
         title="investorPreferencesTitle"
         description="investorPreferencesBody"
+        showBreadcrumb
       >
         <form
           className="grid gap-4"
@@ -629,6 +635,7 @@ export function BusinessProfilePage() {
         <Panel
           title="businessModelProfileTitle"
           description="businessModelProfileBody"
+          showBreadcrumb
         >
           <div className="grid gap-4">
             <label className="form-control">
@@ -856,6 +863,7 @@ export function ApiStatusPage() {
       <Panel
         title="systemStatusTitle"
         description="systemStatusBody"
+        showBreadcrumb
       >
         <div className="grid gap-3 md:grid-cols-2">
           <SyncStatus

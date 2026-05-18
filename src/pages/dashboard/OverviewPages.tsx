@@ -19,6 +19,7 @@ import {
 import { StatCard } from "../../components/StatCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ListSkeleton } from "../../components/PageSkeleton";
+import { DashboardBreadcrumb } from "../../components/DashboardBreadcrumb";
 import { directApi } from "../../lib/api/direct";
 import { resourceApi } from "../../lib/api/resources";
 import { useAuth } from "../../lib/auth/AuthProvider";
@@ -82,6 +83,7 @@ function PageHeader({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="text-3xl font-black tracking-normal text-neutral">{t(title)}</h2>
+          <DashboardBreadcrumb />
           {body ? <p className="mt-3 max-w-3xl text-sm leading-6 text-neutral/60">{t(body)}</p> : null}
         </div>
       </div>
@@ -211,7 +213,7 @@ function OnboardingOverviewCard({
   titleKey: string;
   bodyKey: string;
   progress: number;
-  icon: typeof Rocket;
+  icon?: typeof Rocket;
   steps: OverviewStep[];
   primaryHref: string;
 }) {
@@ -221,9 +223,11 @@ function OnboardingOverviewCard({
     <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-4">
-          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
-            <Icon size={24} />
-          </div>
+          {Icon ? (
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+              <Icon size={24} />
+            </div>
+          ) : null}
           <div>
             <h3 className="text-xl font-black">{t(titleKey)}</h3>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-neutral/60">{t(bodyKey)}</p>
@@ -434,7 +438,6 @@ export function UmkmOverviewPage() {
         titleKey="umkmReadinessTitle"
         bodyKey="umkmReadinessBody"
         progress={onboardingProgress}
-        icon={Rocket}
         steps={onboardingSteps}
         primaryHref={nextStep?.href ?? "/dashboard/umkm/penjualan"}
       />

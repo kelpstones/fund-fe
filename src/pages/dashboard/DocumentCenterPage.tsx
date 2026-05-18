@@ -13,6 +13,7 @@ import { useAuth } from "../../lib/auth/AuthProvider";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import { dateShort } from "../../lib/format";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { DashboardBreadcrumb } from "../../components/DashboardBreadcrumb";
 
 type DocumentMeta = {
   name: string;
@@ -103,6 +104,7 @@ export function DocumentCenterPage() {
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-3xl font-black tracking-normal text-neutral">{t("documentCenterTitle")}</h2>
+            <DashboardBreadcrumb />
             <p className="mt-3 max-w-3xl text-sm leading-6 text-neutral/60">
               {role === "investor" ? t("documentCenterInvestorBody") : t("documentCenterUmkmBody")}
             </p>
