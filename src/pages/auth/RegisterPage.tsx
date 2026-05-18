@@ -34,6 +34,16 @@ export function RegisterPage() {
     setIsSubmitting(true);
     try {
       await register(form);
+      localStorage.setItem(
+        "fundraise_register_hint",
+        JSON.stringify({
+          email: form.email,
+          nama: form.nama,
+          no_telp: form.no_telp,
+          role: form.role,
+          saved_at: Date.now(),
+        }),
+      );
       navigate("/login", {
         replace: true,
         state: { message: t("registerSuccessVerifyEmail") },

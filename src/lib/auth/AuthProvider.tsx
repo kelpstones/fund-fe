@@ -23,6 +23,7 @@ type AuthContextValue = {
 
 const userKey = "fundraise_user";
 const tokenKey = "fundraise_token";
+const registerHintKey = "fundraise_register_hint";
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const normalizeRole = (user: Record<string, unknown>, requestedRole: UserRole): UserRole => {
@@ -94,8 +95,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(tokenKey));
 
   const applySession = useCallback((nextUser: AuthUser, nextToken: string) => {
-    saveSession(nextUser, nextToken);
-    setUser(nextUser);
+    let mergedUser = { ...nextUser };
+    const storedUserRaw = localStorage.getItem(userKey);
+    if (storedUserRaw) {
+      try {
+        const storedUser = JSON.parse(storedUserRaw) as Partial<AuthUser>;
+        if (storedUser.email && storedUser.email === mergedUser.email && storedUser.no_telp && !mergedUser.no_telp) {
+          mergedUser = { ...mergedUser, no_telp: storedUser.no_telp };
+        }
+      } catch {
+        // Ignore malformed local session data.
+      }
+    }
+
+    const registerHintRaw = localStorage.getItem(registerHintKey);
+    if (registerHintRaw) {
+      try {
+        const registerHint = JSON.parse(registerHintRaw) as {
+          email?: string;
+          no_telp?: string;
+        };
+        if (
+          registerHint.email &&
+          registerHint.email === mergedUser.email &&
+          registerHint.no_telp &&
+          !mergedUser.no_telp
+        ) {
+          mergedUser = { ...mergedUser, no_telp: registerHint.no_telp };
+        }
+      } catch {
+        // Ignore malformed register hint data.
+      } finally {
+        localStorage.removeItem(registerHintKey);
+      }
+    }
+
+    saveSession(mergedUser, nextToken);
+    setUser(mergedUser);
     setToken(nextToken);
   }, []);
 

@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { Loader2, RefreshCw, Save } from "lucide-react";
@@ -96,10 +96,11 @@ export function ProfilePage() {
   const { user, updateUser } = useAuth();
   const queryClient = useQueryClient();
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-  const canEditProfile = isAdmin && user?.role === "superadmin";
+  const canEditProfile = !isAdmin || user?.role === "superadmin";
   const readonlyNotice = isAdmin ? t("adminProfileReadonly") : t("userProfileReadonly");
   const [saveMessage, setSaveMessage] = useState("");
   const [saveError, setSaveError] = useState("");
+  const [isProfileDirty, setIsProfileDirty] = useState(false);
   const [form, setForm] = useState<{
     nama: string;
     email: string;
@@ -126,17 +127,36 @@ export function ProfilePage() {
     enabled: isAdmin && Boolean(user?.id),
   });
 
+  const meRecord = asRecord(meQuery.data);
+  const adminRecord = asRecord(adminDetailQuery.data);
+
   const updateMutation = useMutation({
     mutationFn: async () => {
-      const localUpdates = {
-        nama: form.nama,
-        email: form.email,
-        no_telp: form.no_telp,
-        ...(isAdmin ? { level: form.level as "admin" | "superadmin" } : {}),
-      };
+      const nama = form.nama.trim();
+      const email = form.email.trim();
+      const noTelp = form.no_telp.trim();
+      const level = form.level.trim();
+
+      const localUpdates: Partial<{
+        nama: string;
+        email: string;
+        no_telp: string;
+        level: "admin" | "superadmin";
+      }> = {};
+
+      if (nama) localUpdates.nama = nama;
+      if (email) localUpdates.email = email;
+      if (noTelp) localUpdates.no_telp = noTelp;
+      if (isAdmin && (level === "admin" || level === "superadmin")) {
+        localUpdates.level = level;
+      }
+
+      if (!localUpdates.nama || !localUpdates.email) {
+        throw new Error(t("profileSaveError"));
+      }
 
       if (isAdmin && user?.id) {
-        const response = await apiClient.put(`/admin/${user.id}`, form);
+        const response = await apiClient.put(`/admin/${user.id}`, localUpdates);
         unwrap<unknown>(response.data);
       } else {
         const response = await apiClient.put("/user/profile", localUpdates);
@@ -146,6 +166,7 @@ export function ProfilePage() {
       return updateUser(localUpdates);
     },
     onSuccess: async () => {
+      setIsProfileDirty(false);
       setSaveMessage(t("profileSaveSuccess"));
       setSaveError("");
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
@@ -161,9 +182,43 @@ export function ProfilePage() {
     if (canEditProfile) updateMutation.mutate();
   };
 
+  useEffect(() => {
+    if (isProfileDirty || updateMutation.isPending) return;
+
+    const source = isAdmin ? adminRecord : meRecord;
+    const merged = {
+      nama: String(source.nama ?? user?.nama ?? ""),
+      email: String(source.email ?? user?.email ?? ""),
+      no_telp: String(source.no_telp ?? user?.no_telp ?? ""),
+      level: String(source.level ?? user?.level ?? "admin"),
+    };
+
+    setForm((current) => {
+      if (
+        current.nama === merged.nama &&
+        current.email === merged.email &&
+        current.no_telp === merged.no_telp &&
+        current.level === merged.level
+      ) {
+        return current;
+      }
+      return merged;
+    });
+  }, [
+    adminRecord,
+    isAdmin,
+    isProfileDirty,
+    meRecord,
+    updateMutation.isPending,
+    user?.email,
+    user?.level,
+    user?.nama,
+    user?.no_telp,
+  ]);
+
   const profileRecord: Record<string, unknown> = {
-    ...asRecord(meQuery.data),
-    ...asRecord(adminDetailQuery.data),
+    ...meRecord,
+    ...adminRecord,
     ...(user ?? {}),
     ...(saveMessage
       ? {
@@ -185,7 +240,10 @@ export function ProfilePage() {
             <input
               className="input input-bordered rounded-md"
               value={form.nama}
-              onChange={(event) => setForm((current) => ({ ...current, nama: event.target.value }))}
+              onChange={(event) => {
+                setIsProfileDirty(true);
+                setForm((current) => ({ ...current, nama: event.target.value }));
+              }}
               disabled={!canEditProfile}
             />
           </label>
@@ -195,7 +253,10 @@ export function ProfilePage() {
               type="email"
               className="input input-bordered rounded-md"
               value={form.email}
-              onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+              onChange={(event) => {
+                setIsProfileDirty(true);
+                setForm((current) => ({ ...current, email: event.target.value }));
+              }}
               disabled={!canEditProfile}
             />
           </label>
@@ -204,7 +265,10 @@ export function ProfilePage() {
             <input
               className="input input-bordered rounded-md"
               value={form.no_telp}
-              onChange={(event) => setForm((current) => ({ ...current, no_telp: event.target.value }))}
+              onChange={(event) => {
+                setIsProfileDirty(true);
+                setForm((current) => ({ ...current, no_telp: event.target.value }));
+              }}
               disabled={!canEditProfile}
             />
           </label>
@@ -214,7 +278,10 @@ export function ProfilePage() {
               <select
                 className="select select-bordered rounded-md"
                 value={form.level}
-                onChange={(event) => setForm((current) => ({ ...current, level: event.target.value }))}
+                onChange={(event) => {
+                  setIsProfileDirty(true);
+                  setForm((current) => ({ ...current, level: event.target.value }));
+                }}
                 disabled={!canEditProfile}
               >
                 <option value="admin">Admin</option>
@@ -223,7 +290,10 @@ export function ProfilePage() {
             </label>
           ) : null}
           {canEditProfile ? (
-            <button className="btn btn-primary rounded-md text-white" disabled={updateMutation.isPending}>
+            <button
+              className="btn btn-primary rounded-md text-white"
+              disabled={updateMutation.isPending || !isProfileDirty}
+            >
               {updateMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
               {t("saveProfile")}
             </button>
@@ -255,22 +325,6 @@ export function ProfilePage() {
               ["createdAt", profileRecord.created_at],
             ]}
           />
-        </Panel>
-        <Panel title="dataStatus">
-          <div className="grid gap-3">
-            <SyncStatus
-              label="sessionData"
-              isLoading={meQuery.isLoading}
-              isError={meQuery.isError}
-              hasData={Boolean(meQuery.data)}
-            />
-            <SyncStatus
-              label={isAdmin ? "adminData" : "localProfile"}
-              isLoading={isAdmin ? adminDetailQuery.isLoading : false}
-              isError={isAdmin ? adminDetailQuery.isError : false}
-              hasData={isAdmin ? Boolean(adminDetailQuery.data) : Boolean(user)}
-            />
-          </div>
         </Panel>
       </div>
     </div>

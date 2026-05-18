@@ -1101,7 +1101,7 @@ Object.assign(translations.id, {
   adminProfileReadonly:
     "Admin biasa hanya dapat melihat profile. Update admin hanya tersedia untuk superadmin.",
   userProfileReadonly:
-    "Update profile sementara dinonaktifkan karena endpoint backend untuk update profile sedang bermasalah.",
+    "Role ini hanya dapat melihat profile.",
   accountSummary: "Ringkasan Akun",
   accountSummaryDescription:
     "Informasi akun aktif yang tersambung ke dashboard.",
@@ -1159,7 +1159,7 @@ Object.assign(translations.en, {
   adminProfileReadonly:
     "Regular admins can only view the profile. Admin updates are only available to superadmins.",
   userProfileReadonly:
-    "Profile updates are temporarily disabled because the backend profile-update endpoint is currently unstable.",
+    "This role can only view the profile.",
   accountSummary: "Account Summary",
   accountSummaryDescription:
     "Active account information connected to the dashboard.",
