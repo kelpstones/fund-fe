@@ -713,6 +713,7 @@ export function ResourcePage<T extends Entity>({
               <div className="grid gap-4 sm:grid-cols-2">
                 {fields.map((field) => {
                   const value = formValues[field.name] ?? "";
+                  const isFullWidth = field.type === "textarea" || field.colSpan === 2;
                   const commonProps = {
                     id: field.name,
                     required: field.required,
@@ -729,7 +730,7 @@ export function ResourcePage<T extends Entity>({
                   return (
                     <label
                       key={field.name}
-                      className={field.type === "textarea" ? "form-control sm:col-span-2" : "form-control"}
+                      className={isFullWidth ? "form-control sm:col-span-2" : "form-control"}
                     >
                       <span className="label-text mb-2 font-semibold">{t(field.label)}</span>
                       {field.type === "textarea" ? (

@@ -52,6 +52,7 @@ export type ResourceField<T extends Entity> = {
   type?: "text" | "email" | "number" | "textarea" | "select";
   placeholder?: string;
   required?: boolean;
+  colSpan?: 1 | 2;
   options?: Array<{ value: string | number; label: string }>;
 };
 

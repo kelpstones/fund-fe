@@ -77,16 +77,17 @@ const businessFields: ResourceField<Entity>[] = [
       { value: "lainnya", label: "Lainnya" },
     ],
   },
-  { name: "alamat", label: "Alamat", required: true },
+  { name: "alamat", label: "Alamat", required: true, colSpan: 2 },
   { name: "no_telp", label: "No. Telp", required: true },
   { name: "email", label: "Email", type: "email", required: true },
   {
     name: "kelas_id",
     label: "Kelas",
     type: "select",
+    colSpan: 2,
     options: [],
   },
-  { name: "deskripsi", label: "Deskripsi", type: "textarea" },
+  { name: "deskripsi", label: "Deskripsi", type: "textarea", colSpan: 2 },
 ];
 
 const businessColumns: ResourceColumn<Entity>[] = [
@@ -413,7 +414,7 @@ export function BusinessesPage({
     () =>
       (classOptionsQuery.data ?? []).map((item) => ({
         value: Number(item.id),
-        label: textValue(item.nama_kelas),
+        label: `${textValue(item.nama_kelas)} - ${textValue(item.deskripsi, "-")}`,
       })),
     [classOptionsQuery.data],
   );
