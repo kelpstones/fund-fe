@@ -13,15 +13,59 @@
 }
 
 .fr-admin-neutral {
-  --p: 220 8% 38%;
-  --pf: 220 8% 32%;
-  --pc: 0 0% 100%;
-  --s: 220 6% 46%;
-  --sf: 220 6% 39%;
-  --sc: 0 0% 100%;
-  --a: 220 5% 57%;
-  --af: 220 5% 50%;
-  --ac: 220 20% 12%;
+  --p: 43% 0.03 258;
+  --pf: 37% 0.03 258;
+  --pc: 98% 0.004 258;
+  --s: 52% 0.02 258;
+  --sf: 46% 0.02 258;
+  --sc: 98% 0.004 258;
+  --a: 60% 0.015 258;
+  --af: 54% 0.015 258;
+  --ac: 98% 0.004 258;
+  --n: 24% 0.01 258;
+  --nf: 20% 0.01 258;
+  --nc: 94% 0.004 258;
+  --b1: 100% 0 0;
+  --b2: 97.5% 0.003 258;
+  --b3: 93% 0.006 258;
+  --bc: 24% 0.01 258;
+  --in: 58% 0.05 255;
+  --inc: 98% 0.004 255;
+}
+
+.fr-admin-neutral .btn.btn-primary,
+.fr-admin-neutral .btn.btn-secondary {
+  border-color: oklch(var(--p) / 1);
+  background-color: oklch(var(--p) / 1);
+  color: oklch(var(--pc) / 1);
+}
+
+.fr-admin-neutral .btn.btn-primary:hover,
+.fr-admin-neutral .btn.btn-secondary:hover {
+  border-color: oklch(var(--pf) / 1);
+  background-color: oklch(var(--pf) / 1);
+}
+
+.fr-admin-neutral .btn.btn-outline.btn-secondary {
+  border-color: oklch(var(--b3) / 1);
+  color: oklch(var(--p) / 1);
+}
+
+.fr-admin-neutral .btn.btn-outline.btn-secondary:hover {
+  border-color: oklch(var(--p) / 1);
+  background-color: oklch(var(--p) / 1);
+  color: oklch(var(--pc) / 1);
+}
+
+.fr-admin-neutral .badge.badge-primary,
+.fr-admin-neutral .badge.badge-secondary {
+  border-color: oklch(var(--b3) / 1);
+  background-color: oklch(var(--b2) / 1);
+  color: oklch(var(--bc) / 1);
+}
+
+.fr-admin-neutral .text-secondary {
+  color: oklch(var(--p) / 1);
 }
 
 html {

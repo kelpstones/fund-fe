@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   BarChart3,
   Bell,
@@ -22,13 +24,23 @@ import {
   ClipboardCheck,
   ChevronRight,
   ChevronDown,
+  Lock,
 } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { Logo } from "./Logo";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { dashboardPathFor, useAuth } from "../lib/auth/AuthProvider";
 import { useLanguage, type TranslationKey } from "../lib/i18n/LanguageProvider";
-import type { UserRole } from "../types";
+import { directApi } from "../lib/api/direct";
+import { resourceApi } from "../lib/api/resources";
+import { readPath } from "../lib/format";
+import {
+  investorInvestmentConfig,
+  myBusinessConfig,
+  myNegotiationConfig,
+  submissionConfig,
+} from "../lib/resourceConfigs";
+import type { Entity, UserRole } from "../types";
 
 type NavItem = {
   to: string;
@@ -227,12 +239,125 @@ const initialsFromName = (name?: string) => {
   return parts.map((part) => part[0]?.toUpperCase() ?? "").join("") || "FR";
 };
 
+const approvalStatus = (item: Entity) =>
+  String(readPath(item, ["approval.status", "approval_status", "status"], "draft")).toLowerCase();
+
+const isApprovedSubmission = (item: Entity) =>
+  ["approved", "published", "funded"].includes(approvalStatus(item));
+
+function useNavLocks(role: UserRole) {
+  const umkmBusinessesQuery = useQuery({
+    queryKey: ["sidebar-locks", "umkm", "businesses"],
+    queryFn: () => resourceApi.list(myBusinessConfig),
+    enabled: role === "umkm",
+    retry: false,
+  });
+
+  const umkmSubmissionsQuery = useQuery({
+    queryKey: ["sidebar-locks", "umkm", "submissions"],
+    queryFn: () => resourceApi.list(submissionConfig),
+    enabled: role === "umkm",
+    retry: false,
+  });
+
+  const investorPreferencesQuery = useQuery({
+    queryKey: ["sidebar-locks", "investor", "preferences"],
+    queryFn: async () => {
+      try {
+        return await directApi.get("/user/investor/preferences", null);
+      } catch {
+        return null;
+      }
+    },
+    enabled: role === "investor",
+    retry: false,
+  });
+
+  const investorNegotiationsQuery = useQuery({
+    queryKey: ["sidebar-locks", "investor", "negotiations"],
+    queryFn: () => resourceApi.list(myNegotiationConfig),
+    enabled: role === "investor",
+    retry: false,
+  });
+
+  const investorInvestmentsQuery = useQuery({
+    queryKey: ["sidebar-locks", "investor", "investments"],
+    queryFn: () => resourceApi.list(investorInvestmentConfig),
+    enabled: role === "investor",
+    retry: false,
+  });
+
+  return useMemo(() => {
+    const locked = new Set<string>();
+
+    if (role === "umkm") {
+      const businesses = umkmBusinessesQuery.data ?? [];
+      const submissions = umkmSubmissionsQuery.data ?? [];
+      const hasBusiness = businesses.length > 0;
+      const hasApprovedSubmission = submissions.some(isApprovedSubmission);
+
+      if (!hasBusiness) {
+        locked.add("/dashboard/umkm/bisnis-profile");
+        locked.add("/dashboard/umkm/pengajuan");
+      }
+
+      if (!hasApprovedSubmission) {
+        locked.add("/dashboard/umkm/negosiasi");
+        locked.add("/dashboard/umkm/investasi");
+        locked.add("/dashboard/umkm/penjualan");
+        locked.add("/dashboard/umkm/profit");
+      }
+    }
+
+    if (role === "investor") {
+      const hasPreferences = Boolean(investorPreferencesQuery.data);
+      const hasNegotiation = (investorNegotiationsQuery.data ?? []).length > 0;
+      const hasInvestment = (investorInvestmentsQuery.data ?? []).length > 0;
+
+      if (!hasPreferences) {
+        locked.add("/dashboard/investor/survey");
+        locked.add("/dashboard/investor/peluang");
+        locked.add("/dashboard/investor/saved");
+        locked.add("/dashboard/investor/compare");
+        locked.add("/dashboard/investor/rekomendasi");
+        locked.add("/dashboard/investor/negosiasi");
+        locked.add("/dashboard/investor/deal-room/active");
+      }
+
+      if (!hasNegotiation) {
+        locked.add("/dashboard/investor/invoice");
+      }
+
+      if (!hasInvestment) {
+        locked.add("/dashboard/investor/portfolio");
+        locked.add("/dashboard/investor/profit");
+      }
+    }
+
+    if (role === "admin") {
+      locked.add("/dashboard/admin/admins");
+    }
+
+    return locked;
+  }, [
+    investorInvestmentsQuery.data,
+    investorNegotiationsQuery.data,
+    investorPreferencesQuery.data,
+    role,
+    umkmBusinessesQuery.data,
+    umkmSubmissionsQuery.data,
+  ]);
+}
+
 function Sidebar() {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
   const role = user?.role ?? "umkm";
+  const isAdminRole = role === "admin" || role === "superadmin";
   const groups = navByRole[role];
   const roleLabelKey = roleLabelKeyByRole[role];
+  const location = useLocation();
+  const lockedPaths = useNavLocks(role);
 
   return (
     <aside className="flex min-h-full w-72 flex-col border-r border-base-300 bg-white">
@@ -242,7 +367,9 @@ function Sidebar() {
       <div className="flex-1 overflow-y-auto px-4 py-5">
         <div className="mb-5 rounded-md border border-base-300 bg-base-200 p-4">
           <div className="min-w-0">
-            <span className="badge badge-primary badge-sm text-white">{t(roleLabelKey)}</span>
+            <span className={isAdminRole ? "badge badge-neutral badge-outline badge-sm" : "badge badge-primary badge-sm text-white"}>
+              {t(roleLabelKey)}
+            </span>
             <p className="mt-3 truncate text-sm font-bold">{user?.nama}</p>
             <p className="truncate text-xs text-neutral/55">{user?.email}</p>
           </div>
@@ -256,6 +383,30 @@ function Sidebar() {
               <div className="grid gap-1">
                 {group.items.map((item) => {
                   const Icon = item.icon;
+                  const isLocked = lockedPaths.has(item.to);
+                  const isActive =
+                    location.pathname === item.to ||
+                    location.pathname.startsWith(`${item.to}/`);
+
+                  if (isLocked) {
+                    return (
+                      <div
+                        key={item.to}
+                        className={[
+                          "flex h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold",
+                          "cursor-not-allowed border border-dashed border-base-300 bg-base-200/60 text-neutral/45",
+                          isActive ? "border-base-300 bg-base-300/70 text-neutral/60" : "",
+                        ].join(" ")}
+                        aria-disabled
+                        title={t("locked")}
+                      >
+                        <Icon size={18} />
+                        <span className="truncate">{t(item.labelKey)}</span>
+                        <Lock size={14} className="ml-auto shrink-0" />
+                      </div>
+                    );
+                  }
+
                   return (
                     <NavLink
                       key={item.to}
@@ -265,7 +416,9 @@ function Sidebar() {
                         [
                           "flex h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors duration-150 ease-out",
                           isActive
-                            ? "bg-primary text-white"
+                            ? isAdminRole
+                              ? "border border-base-300 bg-base-300 text-neutral"
+                              : "bg-primary text-white"
                             : "text-neutral/70 hover:bg-base-200 hover:text-neutral",
                         ].join(" ")
                       }

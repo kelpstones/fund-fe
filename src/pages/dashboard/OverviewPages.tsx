@@ -250,7 +250,12 @@ function OnboardingOverviewCard({
       <div className="mt-5 grid gap-2">
         {steps.map((step) => {
           const content = (
-            <div className="flex items-start justify-between gap-4 rounded-md border border-base-300 px-3 py-2">
+            <div
+              className={[
+                "flex items-start justify-between gap-4 rounded-md border border-base-300 px-3 py-2",
+                step.locked ? "cursor-not-allowed bg-base-200/60 text-neutral/60 opacity-80" : "bg-white",
+              ].join(" ")}
+            >
               <div className="min-w-0">
                 <p className="text-sm font-bold text-neutral">{t(step.titleKey)}</p>
                 <p className="mt-1 text-xs text-neutral/55">{t(step.helperKey, step.helperParams)}</p>
@@ -260,7 +265,11 @@ function OnboardingOverviewCard({
           );
 
           if (step.locked) {
-            return <div key={step.key}>{content}</div>;
+            return (
+              <div key={step.key} aria-disabled title={t("locked")}>
+                {content}
+              </div>
+            );
           }
 
           return (
@@ -619,9 +628,9 @@ export function AdminOverviewPage() {
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t("business")} value={String(bisnisCount)} helper={t("registered")} icon={Building2} loading={dashboardQuery.isLoading} />
-        <StatCard label={t("submissions")} value={String(submissionCount)} helper={t("pendingCount", { count: pending })} icon={FileCheck2} tone="amber" loading={dashboardQuery.isLoading} />
+        <StatCard label={t("submissions")} value={String(submissionCount)} helper={t("pendingCount", { count: pending })} icon={FileCheck2} tone="neutral" loading={dashboardQuery.isLoading} />
         <StatCard label={t("users")} value={String(userCount)} helper={t("platformAccounts")} icon={Users} loading={dashboardQuery.isLoading} />
-        <StatCard label={t("notifications")} value={String(notifCount)} helper={t("operational")} icon={Bell} tone="green" loading={dashboardQuery.isLoading} />
+        <StatCard label={t("notifications")} value={String(notifCount)} helper={t("operational")} icon={Bell} tone="neutral" loading={dashboardQuery.isLoading} />
       </div>
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">

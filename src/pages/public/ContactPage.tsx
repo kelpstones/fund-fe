@@ -73,13 +73,6 @@ export function ContactPage() {
             </label>
           </div>
           <button className="btn btn-primary mt-6 rounded-md text-white">{t("sendMessage")}</button>
-          <div className="mt-8 overflow-hidden rounded-md border border-base-300 bg-base-200">
-            <div className="grid min-h-56 place-items-center p-6 text-center">
-              <MapPin className="text-primary" size={32} />
-              <h2 className="mt-4 text-xl font-black">{t("contactMapTitle")}</h2>
-              <p className="mt-2 max-w-sm text-sm leading-6 text-neutral/60">{t("contactMapBody")}</p>
-            </div>
-          </div>
         </form>
       </section>
     </main>
