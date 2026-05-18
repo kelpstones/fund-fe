@@ -73,7 +73,7 @@ function PageHeader({
   body,
 }: {
   title: string;
-  body: string;
+  body?: string;
 }) {
   const { t } = useLanguage();
 
@@ -82,7 +82,7 @@ function PageHeader({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="text-3xl font-black tracking-normal text-neutral">{t(title)}</h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-neutral/60">{t(body)}</p>
+          {body ? <p className="mt-3 max-w-3xl text-sm leading-6 text-neutral/60">{t(body)}</p> : null}
         </div>
       </div>
     </div>
@@ -253,12 +253,21 @@ function OnboardingOverviewCard({
             <div
               className={[
                 "flex items-start justify-between gap-4 rounded-md border border-base-300 px-3 py-2",
-                step.locked ? "cursor-not-allowed bg-base-200/60 text-neutral/60 opacity-80" : "bg-white",
+                step.locked
+                  ? "cursor-not-allowed border-neutral/35 bg-neutral/10"
+                  : "bg-white",
               ].join(" ")}
             >
               <div className="min-w-0">
-                <p className="text-sm font-bold text-neutral">{t(step.titleKey)}</p>
-                <p className="mt-1 text-xs text-neutral/55">{t(step.helperKey, step.helperParams)}</p>
+                <div className="flex items-center gap-1.5">
+                  {step.locked ? <Lock size={13} className="shrink-0 text-neutral/45" /> : null}
+                  <p className={step.locked ? "text-sm font-bold text-neutral/50" : "text-sm font-bold text-neutral"}>
+                    {t(step.titleKey)}
+                  </p>
+                </div>
+                <p className={step.locked ? "mt-1 text-xs text-neutral/45" : "mt-1 text-xs text-neutral/55"}>
+                  {t(step.helperKey, step.helperParams)}
+                </p>
               </div>
               <OnboardingBadge done={step.done} locked={step.locked} />
             </div>
@@ -414,7 +423,6 @@ export function UmkmOverviewPage() {
     <div className="space-y-6">
       <PageHeader
         title="umkmOverviewTitle"
-        body="umkmOverviewBody"
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t("business")} value={String(bisnisCount)} helper={t("activeProfile")} icon={Building2} loading={dashboardQuery.isLoading} />

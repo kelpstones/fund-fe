@@ -29,20 +29,6 @@ export function ContactPage() {
               className="h-full w-full object-cover"
             />
           </div>
-          <div className="mt-10 grid gap-4">
-            {[
-              [Mail, "hello@fundraise.id"],
-              [Phone, "+62 21 5566 7788"],
-              [MapPin, "Jakarta, Indonesia"],
-            ].map(([Icon, value]) => (
-              <div key={String(value)} className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-md bg-primary/10 text-primary">
-                  <Icon size={18} />
-                </div>
-                <span className="font-semibold">{String(value)}</span>
-              </div>
-            ))}
-          </div>
         </div>
         <form className="rounded-md border border-base-300 bg-white p-6 shadow-sm" onSubmit={submit}>
           {isSent ? (
@@ -73,6 +59,22 @@ export function ContactPage() {
             </label>
           </div>
           <button className="btn btn-primary mt-6 rounded-md text-white">{t("sendMessage")}</button>
+          <div className="mt-8 border-t border-base-300 pt-6">
+            <div className="grid gap-4">
+              {[
+                [Mail, "hello@fundraise.id"],
+                [Phone, "+62 21 5566 7788"],
+                [MapPin, "Jakarta, Indonesia"],
+              ].map(([Icon, value]) => (
+                <div key={String(value)} className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-md bg-primary/10 text-primary">
+                    <Icon size={18} />
+                  </div>
+                  <span className="font-semibold">{String(value)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </form>
       </section>
     </main>

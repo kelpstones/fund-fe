@@ -84,12 +84,7 @@ const businessFields: ResourceField<Entity>[] = [
     name: "kelas_id",
     label: "Kelas",
     type: "select",
-    options: [
-      { value: 1, label: "Critical" },
-      { value: 2, label: "Struggling" },
-      { value: 3, label: "Growth" },
-      { value: 4, label: "Elite" },
-    ],
+    options: [],
   },
   { name: "deskripsi", label: "Deskripsi", type: "textarea" },
 ];
@@ -404,11 +399,36 @@ export function BusinessesPage({
   scope?: "all" | "mine" | "admin";
 }) {
   const { user } = useAuth();
+  const classOptionsQuery = useQuery({
+    queryKey: ["business-class-options"],
+    queryFn: () => resourceApi.list(classConfig),
+    retry: false,
+  });
   const config: ResourceConfig<Entity> =
     scope === "mine" ? myBusinessConfig : scope === "admin" ? adminBusinessConfig : businessConfig;
   const isAdminScope = scope === "admin";
   const isUmkmOwner = user?.role === "umkm" && !isAdminScope;
   const canDelete = isUmkmOwner;
+  const classOptions = useMemo(
+    () =>
+      (classOptionsQuery.data ?? []).map((item) => ({
+        value: Number(item.id),
+        label: textValue(item.nama_kelas),
+      })),
+    [classOptionsQuery.data],
+  );
+  const fields = useMemo<ResourceField<Entity>[]>(
+    () =>
+      businessFields.map((field) =>
+        field.name === "kelas_id"
+          ? {
+              ...field,
+              options: classOptions,
+            }
+          : field,
+      ),
+    [classOptions],
+  );
 
   return (
     <ResourcePage
@@ -416,7 +436,7 @@ export function BusinessesPage({
       description="Kelola profil bisnis UMKM, kontak, sektor, kelas, dan deskripsi usaha."
       config={config}
       columns={businessColumns}
-      fields={businessFields}
+      fields={fields}
       createLabel="Tambah Bisnis"
       allowCreate={isUmkmOwner}
       allowEdit={false}

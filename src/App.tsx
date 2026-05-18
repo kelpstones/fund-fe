@@ -117,7 +117,6 @@ export default function App() {
             <Route path="investasi" element={<InvestmentsByProposalPage />} />
             <Route path="profit" element={<ProfitsBySalesPage />} />
             <Route path="negosiasi" element={<NegotiationsPage mine />} />
-            <Route path="kelas" element={<ClassesPage />} />
             <Route path="notifikasi" element={<NotificationsPage />} />
           </Route>
         </Route>

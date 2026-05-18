@@ -38,6 +38,7 @@ import {
   investorInvestmentConfig,
   myBusinessConfig,
   myNegotiationConfig,
+  notificationConfig,
   submissionConfig,
 } from "../lib/resourceConfigs";
 import type { Entity, UserRole } from "../types";
@@ -74,7 +75,6 @@ const navByRole: Record<UserRole, NavGroup[]> = {
       items: [
         { to: "/dashboard/umkm/bisnis", labelKey: "dashboardBusiness", icon: Building2 },
         { to: "/dashboard/umkm/bisnis-profile", labelKey: "dashboardBusinessModel", icon: Activity },
-        { to: "/dashboard/umkm/kelas", labelKey: "dashboardClasses", icon: Scale },
       ],
     },
     {
@@ -245,6 +245,12 @@ const approvalStatus = (item: Entity) =>
 const isApprovedSubmission = (item: Entity) =>
   ["approved", "published", "funded"].includes(approvalStatus(item));
 
+const isUnreadNotification = (item: Entity) => {
+  if (typeof item.is_read === "boolean") return !item.is_read;
+  const status = String(readPath(item, ["status"], "")).toLowerCase();
+  return status === "unread" || status === "new";
+};
+
 function useNavLocks(role: UserRole) {
   const umkmBusinessesQuery = useQuery({
     queryKey: ["sidebar-locks", "umkm", "businesses"],
@@ -349,7 +355,7 @@ function useNavLocks(role: UserRole) {
   ]);
 }
 
-function Sidebar() {
+function Sidebar({ hasUnreadNotifications }: { hasUnreadNotifications: boolean }) {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
   const role = user?.role ?? "umkm";
@@ -384,6 +390,8 @@ function Sidebar() {
                 {group.items.map((item) => {
                   const Icon = item.icon;
                   const isLocked = lockedPaths.has(item.to);
+                  const showNotificationDot =
+                    hasUnreadNotifications && item.labelKey === "dashboardNotifications";
                   const isActive =
                     location.pathname === item.to ||
                     location.pathname.startsWith(`${item.to}/`);
@@ -402,7 +410,13 @@ function Sidebar() {
                       >
                         <Icon size={18} />
                         <span className="truncate">{t(item.labelKey)}</span>
-                        <Lock size={14} className="ml-auto shrink-0" />
+                        {showNotificationDot ? (
+                          <span
+                            className="ml-auto inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-orange-500"
+                            aria-hidden
+                          />
+                        ) : null}
+                        <Lock size={14} className={`${showNotificationDot ? "ml-2" : "ml-auto"} shrink-0`} />
                       </div>
                     );
                   }
@@ -424,7 +438,13 @@ function Sidebar() {
                       }
                     >
                       <Icon size={18} />
-                      {t(item.labelKey)}
+                      <span className="truncate">{t(item.labelKey)}</span>
+                      {showNotificationDot ? (
+                        <span
+                          className="ml-auto inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-orange-500"
+                          aria-hidden
+                        />
+                      ) : null}
                     </NavLink>
                   );
                 })}
@@ -468,6 +488,24 @@ export function DashboardLayout() {
   const profilePath = `${dashboardPathFor(role)}/profile`;
   const notificationsPath = `${dashboardPathFor(role)}/notifikasi`;
   const initials = initialsFromName(user?.nama);
+  const notificationsQuery = useQuery({
+    queryKey: ["dashboard-notification-dot", role, user?.id],
+    queryFn: async () => {
+      try {
+        return await resourceApi.list(notificationConfig);
+      } catch {
+        return [];
+      }
+    },
+    enabled: Boolean(user?.id),
+    retry: false,
+    refetchInterval: 30_000,
+  });
+  const unreadCount = useMemo(
+    () => (notificationsQuery.data ?? []).filter(isUnreadNotification).length,
+    [notificationsQuery.data],
+  );
+  const hasUnreadNotifications = unreadCount > 0;
 
   return (
     <div className={`drawer min-h-screen bg-base-200 lg:drawer-open ${isAdminRole ? "fr-admin-neutral" : ""}`}>
@@ -491,11 +529,17 @@ export function DashboardLayout() {
             <LanguageSwitcher compact className="hidden sm:block" />
             <NavLink
               to={notificationsPath}
-              className="btn btn-square btn-ghost"
+              className="btn btn-square btn-ghost relative"
               aria-label={t("dashboardNotifications")}
               title={t("dashboardNotifications")}
             >
               <Bell size={20} />
+              {hasUnreadNotifications ? (
+                <span
+                  className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-orange-500 ring-2 ring-white"
+                  aria-hidden
+                />
+              ) : null}
             </NavLink>
             <div className="dropdown dropdown-end">
               <button tabIndex={0} className="btn btn-ghost h-10 rounded-md px-2">
@@ -539,7 +583,7 @@ export function DashboardLayout() {
       </div>
       <div className="drawer-side z-40">
         <label htmlFor="dashboard-drawer" aria-label={t("closeMenu")} className="drawer-overlay" />
-        <Sidebar />
+        <Sidebar hasUnreadNotifications={hasUnreadNotifications} />
       </div>
     </div>
   );
