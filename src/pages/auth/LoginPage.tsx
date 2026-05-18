@@ -26,7 +26,15 @@ export function LoginPage() {
     try {
       const user = await login({ email, password });
       const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
-      navigate(from || dashboardPathFor(user.role), { replace: true });
+      const blockedAuthPaths = new Set([
+        "/login",
+        "/register",
+        "/forgot-password",
+        "/reset-password",
+        "/verify-email",
+      ]);
+      const targetPath = from && !blockedAuthPaths.has(from) ? from : dashboardPathFor(user.role);
+      navigate(targetPath, { replace: true });
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.data?.message) {
         toast.error(String(err.response.data.message), { title: t("loginError") });

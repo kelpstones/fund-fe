@@ -17,6 +17,7 @@ import {
 import { compactCurrency, percent } from "../../lib/format";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import { useScrollReveal } from "../../lib/ui/useScrollReveal";
+import { dashboardPathFor, useAuth } from "../../lib/auth/AuthProvider";
 
 const proofPoints = [
   { label: "homeProofFunding", value: compactCurrency(1250000000) },
@@ -199,9 +200,13 @@ function PhoneMockup() {
 }
 
 export function HomePage() {
+  const { isAuthenticated, user } = useAuth();
   const { t } = useLanguage();
   const heroRef = useRef<HTMLDivElement | null>(null);
   useScrollReveal();
+  const startNowTarget = isAuthenticated
+    ? dashboardPathFor(user?.role ?? "umkm")
+    : "/login";
 
   useEffect(() => {
     const context = gsap.context(() => {
@@ -231,7 +236,7 @@ export function HomePage() {
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
-                to="/register"
+                to={startNowTarget}
                 className="btn btn-primary h-12 rounded-md px-7 text-white"
               >
                 {t("homePrimaryCta")}
@@ -527,7 +532,7 @@ export function HomePage() {
               </p>
             </div>
             <Link
-              to="/register"
+              to={startNowTarget}
               className="btn btn-primary rounded-md text-white"
             >
               {t("homePrimaryCta")}
