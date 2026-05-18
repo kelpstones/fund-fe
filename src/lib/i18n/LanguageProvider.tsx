@@ -246,15 +246,15 @@ Object.assign(translations.id, {
   contactHeroBody:
     "FundRaise disiapkan sebagai platform MVP yang dapat berkembang mengikuti kebutuhan operasional pendanaan.",
   contactImageAlt: "Tim FundRaise",
-  portfolioHeroTitle: "Preview marketplace peluang UMKM",
+  portfolioHeroTitle: "Preview peluang pendanaan UMKM",
   portfolioHeroBody:
     "Investor dapat menelusuri peluang, menyimpan kandidat, membandingkan UMKM, lalu membuka detail sebelum memulai negosiasi.",
   portfolioCta: "Mulai Sebagai Investor",
   portfolioSearchPlaceholder: "Cari sektor, kota, atau nama UMKM",
   portfolioMarketplaceTitle:
-    "Discovery seperti marketplace, proses seperti deal platform",
+    "Discovery peluang, proses seperti deal platform",
   portfolioMarketplaceBody:
-    "Public preview ini menunjukkan arah produk: investor dapat menemukan peluang, membandingkan, menyimpan, lalu masuk ke dashboard untuk survey, detail, negosiasi, invoice, dan portfolio.",
+    "Public preview ini menunjukkan arah produk: investor dapat menemukan peluang, menyimpan kandidat, lalu masuk ke dashboard untuk survey, detail, negosiasi, invoice, dan portfolio.",
   investorWorkflow: "Investor workflow",
   allRisk: "Semua risiko",
   allSectors: "Semua sektor",
@@ -367,15 +367,15 @@ Object.assign(translations.en, {
   contactHeroBody:
     "FundRaise is prepared as an MVP platform that can evolve with operational funding needs.",
   contactImageAlt: "FundRaise team",
-  portfolioHeroTitle: "UMKM opportunity marketplace preview",
+  portfolioHeroTitle: "UMKM funding opportunity preview",
   portfolioHeroBody:
     "Investors can browse opportunities, save candidates, compare UMKM, then open details before starting negotiations.",
   portfolioCta: "Start as Investor",
   portfolioSearchPlaceholder: "Search sector, city, or UMKM name",
   portfolioMarketplaceTitle:
-    "Marketplace-style discovery, deal-platform process",
+    "Opportunity discovery, deal-platform process",
   portfolioMarketplaceBody:
-    "This public preview shows the product direction: investors can discover opportunities, compare, save, then enter the dashboard for surveys, details, negotiations, invoices, and portfolio.",
+    "This public preview shows the product direction: investors can discover opportunities, save candidates, then enter the dashboard for surveys, details, negotiations, invoices, and portfolio.",
   investorWorkflow: "Investor workflow",
   allRisk: "All risks",
   allSectors: "All sectors",
@@ -569,7 +569,7 @@ Object.assign(translations.id, {
   relatedInvestors: "Investor terkait",
   umkmReadinessTitle: "UMKM onboarding readiness",
   umkmReadinessBody:
-    "Ikuti urutan profil bisnis, model scoring, pengajuan dana, review admin, dan negosiasi agar peluang siap masuk marketplace investor.",
+    "Ikuti urutan profil bisnis, model scoring, pengajuan dana, review admin, dan negosiasi agar peluang siap masuk halaman peluang investor.",
   progress: "Progress",
   openOnboarding: "Buka Onboarding",
   opportunities: "Peluang",
@@ -621,7 +621,7 @@ Object.assign(translations.en, {
   relatedInvestors: "Related investors",
   umkmReadinessTitle: "UMKM onboarding readiness",
   umkmReadinessBody:
-    "Follow the sequence of business profile, scoring model, funding submission, admin review, and negotiation so opportunities are ready for the investor marketplace.",
+    "Follow the sequence of business profile, scoring model, funding submission, admin review, and negotiation so opportunities are ready for the investor opportunities page.",
   progress: "Progress",
   openOnboarding: "Open Onboarding",
   opportunities: "Opportunities",
@@ -656,7 +656,7 @@ Object.assign(translations.id, {
   noOpportunities: "Belum ada peluang",
   noOpportunitiesBody:
     "Peluang UMKM akan tampil setelah pengajuan dipublikasikan atau rekomendasi investor tersedia.",
-  marketplaceOpportunitiesTitle: "Marketplace Peluang UMKM",
+  marketplaceOpportunitiesTitle: "Peluang Pendanaan UMKM",
   marketplaceOpportunitiesBody:
     "Telusuri peluang pendanaan seperti katalog investasi: simpan peluang, bandingkan UMKM, lalu buka detail sebelum memulai negosiasi.",
   savedCount: "Tersimpan ({count})",
@@ -664,7 +664,7 @@ Object.assign(translations.id, {
   searchUmkmSectorCity: "Cari UMKM, sektor, kota",
   loadingOpportunities: "Memuat peluang",
   loadOpportunitiesError: "Gagal memuat peluang dari backend.",
-  aiMatchMarketplaceTitle: "AI Match Marketplace",
+  aiMatchMarketplaceTitle: "AI Match Peluang",
   aiMatchMarketplaceBody:
     "Rekomendasi personal dari preferensi investor, disajikan sebagai katalog peluang dengan skor dan alasan match.",
   fillSurvey: "Isi Survey",
@@ -688,7 +688,7 @@ Object.assign(translations.id, {
     "Bandingkan peluang berdasarkan target pendanaan, return, risiko, progress, dan skor match sebelum mengambil keputusan.",
   addOpportunity: "Tambah Peluang",
   noCompareItems: "Belum ada peluang untuk dibandingkan",
-  noCompareItemsBody: "Simpan atau pilih minimal dua peluang dari marketplace.",
+  noCompareItemsBody: "Simpan atau pilih minimal dua peluang dari katalog peluang.",
   metric: "Metrik",
   sector: "Sektor",
   funded: "Terkumpul",
@@ -697,7 +697,7 @@ Object.assign(translations.id, {
   opportunityNotFoundTitle: "Peluang tidak ditemukan",
   opportunityNotFoundBody:
     "Data peluang tidak tersedia di backend atau bookmark lokal.",
-  backToMarketplace: "Kembali ke Marketplace",
+  backToMarketplace: "Kembali ke Peluang",
   opportunityDetailBody:
     "Detail peluang UMKM untuk membantu investor memahami profil usaha, kebutuhan modal, risiko, dan langkah negosiasi.",
   location: "Lokasi",
@@ -757,7 +757,7 @@ Object.assign(translations.en, {
   noOpportunities: "No opportunities yet",
   noOpportunitiesBody:
     "UMKM opportunities will appear after submissions are published or investor recommendations are available.",
-  marketplaceOpportunitiesTitle: "UMKM Opportunity Marketplace",
+  marketplaceOpportunitiesTitle: "UMKM Funding Opportunities",
   marketplaceOpportunitiesBody:
     "Browse funding opportunities like an investment catalog: save opportunities, compare UMKM, then open details before starting negotiations.",
   savedCount: "Saved ({count})",
@@ -765,7 +765,7 @@ Object.assign(translations.en, {
   searchUmkmSectorCity: "Search UMKM, sector, city",
   loadingOpportunities: "Loading opportunities",
   loadOpportunitiesError: "Failed to load opportunities from backend.",
-  aiMatchMarketplaceTitle: "AI Match Marketplace",
+  aiMatchMarketplaceTitle: "AI Match Opportunities",
   aiMatchMarketplaceBody:
     "Personal recommendations from investor preferences, presented as an opportunity catalog with scores and match reasons.",
   fillSurvey: "Fill Survey",
@@ -790,7 +790,7 @@ Object.assign(translations.en, {
   addOpportunity: "Add Opportunity",
   noCompareItems: "No opportunities to compare",
   noCompareItemsBody:
-    "Save or select at least two opportunities from the marketplace.",
+    "Save or select at least two opportunities from the opportunity catalog.",
   metric: "Metric",
   sector: "Sector",
   funded: "Funded",
@@ -799,7 +799,7 @@ Object.assign(translations.en, {
   opportunityNotFoundTitle: "Opportunity not found",
   opportunityNotFoundBody:
     "Opportunity data is not available from the backend or local bookmarks.",
-  backToMarketplace: "Back to Marketplace",
+  backToMarketplace: "Back to Opportunities",
   opportunityDetailBody:
     "UMKM opportunity detail to help investors understand the business profile, capital needs, risk, and negotiation steps.",
   location: "Location",
@@ -907,7 +907,7 @@ Object.assign(translations.id, {
   createSubmission: "Buat Pengajuan",
   onboardingSubmissionDone: "{count} pengajuan sudah dibuat.",
   onboardingSubmissionTodo:
-    "Pengajuan menjadi pintu masuk ke marketplace investor.",
+    "Pengajuan menjadi pintu masuk ke halaman peluang investor.",
   onboardingReviewTitle: "Siap review admin",
   onboardingReviewBody:
     "Pantau status approval. Setelah disetujui atau dipublikasikan, peluang mulai layak muncul di katalog investor.",
@@ -991,7 +991,7 @@ Object.assign(translations.en, {
   createSubmission: "Create Submission",
   onboardingSubmissionDone: "{count} submissions have been created.",
   onboardingSubmissionTodo:
-    "Submission is the entry point to the investor marketplace.",
+    "Submission is the entry point to the investor opportunities page.",
   onboardingReviewTitle: "Ready for admin review",
   onboardingReviewBody:
     "Monitor approval status. Once approved or published, the opportunity is eligible for the investor catalog.",
@@ -1527,7 +1527,7 @@ Object.assign(translations.id, {
   aboutTimelineResearch:
     "Riset kebutuhan UMKM dan investor untuk menemukan alur pendanaan yang praktis dan bisa diawasi.",
   aboutTimelinePrototype:
-    "Prototype marketplace, dashboard multi-role, dan modul AI matching mulai disusun sebagai satu produk.",
+    "Prototype katalog peluang, dashboard multi-role, dan modul AI matching mulai disusun sebagai satu produk.",
   aboutTimelineCapstone:
     "FundRaise dikembangkan sebagai capstone project dengan fokus pada flow end-to-end dari onboarding sampai profit sharing.",
   servicesComparisonTitle: "Fitur berbeda untuk kebutuhan yang berbeda",
@@ -1550,7 +1550,7 @@ Object.assign(translations.id, {
   contactMapBody:
     "Placeholder peta disiapkan untuk embed lokasi kantor atau area layanan FundRaise.",
   portfolioDemoMode:
-    "Demo mode: data portfolio masih contoh statis untuk memperlihatkan pengalaman marketplace.",
+    "Demo mode: data portfolio masih contoh statis untuk memperlihatkan pengalaman katalog peluang.",
   portfolioEmpty: "Tidak ada peluang yang cocok dengan filter saat ini.",
   portfolioCompareTitle: "Bandingkan Peluang",
   portfolioCompareBody:
@@ -1638,7 +1638,7 @@ Object.assign(translations.en, {
   aboutTimelineResearch:
     "Researched UMKM and investor needs to find a practical funding flow that can be monitored.",
   aboutTimelinePrototype:
-    "Marketplace prototype, multi-role dashboard, and AI matching modules were shaped into one product.",
+    "Opportunity catalog prototype, multi-role dashboard, and AI matching modules were shaped into one product.",
   aboutTimelineCapstone:
     "FundRaise is developed as a capstone project focused on an end-to-end flow from onboarding to profit sharing.",
   servicesComparisonTitle: "Different features for different needs",
@@ -1661,7 +1661,7 @@ Object.assign(translations.en, {
   contactMapBody:
     "Map placeholder prepared for an office embed or FundRaise service area.",
   portfolioDemoMode:
-    "Demo mode: portfolio data is still static sample data to show the marketplace experience.",
+    "Demo mode: portfolio data is still static sample data to show the opportunity catalog experience.",
   portfolioEmpty: "No opportunities match the current filters.",
   portfolioCompareTitle: "Compare Opportunities",
   portfolioCompareBody:
@@ -1720,7 +1720,7 @@ Object.assign(translations.id, {
   loadingBookmarks: "Memuat bookmark",
   saveUnavailable: "Bisnis ID tidak tersedia untuk bookmark",
   compareMinimumWarning:
-    "Endpoint compare backend membutuhkan minimal 2 peluang. Pilih satu peluang lagi dari marketplace.",
+    "Endpoint compare backend membutuhkan minimal 2 peluang. Pilih satu peluang lagi dari katalog peluang.",
   compareBackendFallback:
     "Compare backend belum mengembalikan data, FE menampilkan fallback dari daftar peluang.",
   classPredictedByModel:
@@ -1763,7 +1763,7 @@ Object.assign(translations.en, {
   loadingBookmarks: "Loading bookmarks",
   saveUnavailable: "Business ID is unavailable for bookmark",
   compareMinimumWarning:
-    "The backend compare endpoint requires at least 2 opportunities. Select one more opportunity from the marketplace.",
+    "The backend compare endpoint requires at least 2 opportunities. Select one more opportunity from the opportunity catalog.",
   compareBackendFallback:
     "Backend compare has not returned data, so the FE shows a fallback from the opportunity list.",
   classPredictedByModel:
@@ -1796,7 +1796,7 @@ Object.assign(translations.id, {
     "UMKM perlu registrasi, verifikasi email, melengkapi profil bisnis, mengisi profil model bisnis, lalu membuat pengajuan pendanaan.",
   faqUmkmFundingQ: "Kapan pengajuan UMKM bisa dilihat investor?",
   faqUmkmFundingA:
-    "Pengajuan perlu direview admin. Setelah status disetujui dan dipublikasikan, peluang dapat muncul di marketplace investor.",
+    "Pengajuan perlu direview admin. Setelah status disetujui dan dipublikasikan, peluang dapat muncul di halaman peluang investor.",
   faqUmkmSalesQ: "Mengapa laporan penjualan dibutuhkan?",
   faqUmkmSalesA:
     "Laporan penjualan dipakai untuk monitoring performa bisnis dan menjadi dasar perhitungan distribusi profit.",
@@ -1808,7 +1808,7 @@ Object.assign(translations.id, {
     "Gunakan halaman verifikasi untuk mengirim ulang email. Jika akun sudah terverifikasi, sistem akan meminta kamu login.",
   faqInvestorStartQ: "Bagaimana investor mulai mencari peluang?",
   faqInvestorStartA:
-    "Investor melengkapi survey/preferensi, membuka peluang marketplace, menyimpan atau membandingkan UMKM, lalu masuk ke detail peluang.",
+    "Investor melengkapi survey/preferensi, membuka halaman peluang, menyimpan atau membandingkan UMKM, lalu masuk ke detail peluang.",
   faqInvestorMatchQ: "Apa fungsi AI Match?",
   faqInvestorMatchA:
     "AI Match memakai preferensi investor dan profil UMKM untuk menampilkan rekomendasi dengan skor kecocokan.",
@@ -1858,7 +1858,7 @@ Object.assign(translations.id, {
     "Data akun, dokumen, dan transaksi perlu dipakai sesuai kebutuhan operasional platform.",
   trustFlowTitle: "Bagaimana peluang dinilai",
   trustFlowBody:
-    "Flow ini membantu pengguna memahami kenapa sebuah peluang dapat masuk ke marketplace dan bagaimana prosesnya diawasi.",
+    "Flow ini membantu pengguna memahami kenapa sebuah peluang dapat masuk ke halaman peluang dan bagaimana prosesnya diawasi.",
   trustStepProfile: "Profil bisnis dilengkapi",
   trustStepProfileBody:
     "UMKM mengisi data usaha, profil model bisnis, dan dokumen pendukung.",
@@ -1979,7 +1979,7 @@ Object.assign(translations.en, {
     "UMKM register, verify email, complete business profile, fill business model profile, then create a funding submission.",
   faqUmkmFundingQ: "When can investors see an UMKM submission?",
   faqUmkmFundingA:
-    "The submission must be reviewed by admin. Once approved and published, it can appear in the investor marketplace.",
+    "The submission must be reviewed by admin. Once approved and published, it can appear on the investor opportunities page.",
   faqUmkmSalesQ: "Why are sales reports needed?",
   faqUmkmSalesA:
     "Sales reports are used to monitor business performance and support profit distribution calculations.",
@@ -1991,7 +1991,7 @@ Object.assign(translations.en, {
     "Use the verification page to resend email. If the account is already verified, the system will ask you to log in.",
   faqInvestorStartQ: "How does an investor start finding opportunities?",
   faqInvestorStartA:
-    "Investors complete survey/preferences, open the marketplace, save or compare UMKM, then enter an opportunity detail.",
+    "Investors complete survey/preferences, open the opportunities page, save or compare UMKM, then enter an opportunity detail.",
   faqInvestorMatchQ: "What does AI Match do?",
   faqInvestorMatchA:
     "AI Match uses investor preferences and UMKM profiles to display recommendations with compatibility scores.",
@@ -2041,7 +2041,7 @@ Object.assign(translations.en, {
     "Account, document, and transaction data should be used only for platform operational needs.",
   trustFlowTitle: "How opportunities are assessed",
   trustFlowBody:
-    "This flow helps users understand why an opportunity enters the marketplace and how the process is monitored.",
+    "This flow helps users understand why an opportunity appears on the opportunities page and how the process is monitored.",
   trustStepProfile: "Business profile completed",
   trustStepProfileBody:
     "UMKM fill business data, model profile, and supporting documents.",
@@ -2159,7 +2159,7 @@ Object.assign(translations.id, {
   investorStepSurveyTodo: "Lengkapi survey agar rekomendasi AI lebih akurat.",
   investorStepOpportunityTitle: "Telusuri Peluang UMKM",
   investorStepOpportunityBody:
-    "Jelajahi marketplace peluang, gunakan filter sektor dan risiko, lalu simpan kandidat yang menarik.",
+    "Jelajahi katalog peluang, gunakan filter sektor dan risiko, lalu simpan kandidat yang menarik.",
   investorStepOpportunityTodo:
     "Mulai telusuri dan simpan peluang UMKM yang sesuai.",
   investorStepNegotiationTitle: "Mulai Negosiasi",
@@ -2208,7 +2208,7 @@ Object.assign(translations.en, {
     "Complete the survey for more accurate AI recommendations.",
   investorStepOpportunityTitle: "Browse UMKM Opportunities",
   investorStepOpportunityBody:
-    "Explore the opportunity marketplace, use sector and risk filters, then save interesting candidates.",
+    "Explore the opportunity catalog, use sector and risk filters, then save interesting candidates.",
   investorStepOpportunityTodo:
     "Start browsing and saving relevant UMKM opportunities.",
   investorStepNegotiationTitle: "Start a Negotiation",
@@ -2231,6 +2231,70 @@ Object.assign(translations.en, {
   reviewSurvey: "Review Survey",
   navTerms: "Terms of Service",
   navPrivacy: "Privacy Policy",
+});
+
+Object.assign(translations.id, {
+  portfolioDetailBack: "Kembali ke Peluang",
+  portfolioDetailPreviewLabel: "Preview Peluang",
+  portfolioDetailNotFoundTitle: "Peluang tidak ditemukan",
+  portfolioDetailNotFoundBody:
+    "Data contoh ini tidak tersedia. Kembali ke halaman portfolio untuk melihat peluang lain.",
+  portfolioDetailSummaryTitle: "Ringkasan peluang",
+  portfolioDetailSummaryBody:
+    "{business} di sektor {sector} ({city}) ditampilkan sebagai contoh halaman detail peluang sebelum investor masuk ke dashboard untuk survei dan negosiasi.",
+  portfolioDetailFundsTitle: "Rencana penggunaan dana",
+  portfolioDetailFundsBody:
+    "Pembagian nominal di bawah ini adalah contoh simulasi agar investor bisa melihat struktur penggunaan modal secara cepat.",
+  portfolioDetailSignalsTitle: "Sinyal kesiapan bisnis",
+  portfolioDetailSignalsBody:
+    "Daftar indikator ini membantu investor membaca kesiapan operasional sebelum memulai negosiasi.",
+  portfolioDetailActionTitle: "Langkah investor berikutnya",
+  portfolioDetailActionBody:
+    "Simpan kandidat lalu lanjutkan ke dashboard investor untuk mulai negosiasi.",
+  portfolioDetailStart: "Mulai Investasi",
+  fundPlanInventory: "Persediaan bahan baku",
+  fundPlanOperations: "Operasional harian",
+  fundPlanMarketing: "Pemasaran dan akuisisi",
+  fundPlanEquipment: "Peralatan produksi",
+  fundPlanTechnology: "Sistem dan automasi",
+  fundPlanSupplyChain: "Distribusi dan logistik",
+  fundPlanTraining: "Pelatihan tim produksi",
+  readinessLegal: "Legalitas usaha sudah tersedia",
+  readinessSales: "Riwayat penjualan periodik tersedia",
+  readinessTeam: "Tim operasional aktif",
+  readinessReporting: "Laporan bisnis siap untuk due diligence",
+});
+
+Object.assign(translations.en, {
+  portfolioDetailBack: "Back to Opportunities",
+  portfolioDetailPreviewLabel: "Opportunity Preview",
+  portfolioDetailNotFoundTitle: "Opportunity not found",
+  portfolioDetailNotFoundBody:
+    "This sample data is unavailable. Return to the portfolio page to browse other opportunities.",
+  portfolioDetailSummaryTitle: "Opportunity summary",
+  portfolioDetailSummaryBody:
+    "{business} in the {sector} sector ({city}) is shown as an opportunity detail preview before investors move into the dashboard for survey and negotiation.",
+  portfolioDetailFundsTitle: "Funding allocation plan",
+  portfolioDetailFundsBody:
+    "The split below is a sample simulation so investors can quickly understand how capital is planned to be used.",
+  portfolioDetailSignalsTitle: "Business readiness signals",
+  portfolioDetailSignalsBody:
+    "These indicators help investors evaluate operational readiness before starting negotiations.",
+  portfolioDetailActionTitle: "Next investor actions",
+  portfolioDetailActionBody:
+    "Save this candidate, then continue to the investor dashboard to start negotiation.",
+  portfolioDetailStart: "Start Investing",
+  fundPlanInventory: "Raw material inventory",
+  fundPlanOperations: "Daily operations",
+  fundPlanMarketing: "Marketing and acquisition",
+  fundPlanEquipment: "Production equipment",
+  fundPlanTechnology: "Systems and automation",
+  fundPlanSupplyChain: "Distribution and logistics",
+  fundPlanTraining: "Production team training",
+  readinessLegal: "Business legal documents are available",
+  readinessSales: "Periodic sales history is available",
+  readinessTeam: "Operational team is active",
+  readinessReporting: "Business reports are ready for due diligence",
 });
 
 type TranslateParams = Record<string, string | number>;

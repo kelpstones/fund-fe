@@ -35,7 +35,7 @@ const sections = [
     id: "berbagi-data",
     title: "Berbagi Data dengan Pihak Ketiga",
     body: [
-      "Data UMKM yang relevan (nama bisnis, sektor, performa, target modal) ditampilkan di marketplace investor hanya setelah pengajuan disetujui admin.",
+      "Data UMKM yang relevan (nama bisnis, sektor, performa, target modal) ditampilkan di halaman peluang investor hanya setelah pengajuan disetujui admin.",
       "Kami tidak menjual data pribadi pengguna kepada pihak ketiga untuk tujuan iklan atau komersial.",
       "Data dapat dibagikan kepada pihak berwenang jika diwajibkan oleh hukum atau proses hukum yang sah.",
       "Penyedia layanan teknis pihak ketiga (cloud, email) yang kami gunakan terikat oleh perjanjian kerahasiaan.",

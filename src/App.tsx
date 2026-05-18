@@ -12,6 +12,7 @@ import { AboutPage } from "./pages/public/AboutPage";
 import { ContactPage } from "./pages/public/ContactPage";
 import { HomePage } from "./pages/public/HomePage";
 import { PortfolioPage } from "./pages/public/PortfolioPage";
+import { PortfolioDetailPage } from "./pages/public/PortfolioDetailPage";
 import { ServicesPage } from "./pages/public/ServicesPage";
 import { HelpCenterPage } from "./pages/public/HelpCenterPage";
 import { TrustSafetyPage } from "./pages/public/TrustSafetyPage";
@@ -84,6 +85,7 @@ export default function App() {
           <Route path="/tentang" element={<AboutPage />} />
           <Route path="/layanan" element={<ServicesPage />} />
           <Route path="/portfolio" element={<PortfolioPage />} />
+          <Route path="/portfolio/:slug" element={<PortfolioDetailPage />} />
           <Route path="/bantuan" element={<HelpCenterPage />} />
           <Route path="/keamanan" element={<TrustSafetyPage />} />
           <Route path="/trust" element={<TrustSafetyPage />} />

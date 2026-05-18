@@ -16,7 +16,7 @@ const sections = [
     title: "Ketentuan untuk UMKM",
     body: [
       "UMKM yang mendaftar wajib memberikan data bisnis yang valid, termasuk informasi keuangan, operasional, dan identitas usaha.",
-      "Pengajuan pendanaan yang disetujui admin akan ditampilkan di marketplace investor. UMKM bertanggung jawab atas keakuratan data yang dicantumkan.",
+      "Pengajuan pendanaan yang disetujui admin akan ditampilkan di halaman peluang investor. UMKM bertanggung jawab atas keakuratan data yang dicantumkan.",
       "FundRaise tidak menjamin bahwa setiap pengajuan akan mendapat investor. Keputusan investasi sepenuhnya ada di tangan investor.",
       "UMKM wajib melaporkan data penjualan secara berkala untuk keperluan distribusi profit kepada investor.",
     ],

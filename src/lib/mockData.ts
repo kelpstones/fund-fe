@@ -61,7 +61,7 @@ export const mockBusinesses: Entity[] = [
     no_telp: "081299998888",
     email: "batiklestari@mail.com",
     sektor: "Fashion",
-    deskripsi: "Produsen batik rumahan dengan peluang ekspansi marketplace.",
+    deskripsi: "Produsen batik rumahan dengan peluang ekspansi kanal digital.",
     created_at: "2026-02-17",
   },
   {
