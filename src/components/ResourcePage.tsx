@@ -20,6 +20,7 @@ import type {
   ResourceField,
 } from "../types";
 import { resourceApi } from "../lib/api/resources";
+import { useAuth } from "../lib/auth/AuthProvider";
 import { useLanguage } from "../lib/i18n/LanguageProvider";
 import { useToast } from "./ToastProvider";
 import { EmptyState } from "./EmptyState";
@@ -43,6 +44,13 @@ type ResourcePageProps<T extends Entity> = {
   searchableFields?: Array<keyof T & string | ((item: T) => unknown)>;
   pageSize?: number;
   staticData?: T[];
+  maxCreateItems?: number;
+  createLimitMessage?: string;
+  rowFilter?: (item: T) => boolean;
+  showTitle?: boolean;
+  showBreadcrumb?: boolean;
+  showSearch?: boolean;
+  showStatusFilter?: boolean;
 };
 
 type ConfirmDialog = {
@@ -222,11 +230,20 @@ export function ResourcePage<T extends Entity>({
   searchableFields,
   pageSize = 10,
   staticData,
+  maxCreateItems,
+  createLimitMessage,
+  rowFilter,
+  showTitle = true,
+  showBreadcrumb = true,
+  showSearch = true,
+  showStatusFilter = true,
 }: ResourcePageProps<T>) {
+  const { user } = useAuth();
   const { language, t } = useLanguage();
   const toast = useToast();
   const copy = uiCopy[language];
   const queryClient = useQueryClient();
+  const resourceQueryKey = ["resource", config.key, user?.id ?? "guest", user?.role ?? "guest"];
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -240,14 +257,14 @@ export function ResourcePage<T extends Entity>({
   );
 
   const query = useQuery({
-    queryKey: ["resource", config.key],
+    queryKey: resourceQueryKey,
     queryFn: () => resourceApi.list(config),
     enabled: !staticData,
     retry: false,
   });
 
   const invalidate = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["resource", config.key] });
+    await queryClient.invalidateQueries({ queryKey: resourceQueryKey });
   };
 
   const createMutation = useMutation({
@@ -298,12 +315,17 @@ export function ResourcePage<T extends Entity>({
     }
   };
 
+  const loadedRows = useMemo(() => {
+    const source = staticData ?? query.data ?? [];
+    if (!rowFilter) return source;
+    return source.filter((item) => rowFilter(item));
+  }, [query.data, rowFilter, staticData]);
+
   const rows = useMemo(() => {
-    const data = staticData ?? query.data ?? [];
     const byStatus =
       statusFilter === "all"
-        ? data
-        : data.filter((item) => String(genericStatus(item)).toLowerCase() === statusFilter);
+        ? loadedRows
+        : loadedRows.filter((item) => String(genericStatus(item)).toLowerCase() === statusFilter);
     if (!search.trim()) return byStatus;
     const needle = search.toLowerCase();
     return byStatus.filter((item) => {
@@ -316,22 +338,28 @@ export function ResourcePage<T extends Entity>({
         .toLowerCase()
         .includes(needle);
     });
-  }, [query.data, search, searchableFields, staticData, statusFilter]);
+  }, [loadedRows, search, searchableFields, statusFilter]);
 
   const statusOptions = useMemo(() => {
     const values = new Set<string>();
-    (staticData ?? query.data ?? []).forEach((item) => {
+    loadedRows.forEach((item) => {
       const value = genericStatus(item);
       if (value !== undefined && value !== null && value !== "") {
         values.add(String(value).toLowerCase());
       }
     });
     return Array.from(values).sort();
-  }, [query.data, staticData]);
+  }, [loadedRows]);
 
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const visibleRows = rows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const totalLoadedItems = loadedRows.length;
+  const createLimitReached =
+    typeof maxCreateItems === "number" &&
+    Number.isFinite(maxCreateItems) &&
+    maxCreateItems > 0 &&
+    totalLoadedItems >= maxCreateItems;
 
   const openCreate = () => {
     setEditing(null);
@@ -344,6 +372,10 @@ export function ResourcePage<T extends Entity>({
     const next = emptyForm(fields);
     fields.forEach((field) => {
       const value = item[field.name];
+      if (field.type === "textarea" && value && typeof value === "object") {
+        next[field.name] = JSON.stringify(value, null, 2);
+        return;
+      }
       next[field.name] =
         typeof value === "number" || typeof value === "string" ? value : String(value ?? "");
     });
@@ -359,7 +391,10 @@ export function ResourcePage<T extends Entity>({
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const values = coerceValues(fields, formValues);
+    const submitFields = editing
+      ? fields.filter((field) => !field.hideOnEdit)
+      : fields;
+    const values = coerceValues(submitFields, formValues);
     try {
       if (editing) {
         await updateMutation.mutateAsync({ ...editing, ...values });
@@ -457,11 +492,20 @@ export function ResourcePage<T extends Entity>({
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
   const isProcessing = Boolean(loadingAlert);
-  const canCreate = allowCreate && !readonly && fields.length > 0 && Boolean(config.createPath);
+  const canCreate =
+    allowCreate &&
+    !readonly &&
+    fields.length > 0 &&
+    Boolean(config.createPath) &&
+    !createLimitReached;
   const canEdit = allowEdit && !readonly && fields.length > 0 && Boolean(config.updatePath);
   const canDelete = allowDelete && !readonly && Boolean(config.deletePath);
   const hasRowActions = canEdit || canDelete || actions.length > 0 || Boolean(config.detailPath);
   const colSpan = columns.length + (hasRowActions ? 1 : 0);
+  const canShowStatusFilter = showStatusFilter && statusOptions.length > 1;
+  const canShowSearchInput = showSearch;
+  const hasTopControls = canShowStatusFilter || canShowSearchInput || canCreate;
+  const showTopBar = showTitle || hasTopControls;
 
   const visibleActionsFor = (item: T) =>
     actions.filter((action) => !action.isVisible || action.isVisible(item));
@@ -523,57 +567,74 @@ export function ResourcePage<T extends Entity>({
   );
 
   return (
-    <section className="space-y-5">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h2 className="text-2xl font-black tracking-normal text-neutral">{t(title)}</h2>
-          <DashboardBreadcrumb />
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">{t(description)}</p>
-        </div>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          {statusOptions.length > 1 ? (
-            <select
-              className="select select-bordered h-11 rounded-md bg-white text-sm font-semibold"
-              value={statusFilter}
-              onChange={(event) => {
-                setStatusFilter(event.target.value);
-                setPage(1);
-              }}
-              aria-label="Filter status"
-            >
-              <option value="all">{copy.allStatus}</option>
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {t(status)}
-                </option>
-              ))}
-            </select>
+    <section className="space-y-5" data-page-description={t(description)}>
+      {showTopBar ? (
+        <div
+          className={[
+            "flex flex-col gap-4",
+            showTitle ? "md:flex-row md:items-end md:justify-between" : "md:items-end md:justify-end",
+          ].join(" ")}
+        >
+          {showTitle ? (
+            <div>
+              <h2 className="text-2xl font-black tracking-normal text-neutral">{t(title)}</h2>
+              {showBreadcrumb ? <DashboardBreadcrumb /> : null}
+            </div>
           ) : null}
-          <label className="input input-bordered flex h-11 items-center gap-2 rounded-md bg-white">
-            <Search size={18} className="text-neutral/40" />
-            <input
-              className="w-full min-w-0"
-              placeholder={copy.search}
-              value={search}
-              aria-label={copy.search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(1);
-              }}
-            />
-          </label>
-          {canCreate ? (
-            <button
-              className="btn btn-primary h-11 rounded-md text-white"
-              onClick={openCreate}
-              disabled={isProcessing}
-            >
-              <Plus size={18} />
-              {t(createLabel)}
-            </button>
+          {hasTopControls ? (
+            <div className="flex flex-col gap-3 sm:flex-row">
+              {canShowStatusFilter ? (
+                <select
+                  className="select select-bordered h-11 rounded-md bg-white text-sm font-semibold"
+                  value={statusFilter}
+                  onChange={(event) => {
+                    setStatusFilter(event.target.value);
+                    setPage(1);
+                  }}
+                  aria-label="Filter status"
+                >
+                  <option value="all">{copy.allStatus}</option>
+                  {statusOptions.map((status) => (
+                    <option key={status} value={status}>
+                      {t(status)}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+              {canShowSearchInput ? (
+                <label className="input input-bordered flex h-11 items-center gap-2 rounded-md bg-white">
+                  <Search size={18} className="text-neutral/40" />
+                  <input
+                    className="w-full min-w-0"
+                    placeholder={copy.search}
+                    value={search}
+                    aria-label={copy.search}
+                    onChange={(event) => {
+                      setSearch(event.target.value);
+                      setPage(1);
+                    }}
+                  />
+                </label>
+              ) : null}
+              {canCreate ? (
+                <button
+                  className="btn btn-primary h-11 rounded-md text-white"
+                  onClick={openCreate}
+                  disabled={isProcessing}
+                >
+                  <Plus size={18} />
+                  {t(createLabel)}
+                </button>
+              ) : null}
+            </div>
           ) : null}
         </div>
-      </div>
+      ) : null}
+      {createLimitReached && createLimitMessage ? (
+        <p className="rounded-md border border-base-300 bg-base-100 px-3 py-2 text-sm font-semibold text-neutral/65">
+          {t(createLimitMessage)}
+        </p>
+      ) : null}
 
       <div className="overflow-hidden rounded-md border border-base-300 bg-white shadow-sm">
         <div className="hidden overflow-x-auto md:block">
@@ -714,7 +775,9 @@ export function ResourcePage<T extends Entity>({
             </div>
             <form className="grid gap-4" onSubmit={submit}>
               <div className="grid gap-4 sm:grid-cols-2">
-                {fields.map((field) => {
+                {fields
+                  .filter((field) => !(editing && field.hideOnEdit))
+                  .map((field) => {
                   const value = formValues[field.name] ?? "";
                   const isFullWidth = field.type === "textarea" || field.colSpan === 2;
                   const commonProps = {
@@ -730,38 +793,38 @@ export function ResourcePage<T extends Entity>({
                       })),
                   };
 
-                  return (
-                    <label
-                      key={field.name}
-                      className={isFullWidth ? "form-control sm:col-span-2" : "form-control"}
-                    >
-                      <span className="label-text mb-2 font-semibold">{t(field.label)}</span>
-                      {field.type === "textarea" ? (
-                        <textarea
-                          {...commonProps}
-                          className="textarea textarea-bordered min-h-28 rounded-md"
-                          placeholder={field.placeholder ? t(field.placeholder) : undefined}
-                        />
-                      ) : field.type === "select" ? (
-                        <select {...commonProps} className="select select-bordered rounded-md">
-                          <option value="">{copy.choose}</option>
-                          {field.options?.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {t(option.label)}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          {...commonProps}
-                          type={field.type ?? "text"}
-                          className="input input-bordered rounded-md"
-                          placeholder={field.placeholder ? t(field.placeholder) : undefined}
-                        />
-                      )}
-                    </label>
-                  );
-                })}
+                    return (
+                      <label
+                        key={field.name}
+                        className={isFullWidth ? "form-control sm:col-span-2" : "form-control"}
+                      >
+                        <span className="label-text mb-2 font-semibold">{t(field.label)}</span>
+                        {field.type === "textarea" ? (
+                          <textarea
+                            {...commonProps}
+                            className="textarea textarea-bordered min-h-28 rounded-md"
+                            placeholder={field.placeholder ? t(field.placeholder) : undefined}
+                          />
+                        ) : field.type === "select" ? (
+                          <select {...commonProps} className="select select-bordered rounded-md">
+                            <option value="">{copy.choose}</option>
+                            {field.options?.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {t(option.label)}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            {...commonProps}
+                            type={field.type ?? "text"}
+                            className="input input-bordered rounded-md"
+                            placeholder={field.placeholder ? t(field.placeholder) : undefined}
+                          />
+                        )}
+                      </label>
+                    );
+                  })}
               </div>
               <div className="modal-action">
                 <button type="button" className="btn rounded-md" onClick={closeForm}>
