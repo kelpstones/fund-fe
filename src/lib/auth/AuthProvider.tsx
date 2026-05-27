@@ -14,6 +14,7 @@ import { apiClient, unwrapToken } from "../api/client";
 type AuthContextValue = {
   user: AuthUser | null;
   token: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
   login: (payload: LoginPayload) => Promise<AuthUser>;
   register: (payload: RegisterPayload) => Promise<AuthUser>;
@@ -23,6 +24,7 @@ type AuthContextValue = {
 
 const userKey = "fundraise_user";
 const tokenKey = "fundraise_token";
+const refreshTokenKey = "fundraise_refresh_token";
 const registerHintKey = "fundraise_register_hint";
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -68,9 +70,18 @@ const normalizeUser = (
   no_telp: rawUser.no_telp as string | undefined,
 });
 
-const saveSession = (user: AuthUser, token: string) => {
+const saveSession = (
+  user: AuthUser,
+  token: string,
+  refreshToken: string | null,
+) => {
   localStorage.setItem(userKey, JSON.stringify(user));
   localStorage.setItem(tokenKey, token);
+  if (refreshToken) {
+    localStorage.setItem(refreshTokenKey, refreshToken);
+  } else {
+    localStorage.removeItem(refreshTokenKey);
+  }
 };
 
 const tokenExpiryMs = (token: string): number | null => {
@@ -93,47 +104,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return storedUser ? (JSON.parse(storedUser) as AuthUser) : null;
   });
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(tokenKey));
+  const [refreshToken, setRefreshToken] = useState<string | null>(() =>
+    localStorage.getItem(refreshTokenKey),
+  );
 
-  const applySession = useCallback((nextUser: AuthUser, nextToken: string) => {
-    let mergedUser = { ...nextUser };
-    const storedUserRaw = localStorage.getItem(userKey);
-    if (storedUserRaw) {
-      try {
-        const storedUser = JSON.parse(storedUserRaw) as Partial<AuthUser>;
-        if (storedUser.email && storedUser.email === mergedUser.email && storedUser.no_telp && !mergedUser.no_telp) {
-          mergedUser = { ...mergedUser, no_telp: storedUser.no_telp };
+  const applySession = useCallback(
+    (
+      nextUser: AuthUser,
+      nextToken: string,
+      nextRefreshToken: string | null,
+    ) => {
+      let mergedUser = { ...nextUser };
+      const storedUserRaw = localStorage.getItem(userKey);
+      if (storedUserRaw) {
+        try {
+          const storedUser = JSON.parse(storedUserRaw) as Partial<AuthUser>;
+          if (
+            storedUser.email &&
+            storedUser.email === mergedUser.email &&
+            storedUser.no_telp &&
+            !mergedUser.no_telp
+          ) {
+            mergedUser = { ...mergedUser, no_telp: storedUser.no_telp };
+          }
+        } catch {
+          // Ignore malformed local session data.
         }
-      } catch {
-        // Ignore malformed local session data.
       }
-    }
 
-    const registerHintRaw = localStorage.getItem(registerHintKey);
-    if (registerHintRaw) {
-      try {
-        const registerHint = JSON.parse(registerHintRaw) as {
-          email?: string;
-          no_telp?: string;
-        };
-        if (
-          registerHint.email &&
-          registerHint.email === mergedUser.email &&
-          registerHint.no_telp &&
-          !mergedUser.no_telp
-        ) {
-          mergedUser = { ...mergedUser, no_telp: registerHint.no_telp };
+      const registerHintRaw = localStorage.getItem(registerHintKey);
+      if (registerHintRaw) {
+        try {
+          const registerHint = JSON.parse(registerHintRaw) as {
+            email?: string;
+            no_telp?: string;
+          };
+          if (
+            registerHint.email &&
+            registerHint.email === mergedUser.email &&
+            registerHint.no_telp &&
+            !mergedUser.no_telp
+          ) {
+            mergedUser = { ...mergedUser, no_telp: registerHint.no_telp };
+          }
+        } catch {
+          // Ignore malformed register hint data.
+        } finally {
+          localStorage.removeItem(registerHintKey);
         }
-      } catch {
-        // Ignore malformed register hint data.
-      } finally {
-        localStorage.removeItem(registerHintKey);
       }
-    }
 
-    saveSession(mergedUser, nextToken);
-    setUser(mergedUser);
-    setToken(nextToken);
-  }, []);
+      saveSession(mergedUser, nextToken, nextRefreshToken);
+      setUser(mergedUser);
+      setToken(nextToken);
+      setRefreshToken(nextRefreshToken);
+    },
+    [],
+  );
 
   const login = useCallback(async (payload: LoginPayload) => {
     const loginWithPath = async (path: string, fallbackRole: UserRole) => {
@@ -141,10 +168,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: payload.email,
         password: payload.password,
       });
-      const { data, token: responseToken } = unwrapToken<Record<string, unknown>>(response.data);
+      const {
+        data,
+        token: responseToken,
+        refreshToken: responseRefreshToken,
+      } = unwrapToken<Record<string, unknown>>(response.data);
       const nextUser = normalizeUser(data, payload.role ?? fallbackRole);
       if (!responseToken) throw new Error("Login response does not include token");
-      applySession(nextUser, responseToken);
+      applySession(nextUser, responseToken, responseRefreshToken ?? null);
       return nextUser;
     };
 
@@ -187,27 +218,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    const activeRefreshToken = localStorage.getItem(refreshTokenKey);
+    const activeRole = user?.role;
+    if (activeRefreshToken) {
+      const logoutPath =
+        activeRole === "admin" || activeRole === "superadmin"
+          ? "/admin/logout"
+          : "/user/logout";
+      void apiClient.post(logoutPath, { refreshToken: activeRefreshToken }).catch(() => undefined);
+    }
+
     localStorage.removeItem(userKey);
     localStorage.removeItem(tokenKey);
+    localStorage.removeItem(refreshTokenKey);
     setUser(null);
     setToken(null);
-  }, []);
+    setRefreshToken(null);
+  }, [user?.role]);
 
   useEffect(() => {
-    if (!user || !token) return;
+    if (!user || !token || !refreshToken) return;
 
     let cancelled = false;
-    let timeoutId: number | undefined;
 
     const refreshSession = async () => {
       try {
         const isAdmin = user.role === "admin" || user.role === "superadmin";
-        const response = await apiClient.post(isAdmin ? "/admin/me" : "/user/me");
-        const { data, token: refreshedToken } = unwrapToken<Record<string, unknown>>(response.data);
+        const response = await apiClient.post(
+          isAdmin ? "/admin/refresh" : "/user/refresh",
+          { refreshToken },
+        );
+        const {
+          data,
+          token: refreshedToken,
+          refreshToken: refreshedRefreshToken,
+        } = unwrapToken<Record<string, unknown>>(response.data);
+        if (!refreshedToken) throw new Error("Refresh response does not include token");
         if (cancelled) return;
-        const nextToken = refreshedToken ?? token;
         const nextUser = normalizeUser(data, user.role);
-        applySession(nextUser, nextToken);
+        applySession(nextUser, refreshedToken, refreshedRefreshToken ?? refreshToken);
       } catch {
         if (cancelled) return;
         logout();
@@ -218,27 +267,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const refreshDelay = expiresAt
       ? Math.max(10_000, expiresAt - Date.now() - 60_000)
       : 8 * 60_000;
-    timeoutId = window.setTimeout(() => {
+    const timeoutId = window.setTimeout(() => {
       void refreshSession();
     }, refreshDelay);
 
     return () => {
       cancelled = true;
-      if (timeoutId) window.clearTimeout(timeoutId);
+      window.clearTimeout(timeoutId);
     };
-  }, [applySession, logout, token, user]);
+  }, [applySession, logout, refreshToken, token, user]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       token,
+      refreshToken,
       isAuthenticated: Boolean(user && token),
       login,
       register,
       updateUser,
       logout,
     }),
-    [login, logout, register, token, updateUser, user],
+    [login, logout, refreshToken, register, token, updateUser, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -37,6 +37,8 @@ export type ApiEnvelope<T> = {
   message: string;
   data?: T;
   token?: string;
+  accessToken?: string;
+  refreshToken?: string;
   pagination?: {
     total_items: number;
     total_pages: number;
