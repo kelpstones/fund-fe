@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { Loader2, RefreshCw, Save } from "lucide-react";
+import { ArrowDown, ArrowUp, ImagePlus, Loader2, RefreshCw, Save, Trash2 } from "lucide-react";
 import { useAuth } from "../../lib/auth/AuthProvider";
 import { directApi } from "../../lib/api/direct";
 import { apiClient, unwrap } from "../../lib/api/client";
@@ -121,7 +121,7 @@ export function ProfilePage() {
     queryKey: ["profile", "me", user?.role],
     queryFn: () =>
       isAdmin
-        ? directApi.post("/admin/me", undefined, user)
+        ? directApi.get("/admin/me", user)
         : directApi.get(user?.role === "investor" ? "/user/profile/investor" : "/user/profile", user),
   });
 
@@ -133,13 +133,34 @@ export function ProfilePage() {
 
   const meRecord = asRecord(meQuery.data);
   const adminRecord = asRecord(adminDetailQuery.data);
+  const syncedForm = useMemo(
+    () => {
+      const source = isAdmin ? adminRecord : meRecord;
+      return {
+        nama: String(source.nama ?? user?.nama ?? ""),
+        email: String(source.email ?? user?.email ?? ""),
+        no_telp: String(source.no_telp ?? user?.no_telp ?? ""),
+        level: String(source.level ?? user?.level ?? "admin"),
+      };
+    },
+    [
+      adminRecord,
+      isAdmin,
+      meRecord,
+      user?.email,
+      user?.level,
+      user?.nama,
+      user?.no_telp,
+    ],
+  );
+  const activeForm = isProfileDirty ? form : syncedForm;
 
   const updateMutation = useMutation({
     mutationFn: async () => {
-      const nama = form.nama.trim();
-      const email = form.email.trim();
-      const noTelp = form.no_telp.trim();
-      const level = form.level.trim();
+      const nama = activeForm.nama.trim();
+      const email = activeForm.email.trim();
+      const noTelp = activeForm.no_telp.trim();
+      const level = activeForm.level.trim();
 
       const localUpdates: Partial<{
         nama: string;
@@ -167,9 +188,11 @@ export function ProfilePage() {
         unwrap<unknown>(response.data);
       }
 
-      return updateUser(localUpdates);
+      updateUser(localUpdates);
+      return localUpdates;
     },
     onSuccess: async () => {
+      setForm(activeForm);
       setIsProfileDirty(false);
       setSaveMessage(t("profileSaveSuccess"));
       setSaveError("");
@@ -186,48 +209,14 @@ export function ProfilePage() {
     if (canEditProfile) updateMutation.mutate();
   };
 
-  useEffect(() => {
-    if (isProfileDirty || updateMutation.isPending) return;
-
-    const source = isAdmin ? adminRecord : meRecord;
-    const merged = {
-      nama: String(source.nama ?? user?.nama ?? ""),
-      email: String(source.email ?? user?.email ?? ""),
-      no_telp: String(source.no_telp ?? user?.no_telp ?? ""),
-      level: String(source.level ?? user?.level ?? "admin"),
-    };
-
-    setForm((current) => {
-      if (
-        current.nama === merged.nama &&
-        current.email === merged.email &&
-        current.no_telp === merged.no_telp &&
-        current.level === merged.level
-      ) {
-        return current;
-      }
-      return merged;
-    });
-  }, [
-    adminRecord,
-    isAdmin,
-    isProfileDirty,
-    meRecord,
-    updateMutation.isPending,
-    user?.email,
-    user?.level,
-    user?.nama,
-    user?.no_telp,
-  ]);
-
   const profileRecord: Record<string, unknown> = {
     ...meRecord,
     ...adminRecord,
     ...(user ?? {}),
     ...(saveMessage
       ? {
-        ...form,
-        ...(isAdmin ? { level: form.level } : {}),
+        ...activeForm,
+        ...(isAdmin ? { level: activeForm.level } : {}),
       }
       : {}),
   };
@@ -244,10 +233,10 @@ export function ProfilePage() {
             <span className="label-text mb-2 font-semibold">{t("name")}</span>
             <input
               className="input input-bordered rounded-md"
-              value={form.nama}
+              value={activeForm.nama}
               onChange={(event) => {
                 setIsProfileDirty(true);
-                setForm((current) => ({ ...current, nama: event.target.value }));
+                setForm((current) => ({ ...activeForm, ...current, nama: event.target.value }));
               }}
               disabled={!canEditProfile}
             />
@@ -257,10 +246,10 @@ export function ProfilePage() {
             <input
               type="email"
               className="input input-bordered rounded-md"
-              value={form.email}
+              value={activeForm.email}
               onChange={(event) => {
                 setIsProfileDirty(true);
-                setForm((current) => ({ ...current, email: event.target.value }));
+                setForm((current) => ({ ...activeForm, ...current, email: event.target.value }));
               }}
               disabled={!canEditProfile}
             />
@@ -269,10 +258,10 @@ export function ProfilePage() {
             <span className="label-text mb-2 font-semibold">{t("phone")}</span>
             <input
               className="input input-bordered rounded-md"
-              value={form.no_telp}
+              value={activeForm.no_telp}
               onChange={(event) => {
                 setIsProfileDirty(true);
-                setForm((current) => ({ ...current, no_telp: event.target.value }));
+                setForm((current) => ({ ...activeForm, ...current, no_telp: event.target.value }));
               }}
               disabled={!canEditProfile}
             />
@@ -282,10 +271,10 @@ export function ProfilePage() {
               <span className="label-text mb-2 font-semibold">{t("level")}</span>
               <select
                 className="select select-bordered rounded-md"
-                value={form.level}
+                value={activeForm.level}
                 onChange={(event) => {
                   setIsProfileDirty(true);
-                  setForm((current) => ({ ...current, level: event.target.value }));
+                  setForm((current) => ({ ...activeForm, ...current, level: event.target.value }));
                 }}
                 disabled={!canEditProfile}
               >
@@ -534,6 +523,14 @@ const defaultBusinessProfileForm = {
   class: 2,
 };
 
+type BusinessCover = {
+  id: number;
+  bisnis_id: number;
+  image_url: string;
+  urutan: number;
+  created_at?: string;
+};
+
 export function BusinessProfilePage() {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
@@ -543,6 +540,7 @@ export function BusinessProfilePage() {
   const [isDirty, setIsDirty] = useState(false);
   const [profileMessage, setProfileMessage] = useState("");
   const [profileError, setProfileError] = useState("");
+  const [coverError, setCoverError] = useState("");
   const isUmkm = user?.role === "umkm";
   const canSeeMlProfiles = user?.role === "admin" || user?.role === "superadmin";
   const businessOptionsQuery = useQuery({
@@ -571,6 +569,21 @@ export function BusinessProfilePage() {
     queryFn: () => directApi.get("/businesses/ml", []),
     enabled: canSeeMlProfiles,
   });
+  const coverQuery = useQuery({
+    queryKey: ["business-covers"],
+    queryFn: async () => {
+      const response = await apiClient.get("/businesses/covers");
+      const payload = unwrap<unknown>(response.data);
+      if (Array.isArray(payload)) return payload as BusinessCover[];
+      if (payload && typeof payload === "object") {
+        const objectPayload = payload as Record<string, unknown>;
+        if (Array.isArray(objectPayload.covers)) return objectPayload.covers as BusinessCover[];
+      }
+      return [] as BusinessCover[];
+    },
+    enabled: isUmkm,
+    retry: false,
+  });
 
   const upsertMutation = useMutation({
     mutationFn: async () => {
@@ -596,6 +609,47 @@ export function BusinessProfilePage() {
     onError: (err) => {
       setProfileMessage("");
       setProfileError(apiErrorMessage(err, t("businessProfileSaveError")));
+    },
+  });
+  const uploadCoverMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("image", file);
+      const response = await apiClient.post("/businesses/covers", formData);
+      return unwrap<unknown>(response.data);
+    },
+    onSuccess: async () => {
+      setCoverError("");
+      await queryClient.invalidateQueries({ queryKey: ["business-covers"] });
+    },
+    onError: (err) => {
+      setCoverError(apiErrorMessage(err, "Upload cover gagal."));
+    },
+  });
+  const deleteCoverMutation = useMutation({
+    mutationFn: async (coverId: number) => {
+      const response = await apiClient.delete(`/businesses/covers/${coverId}`);
+      return unwrap<unknown>(response.data);
+    },
+    onSuccess: async () => {
+      setCoverError("");
+      await queryClient.invalidateQueries({ queryKey: ["business-covers"] });
+    },
+    onError: (err) => {
+      setCoverError(apiErrorMessage(err, "Hapus cover gagal."));
+    },
+  });
+  const reorderCoverMutation = useMutation({
+    mutationFn: async (orders: Array<{ id: number; urutan: number }>) => {
+      const response = await apiClient.patch("/businesses/covers/reorder", { orders });
+      return unwrap<unknown>(response.data);
+    },
+    onSuccess: async () => {
+      setCoverError("");
+      await queryClient.invalidateQueries({ queryKey: ["business-covers"] });
+    },
+    onError: (err) => {
+      setCoverError(apiErrorMessage(err, "Urutan cover gagal diperbarui."));
     },
   });
 
@@ -628,6 +682,18 @@ export function BusinessProfilePage() {
   const mlProfiles = Array.isArray(mlProfilesQuery.data)
     ? (mlProfilesQuery.data as Record<string, unknown>[])
     : [];
+  const covers = coverQuery.data ?? [];
+  const moveCover = (coverId: number, direction: "up" | "down") => {
+    const currentIndex = covers.findIndex((item) => Number(item.id) === Number(coverId));
+    if (currentIndex < 0) return;
+    const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (nextIndex < 0 || nextIndex >= covers.length) return;
+
+    const reordered = [...covers];
+    [reordered[currentIndex], reordered[nextIndex]] = [reordered[nextIndex], reordered[currentIndex]];
+    const orders = reordered.map((item, index) => ({ id: Number(item.id), urutan: index }));
+    reorderCoverMutation.mutate(orders);
+  };
 
   return (
     <div className="space-y-5">
@@ -785,6 +851,92 @@ export function BusinessProfilePage() {
           />
         </Panel>
       </div>
+      {isUmkm ? (
+        <Panel title="Business Cover Gallery" description="Upload maksimal 5 foto cover untuk profil bisnis.">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-neutral/60">
+                {covers.length}/5 cover tersimpan
+              </p>
+              <label className="btn btn-primary rounded-md text-white">
+                <ImagePlus size={17} />
+                Upload Cover
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploadCoverMutation.isPending || covers.length >= 5}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    uploadCoverMutation.mutate(file);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
+            </div>
+            {coverError ? (
+              <div className="rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-semibold text-error">
+                {coverError}
+              </div>
+            ) : null}
+            {coverQuery.isLoading ? (
+              <div className="rounded-md border border-base-300 bg-base-100 p-4 text-sm font-semibold text-neutral/60">
+                Memuat cover bisnis...
+              </div>
+            ) : null}
+            {coverQuery.isError ? (
+              <div className="rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-semibold text-error">
+                {apiErrorMessage(coverQuery.error, "Gagal memuat cover bisnis.")}
+              </div>
+            ) : null}
+            {!coverQuery.isLoading && !coverQuery.isError && covers.length === 0 ? (
+              <div className="rounded-md border border-base-300 bg-base-100 p-4 text-sm font-semibold text-neutral/60">
+                Belum ada cover bisnis.
+              </div>
+            ) : null}
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {covers.map((cover, index) => (
+                <article key={cover.id} className="overflow-hidden rounded-md border border-base-300 bg-white">
+                  <div className="aspect-video bg-base-200">
+                    <img
+                      src={cover.image_url}
+                      alt={`Cover bisnis ${index + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2 p-3">
+                    <span className="text-sm font-bold text-neutral/70">Urutan #{index + 1}</span>
+                    <div className="flex gap-1">
+                      <button
+                        className="btn btn-ghost btn-xs btn-square"
+                        onClick={() => moveCover(Number(cover.id), "up")}
+                        disabled={index === 0 || reorderCoverMutation.isPending}
+                      >
+                        <ArrowUp size={15} />
+                      </button>
+                      <button
+                        className="btn btn-ghost btn-xs btn-square"
+                        onClick={() => moveCover(Number(cover.id), "down")}
+                        disabled={index === covers.length - 1 || reorderCoverMutation.isPending}
+                      >
+                        <ArrowDown size={15} />
+                      </button>
+                      <button
+                        className="btn btn-ghost btn-xs btn-square text-error"
+                        onClick={() => deleteCoverMutation.mutate(Number(cover.id))}
+                        disabled={deleteCoverMutation.isPending}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </Panel>
+      ) : null}
       {canSeeMlProfiles ? (
         <Panel title="allModelProfiles" description="allModelProfilesBody">
           <div className="mb-4">

@@ -103,6 +103,7 @@ const navByRole: Record<UserRole, NavGroup[]> = {
       labelKey: "dashboardGroupAccount",
       items: [
         { to: "/dashboard/investor/profile", labelKey: "dashboardProfile", icon: UserRound },
+        { to: "/dashboard/investor/rekening", labelKey: "dashboardBankAccounts", icon: Building2 },
         { to: "/dashboard/investor/dokumen", labelKey: "dashboardDocuments", icon: FileText },
         { to: "/dashboard/investor/preferensi", labelKey: "dashboardPreferences", icon: SlidersHorizontal },
         { to: "/dashboard/investor/survey", labelKey: "dashboardSurvey", icon: ClipboardList },
@@ -124,6 +125,7 @@ const navByRole: Record<UserRole, NavGroup[]> = {
     {
       labelKey: "dashboardGroupTransactions",
       items: [
+        { to: "/dashboard/investor/wallet", labelKey: "dashboardWallet", icon: CircleDollarSign },
         { to: "/dashboard/investor/invoice", labelKey: "dashboardInvoices", icon: Receipt },
         { to: "/dashboard/investor/portfolio", labelKey: "dashboardPortfolio", icon: TrendingUp },
         { to: "/dashboard/investor/profit", labelKey: "dashboardProfit", icon: CircleDollarSign },
@@ -149,6 +151,7 @@ const navByRole: Record<UserRole, NavGroup[]> = {
         { to: "/dashboard/admin/bisnis", labelKey: "dashboardBusiness", icon: Building2 },
         { to: "/dashboard/admin/bisnis-profile", labelKey: "dashboardBusinessModel", icon: Activity },
         { to: "/dashboard/admin/kelas", labelKey: "dashboardClasses", icon: Scale },
+        { to: "/dashboard/admin/banks", labelKey: "dashboardSupportedBanks", icon: Building2 },
       ],
     },
     {
@@ -164,6 +167,7 @@ const navByRole: Record<UserRole, NavGroup[]> = {
       labelKey: "dashboardGroupTransactions",
       items: [
         { to: "/dashboard/admin/penjualan", labelKey: "dashboardSales", icon: BarChart3 },
+        { to: "/dashboard/admin/withdrawals", labelKey: "dashboardWithdrawals", icon: CircleDollarSign },
         { to: "/dashboard/admin/invoice", labelKey: "dashboardInvoices", icon: Receipt },
         { to: "/dashboard/admin/profit", labelKey: "dashboardProfit", icon: CircleDollarSign },
       ],
@@ -195,6 +199,7 @@ const navByRole: Record<UserRole, NavGroup[]> = {
         { to: "/dashboard/admin/bisnis", labelKey: "dashboardBusiness", icon: Building2 },
         { to: "/dashboard/admin/bisnis-profile", labelKey: "dashboardBusinessModel", icon: Activity },
         { to: "/dashboard/admin/kelas", labelKey: "dashboardClasses", icon: Scale },
+        { to: "/dashboard/admin/banks", labelKey: "dashboardSupportedBanks", icon: Building2 },
       ],
     },
     {
@@ -210,6 +215,7 @@ const navByRole: Record<UserRole, NavGroup[]> = {
       labelKey: "dashboardGroupTransactions",
       items: [
         { to: "/dashboard/admin/penjualan", labelKey: "dashboardSales", icon: BarChart3 },
+        { to: "/dashboard/admin/withdrawals", labelKey: "dashboardWithdrawals", icon: CircleDollarSign },
         { to: "/dashboard/admin/invoice", labelKey: "dashboardInvoices", icon: Receipt },
         { to: "/dashboard/admin/profit", labelKey: "dashboardProfit", icon: CircleDollarSign },
       ],

@@ -1,7 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useLanguage, type TranslationKey } from "../lib/i18n/LanguageProvider";
-import type { UserRole } from "../types";
 
 type Crumb = {
   groupKey: TranslationKey;
@@ -27,6 +26,7 @@ const investorCrumbs: Record<string, Crumb> = {
   "": { groupKey: "dashboardGroupMain", pageKey: "dashboardOverview" },
   onboarding: { groupKey: "dashboardGroupMain", pageKey: "dashboardOnboarding" },
   profile: { groupKey: "dashboardGroupAccount", pageKey: "dashboardProfile" },
+  rekening: { groupKey: "dashboardGroupAccount", pageKey: "dashboardBankAccounts" },
   dokumen: { groupKey: "dashboardGroupAccount", pageKey: "dashboardDocuments" },
   preferensi: { groupKey: "dashboardGroupAccount", pageKey: "dashboardPreferences" },
   survey: { groupKey: "dashboardGroupAccount", pageKey: "dashboardSurvey" },
@@ -38,6 +38,7 @@ const investorCrumbs: Record<string, Crumb> = {
   negosiasi: { groupKey: "dashboardGroupFunding", pageKey: "dashboardNegotiations" },
   "deal-room": { groupKey: "dashboardGroupFunding", pageKey: "dashboardDealRoom" },
   kelas: { groupKey: "dashboardGroupFunding", pageKey: "dashboardClasses" },
+  wallet: { groupKey: "dashboardGroupTransactions", pageKey: "dashboardWallet" },
   invoice: { groupKey: "dashboardGroupTransactions", pageKey: "dashboardInvoices" },
   portfolio: { groupKey: "dashboardGroupTransactions", pageKey: "dashboardPortfolio" },
   profit: { groupKey: "dashboardGroupTransactions", pageKey: "dashboardProfit" },
@@ -51,11 +52,13 @@ const adminCrumbs: Record<string, Crumb> = {
   bisnis: { groupKey: "dashboardGroupBusiness", pageKey: "dashboardBusiness" },
   "bisnis-profile": { groupKey: "dashboardGroupBusiness", pageKey: "dashboardBusinessModel" },
   kelas: { groupKey: "dashboardGroupBusiness", pageKey: "dashboardClasses" },
+  banks: { groupKey: "dashboardGroupBusiness", pageKey: "dashboardSupportedBanks" },
   pengajuan: { groupKey: "dashboardGroupFunding", pageKey: "dashboardSubmissions" },
   review: { groupKey: "dashboardGroupFunding", pageKey: "dashboardReviewQueue" },
   negosiasi: { groupKey: "dashboardGroupFunding", pageKey: "dashboardNegotiations" },
   investasi: { groupKey: "dashboardGroupFunding", pageKey: "dashboardInvestments" },
   penjualan: { groupKey: "dashboardGroupTransactions", pageKey: "dashboardSales" },
+  withdrawals: { groupKey: "dashboardGroupTransactions", pageKey: "dashboardWithdrawals" },
   invoice: { groupKey: "dashboardGroupTransactions", pageKey: "dashboardInvoices" },
   profit: { groupKey: "dashboardGroupTransactions", pageKey: "dashboardProfit" },
   "api-status": { groupKey: "dashboardGroupSystem", pageKey: "dashboardSystemStatus" },
@@ -110,4 +113,3 @@ export function DashboardBreadcrumb({ className }: { className?: string }) {
     </nav>
   );
 }
-

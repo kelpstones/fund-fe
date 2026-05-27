@@ -118,15 +118,24 @@ const submissionFields: ResourceField<Entity>[] = [
   { name: "target_pendanaan", label: "Target Pendanaan", type: "number", required: true },
   { name: "total_pendanaan", label: "Total Pendanaan", type: "number" },
   { name: "per_anual_return", label: "Return Tahunan", type: "number", required: true },
+  { name: "deskripsi_peluang", label: "Deskripsi Peluang", type: "textarea", colSpan: 2 },
+  {
+    name: "rencana_penggunaan_dana",
+    label: "Rencana Penggunaan Dana (JSON)",
+    type: "textarea",
+    placeholder:
+      '[{"kategori":"Marketing","jumlah":10000000},{"kategori":"Operasional","jumlah":15000000}]',
+    colSpan: 2,
+  },
   {
     name: "status",
     label: "Status",
     type: "select",
     options: [
-      { value: "draft", label: "Draft" },
-      { value: "published", label: "Published" },
-      { value: "funded", label: "Funded" },
-      { value: "rejected", label: "Rejected" },
+      { value: "draft", label: "Draf" },
+      { value: "published", label: "Dipublikasikan" },
+      { value: "funded", label: "Didanai" },
+      { value: "rejected", label: "Ditolak" },
     ],
   },
   {
@@ -135,8 +144,8 @@ const submissionFields: ResourceField<Entity>[] = [
     type: "select",
     options: [
       { value: "pending", label: "Pending" },
-      { value: "approved", label: "Approved" },
-      { value: "rejected", label: "Rejected" },
+      { value: "approved", label: "Disetujui" },
+      { value: "rejected", label: "Ditolak" },
     ],
   },
 ];
@@ -156,6 +165,7 @@ const submissionColumns: ResourceColumn<Entity>[] = [
   { label: "Target", render: (item) => currency(item.target_pendanaan) },
   { label: "Terkumpul", render: (item) => currency(item.total_pendanaan) },
   { label: "Return", render: (item) => percent(item.per_anual_return) },
+  { label: "Peluang", render: (item) => textValue(item.deskripsi_peluang, "-") },
   { label: "Status", render: (item) => badge(readPath(item, ["approval.status", "approval_status", "status"])) },
   { label: "Match", render: (item) => <span className="font-black text-secondary">{percent(item.match_score || item.skor_kecocokan)}</span> },
 ];
@@ -293,8 +303,8 @@ const _notificationFields: ResourceField<Entity>[] = [
     label: "Status",
     type: "select",
     options: [
-      { value: "unread", label: "Unread" },
-      { value: "read", label: "Read" },
+      { value: "unread", label: "Belum Dibaca" },
+      { value: "read", label: "Dibaca" },
     ],
   },
 ];
@@ -315,7 +325,7 @@ const notificationColumns: ResourceColumn<Entity>[] = [
 
 const submissionActions: ResourceAction<Entity>[] = [
   {
-    label: "Approve",
+    label: "Setujui",
     method: "PUT",
     path: (item) => `/businesses/proposals/${item.id}/status`,
     body: { status: "approved", catatan: "Pengajuan disetujui dari dashboard." },
@@ -324,7 +334,7 @@ const submissionActions: ResourceAction<Entity>[] = [
     isVisible: (item) => isStatus(item, ["pending", "draft"]),
   },
   {
-    label: "Reject",
+    label: "Tolak",
     method: "PUT",
     path: (item) => `/businesses/proposals/${item.id}/status`,
     body: { status: "rejected", catatan: "Pengajuan ditolak dari dashboard." },
@@ -336,7 +346,7 @@ const submissionActions: ResourceAction<Entity>[] = [
 
 const negotiationActions: ResourceAction<Entity>[] = [
   {
-    label: "Accept",
+    label: "Setujui",
     method: "POST",
     path: (item) => `/businesses/proposals/negotiations/accept/${item.id}`,
     body: { catatan: "Negosiasi disetujui dari dashboard." },
@@ -345,7 +355,7 @@ const negotiationActions: ResourceAction<Entity>[] = [
     isVisible: (item) => !isStatus(item, ["accepted", "rejected", "deal"]),
   },
   {
-    label: "Reject",
+    label: "Tolak",
     method: "POST",
     path: (item) => `/businesses/proposals/negotiations/reject/${item.id}`,
     body: { catatan: "Negosiasi ditolak dari dashboard." },
@@ -357,10 +367,18 @@ const negotiationActions: ResourceAction<Entity>[] = [
 
 const invoiceActions: ResourceAction<Entity>[] = [
   {
-    label: "Pay",
+    label: "Bayar Invoice",
     method: "PUT",
-    path: (item) => `/invoices/${item.kode_pembayaran || item.id}/pay`,
+    path: (item) => `/invoices/${item.id}/pay`,
     confirm: "Bayar invoice ini?",
+    className: "btn btn-primary btn-xs rounded-md text-white",
+    isVisible: (item) => !isStatus(item, ["paid", "completed"]),
+  },
+  {
+    label: "Bayar via Dompet",
+    method: "POST",
+    path: (item) => `/wallet/pay-invoice/${item.kode_pembayaran || item.id}`,
+    confirm: "Bayar invoice ini menggunakan saldo dompet?",
     className: "btn btn-success btn-xs rounded-md text-white",
     isVisible: (item) => !isStatus(item, ["paid", "completed"]),
   },
@@ -368,7 +386,7 @@ const invoiceActions: ResourceAction<Entity>[] = [
 
 const investmentActions: ResourceAction<Entity>[] = [
   {
-    label: "By Pengajuan",
+    label: "Per Pengajuan",
     method: "GET",
     path: (item) => `/investasi/proposals?pengajuans_id=${item.pengajuans_id || item.pengajuan_id || item.id}`,
     className: "btn btn-outline btn-xs rounded-md",
@@ -377,7 +395,7 @@ const investmentActions: ResourceAction<Entity>[] = [
 
 const profitActions: ResourceAction<Entity>[] = [
   {
-    label: "By Penjualan",
+    label: "Per Penjualan",
     method: "GET",
     path: (item) => `/profit-distributions/sales?penjualans_id=${item.penjualans_id || item.penjualan_id || readPath(item, ["penjualan.id"]) || item.id}`,
     className: "btn btn-outline btn-xs rounded-md",
@@ -386,7 +404,7 @@ const profitActions: ResourceAction<Entity>[] = [
 
 const notificationActions: ResourceAction<Entity>[] = [
   {
-    label: "Read",
+    label: "Tandai Dibaca",
     method: "PUT",
     path: (item) => `/notifications/${item.id}`,
     className: "btn btn-outline btn-xs rounded-md",
@@ -409,7 +427,7 @@ export function BusinessesPage({
     scope === "mine" ? myBusinessConfig : scope === "admin" ? adminBusinessConfig : businessConfig;
   const isAdminScope = scope === "admin";
   const isUmkmOwner = user?.role === "umkm" && !isAdminScope;
-  const canDelete = isUmkmOwner;
+  const canDelete = isUmkmOwner || (isAdminScope && user?.role === "superadmin");
   const classOptions = useMemo(
     () =>
       (classOptionsQuery.data ?? []).map((item) => ({
@@ -471,6 +489,15 @@ export function SubmissionsPage({ admin = false }: { admin?: boolean }) {
       },
       { name: "target_pendanaan", label: "Target Pendanaan", type: "number", required: true },
       { name: "per_anual_return", label: "Return Tahunan", type: "number", required: true },
+      { name: "deskripsi_peluang", label: "Deskripsi Peluang", type: "textarea", colSpan: 2 },
+      {
+        name: "rencana_penggunaan_dana",
+        label: "Rencana Penggunaan Dana (JSON)",
+        type: "textarea",
+        placeholder:
+          '[{"kategori":"Marketing","jumlah":10000000},{"kategori":"Operasional","jumlah":15000000}]',
+        colSpan: 2,
+      },
     ];
   }, [admin, businessOptionsQuery.data]);
 
@@ -492,7 +519,13 @@ export function SubmissionsPage({ admin = false }: { admin?: boolean }) {
           ? "Pengajuan UMKM akan muncul di sini untuk proses review."
           : "Buat pengajuan setelah profil bisnis tersedia agar investor bisa melihat peluang pendanaan."
       }
-      searchableFields={["id", "target_pendanaan", "per_anual_return", (item) => readPath(item, ["bisnis.nama_bisnis", "bisnis.nama"])]}
+      searchableFields={[
+        "id",
+        "target_pendanaan",
+        "per_anual_return",
+        "deskripsi_peluang",
+        (item) => readPath(item, ["bisnis.nama_bisnis", "bisnis.nama"]),
+      ]}
     />
   );
 }

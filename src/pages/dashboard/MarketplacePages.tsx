@@ -39,7 +39,7 @@ import {
   publishedSubmissionConfig,
   submissionConfig,
 } from "../../lib/resourceConfigs";
-import { currency, percent, readPath, statusTone, textValue } from "../../lib/format";
+import { currency, dateShort, percent, readPath, statusTone, textValue } from "../../lib/format";
 import type { Entity } from "../../types";
 
 type SavedOpportunity = Entity & {
@@ -1108,6 +1108,50 @@ export function AdminReviewQueuePage() {
     },
     onSuccess: async () => queryClient.invalidateQueries({ queryKey: ["admin-review-queue"] }),
   });
+  const documentsQuery = useQuery({
+    queryKey: ["admin-review-queue", "documents"],
+    queryFn: async () => {
+      const response = await apiClient.get("/businesses/documents/pending");
+      const payload = unwrap<unknown>(response.data);
+      if (Array.isArray(payload)) return payload as Entity[];
+      if (payload && typeof payload === "object") {
+        const objectPayload = payload as Record<string, unknown>;
+        if (Array.isArray(objectPayload.dokumen)) return objectPayload.dokumen as Entity[];
+      }
+      return [];
+    },
+    retry: false,
+  });
+  const documentReviewMutation = useMutation({
+    mutationFn: async ({
+      item,
+      status,
+      note,
+    }: {
+      item: Entity;
+      status: "valid" | "invalid";
+      note?: string;
+    }) => {
+      const response = await apiClient.patch(`/businesses/documents/${item.id}/review`, {
+        status,
+        ...(status === "invalid" ? { catatan: note } : {}),
+      });
+      return unwrap<unknown>(response.data);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-review-queue", "documents"] });
+    },
+  });
+  const verifyBusinessMutation = useMutation({
+    mutationFn: async (bisnisId: string | number) => {
+      const response = await apiClient.patch(`/businesses/documents/${bisnisId}/verify`);
+      return unwrap<unknown>(response.data);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-review-queue", "documents"] });
+    },
+  });
+  const pendingDocuments = documentsQuery.data ?? [];
 
   return (
     <section className="space-y-5">
@@ -1156,6 +1200,79 @@ export function AdminReviewQueuePage() {
             </div>
           </article>
         ))}
+      </div>
+      <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <h3 className="text-lg font-black">Review dokumen UMKM</h3>
+          <span className="badge badge-neutral text-white">{pendingDocuments.length}</span>
+        </div>
+        {documentsQuery.isLoading ? <ListSkeleton rows={3} /> : null}
+        {documentsQuery.isError ? (
+          <div className="mt-4 rounded-md border border-error/20 bg-error/10 p-4 text-sm font-semibold text-error">
+            {apiErrorMessage(documentsQuery.error, "Gagal memuat dokumen pending.")}
+          </div>
+        ) : null}
+        {!documentsQuery.isLoading && !documentsQuery.isError && pendingDocuments.length === 0 ? (
+          <div className="mt-4 rounded-md border border-base-300 bg-base-100 p-4 text-sm font-semibold text-neutral/60">
+            Tidak ada dokumen pending.
+          </div>
+        ) : null}
+        <div className="mt-4 grid gap-3">
+          {pendingDocuments.map((item) => (
+            <article key={String(item.id)} className="rounded-md border border-base-300 p-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <p className="font-black">
+                    {textValue(item.nama_bisnis)} - {textValue(item.nama_dokumen)}
+                  </p>
+                  <p className="mt-1 text-sm text-neutral/55">
+                    {textValue(item.jenis_dokumen)} - #{textValue(item.bisnis_id)} -{" "}
+                    {dateShort(item.updated_at || item.created_at)}
+                  </p>
+                  {item.file_url ? (
+                    <a
+                      href={String(item.file_url)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex text-sm font-semibold text-primary hover:underline"
+                    >
+                      Lihat file
+                    </a>
+                  ) : null}
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button
+                    className="btn btn-success rounded-md text-white"
+                    disabled={documentReviewMutation.isPending}
+                    onClick={() => documentReviewMutation.mutate({ item, status: "valid" })}
+                  >
+                    <CheckCircle2 size={17} />
+                    Validasi
+                  </button>
+                  <button
+                    className="btn btn-error rounded-md text-white"
+                    disabled={documentReviewMutation.isPending}
+                    onClick={() => {
+                      const note = window.prompt("Catatan penolakan dokumen:");
+                      if (!note?.trim()) return;
+                      documentReviewMutation.mutate({ item, status: "invalid", note: note.trim() });
+                    }}
+                  >
+                    <XCircle size={17} />
+                    Tolak
+                  </button>
+                  <button
+                    className="btn btn-outline rounded-md"
+                    disabled={verifyBusinessMutation.isPending}
+                    onClick={() => verifyBusinessMutation.mutate(String(item.bisnis_id))}
+                  >
+                    Verifikasi Bisnis
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   );
