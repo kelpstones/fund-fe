@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -78,6 +76,7 @@ body {
   min-height: 100vh;
   margin: 0;
   background: #ffffff;
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
 #root {
@@ -111,6 +110,53 @@ textarea {
 
   .table :where(td:first-child) {
     white-space: normal;
+  }
+
+  .fr-toast-alert {
+    border: 1px solid;
+    color: #111827;
+    box-shadow:
+      0 8px 22px -14px rgba(15, 23, 42, 0.32),
+      0 4px 8px -6px rgba(15, 23, 42, 0.2);
+  }
+
+  .fr-toast-alert--success {
+    background-color: #e8f8ee;
+    border-color: #b8e6c7;
+    color: #14532d;
+  }
+
+  .fr-toast-alert--error {
+    background-color: #fdecec;
+    border-color: #f5c2c7;
+    color: #7f1d1d;
+  }
+
+  .fr-toast-alert--warning {
+    background-color: #fff4df;
+    border-color: #ffd9a8;
+    color: #7c4a03;
+  }
+
+  .fr-toast-alert--info {
+    background-color: #eaf3ff;
+    border-color: #c3dbff;
+    color: #1e3a8a;
+  }
+
+  .fr-toast-dismiss {
+    display: grid;
+    height: 1.5rem;
+    width: 1.5rem;
+    place-items: center;
+    flex-shrink: 0;
+    border-radius: 0.25rem;
+    color: color-mix(in oklab, currentColor 70%, black 10%);
+    transition: background-color 120ms ease-out;
+  }
+
+  .fr-toast-dismiss:hover {
+    background-color: color-mix(in oklab, currentColor 12%, white 88%);
   }
 }
 

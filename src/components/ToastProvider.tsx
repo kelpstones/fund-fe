@@ -47,10 +47,10 @@ const EXIT_DURATION = 160;
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 const toneClass: Record<ToastTone, string> = {
-  success: "alert-success",
-  error: "alert-error",
-  info: "alert-info",
-  warning: "alert-warning",
+  success: "fr-toast-alert fr-toast-alert--success",
+  error: "fr-toast-alert fr-toast-alert--error",
+  info: "fr-toast-alert fr-toast-alert--info",
+  warning: "fr-toast-alert fr-toast-alert--warning",
 };
 
 const toneIcon: Record<ToastTone, typeof CheckCircle2> = {
@@ -179,7 +179,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               </div>
               <button
                 type="button"
-                className="btn btn-ghost btn-xs btn-square shrink-0"
+                className="fr-toast-dismiss"
                 onClick={() => dismiss(item.id)}
                 aria-label="Dismiss toast"
               >
