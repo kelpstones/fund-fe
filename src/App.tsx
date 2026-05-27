@@ -232,7 +232,6 @@ export default function App() {
               <Route path="onboarding" element={<InvestorOnboardingPage />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="rekening" element={<InvestorBankAccountsPage />} />
-              <Route path="dokumen" element={<DocumentCenterPage />} />
               <Route path="preferensi" element={<InvestorPreferencesPage />} />
               <Route path="survey" element={<InvestorSurveyPage />} />
               <Route path="peluang" element={<OpportunitiesPage />} />

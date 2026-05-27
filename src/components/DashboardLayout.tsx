@@ -104,7 +104,6 @@ const navByRole: Record<UserRole, NavGroup[]> = {
       items: [
         { to: "/dashboard/investor/profile", labelKey: "dashboardProfile", icon: UserRound },
         { to: "/dashboard/investor/rekening", labelKey: "dashboardBankAccounts", icon: Building2 },
-        { to: "/dashboard/investor/dokumen", labelKey: "dashboardDocuments", icon: FileText },
         { to: "/dashboard/investor/preferensi", labelKey: "dashboardPreferences", icon: SlidersHorizontal },
         { to: "/dashboard/investor/survey", labelKey: "dashboardSurvey", icon: ClipboardList },
         { to: "/dashboard/investor/notifikasi", labelKey: "dashboardNotifications", icon: Bell },
