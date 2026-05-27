@@ -1,9 +1,10 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { Filter, Loader2, RefreshCw } from "lucide-react";
 import { ResourcePage } from "../../components/ResourcePage";
+import { useToast } from "../../components/ToastProvider";
 import { resourceApi } from "../../lib/api/resources";
 import { apiClient, unwrap } from "../../lib/api/client";
 import { useAuth } from "../../lib/auth/AuthProvider";
@@ -57,6 +58,19 @@ const apiErrorMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
+const onlyDigits = (value: string) => value.replace(/\D/g, "");
+
+const parseNumberInput = (value: string) => {
+  const digits = onlyDigits(value);
+  return digits ? Number(digits) : 0;
+};
+
+const formatNumberInput = (value: string) => {
+  const digits = onlyDigits(value);
+  if (!digits) return "";
+  return new Intl.NumberFormat("id-ID").format(Number(digits));
+};
+
 const businessFields: ResourceField<Entity>[] = [
   { name: "nama_bisnis", label: "Nama Bisnis", required: true },
   {
@@ -78,16 +92,17 @@ const businessFields: ResourceField<Entity>[] = [
     ],
   },
   { name: "alamat", label: "Alamat", required: true, colSpan: 2 },
-  { name: "no_telp", label: "No. Telp", required: true },
+  { name: "no_telp", label: "No. Telp" },
   { name: "email", label: "Email", type: "email", required: true },
   {
     name: "kelas_id",
     label: "Kelas",
     type: "select",
+    required: true,
     colSpan: 2,
     options: [],
   },
-  { name: "deskripsi", label: "Deskripsi", type: "textarea", colSpan: 2 },
+  { name: "deskripsi", label: "Deskripsi", type: "textarea", required: true, colSpan: 2 },
 ];
 
 const businessColumns: ResourceColumn<Entity>[] = [
@@ -156,7 +171,7 @@ const submissionColumns: ResourceColumn<Entity>[] = [
     render: (item) => (
       <div>
         <p className="font-black">
-          {textValue(readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "nama", "bisnis_id"]))}
+          {textValue(readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "bisnis_nama", "nama", "bisnis_id"]))}
         </p>
         <p className="mt-1 text-sm text-neutral/55">ID #{textValue(item.id)}</p>
       </div>
@@ -436,6 +451,13 @@ export function BusinessesPage({
       })),
     [classOptionsQuery.data],
   );
+  const classOptionsFailed = classOptionsQuery.isError;
+  const classOptionsEmpty = !classOptionsQuery.isLoading && classOptionsQuery.isSuccess && classOptions.length === 0;
+  const classOptionsUnavailable = classOptionsFailed || classOptionsEmpty;
+  const canCreateBusiness = isUmkmOwner && !classOptionsUnavailable;
+  const businessDescription = classOptionsUnavailable
+    ? "Data kelas bisnis belum tersedia. Muat ulang halaman lalu coba lagi."
+    : "Data bisnis utama UMKM untuk pengajuan pendanaan investor.";
   const fields = useMemo<ResourceField<Entity>[]>(
     () =>
       businessFields.map((field) =>
@@ -452,31 +474,85 @@ export function BusinessesPage({
   return (
     <ResourcePage
       title="Bisnis"
-      description="Kelola profil bisnis UMKM, kontak, sektor, kelas, dan deskripsi usaha."
+      description={businessDescription}
       config={config}
       columns={businessColumns}
       fields={fields}
       createLabel="Tambah Bisnis"
-      allowCreate={isUmkmOwner}
+      allowCreate={canCreateBusiness}
       allowEdit={false}
       allowDelete={canDelete}
       emptyTitle={isUmkmOwner ? "Belum ada bisnis" : "Belum ada bisnis terdaftar"}
       emptyDescription={
-        isUmkmOwner
+        classOptionsUnavailable && isUmkmOwner
+          ? "Kelas bisnis gagal dimuat. Periksa koneksi backend lalu muat ulang halaman."
+          : isUmkmOwner
           ? "Tambahkan bisnis pertama agar kamu bisa membuat pengajuan pendanaan."
           : "Data bisnis akan muncul setelah UMKM mendaftarkan profil usaha."
       }
       searchableFields={["nama_bisnis", "nama", "tipe_usaha", "email", "no_telp"]}
+      maxCreateItems={isUmkmOwner ? 1 : undefined}
+      createLimitMessage="Setiap akun UMKM hanya dapat memiliki 1 bisnis."
     />
   );
 }
 
 export function SubmissionsPage({ admin = false }: { admin?: boolean }) {
+  const { user } = useAuth();
   const businessOptionsQuery = useQuery({
-    queryKey: ["submission-business-options", admin],
+    queryKey: ["submission-business-options", admin, user?.id ?? "guest", user?.role ?? "guest"],
     queryFn: () => resourceApi.list(admin ? businessConfig : myBusinessConfig),
     enabled: !admin,
   });
+  const availableBusinesses = businessOptionsQuery.data ?? [];
+  const myBusinessIds = useMemo(
+    () =>
+      new Set(
+        availableBusinesses
+          .map((item) => Number(item.id))
+          .filter((value) => Number.isFinite(value)),
+      ),
+    [availableBusinesses],
+  );
+  const primaryBusiness = availableBusinesses[0];
+  const profile = primaryBusiness?.profile;
+  const hasBusinessProfile =
+    profile &&
+    typeof profile === "object" &&
+    [
+      "net_profit_margin",
+      "kepuasan_pelanggan",
+      "review_volatility",
+      "repeat_order_rate",
+      "digital_adoption_score",
+      "year_revenue",
+      "business_tenure_years",
+      "tim_operasional",
+    ].some((key) => {
+      const value = (profile as Record<string, unknown>)[key];
+      return value !== null && value !== undefined && value !== "";
+    });
+  const isBusinessVerified = Boolean(primaryBusiness?.is_verified);
+  const hasBusiness = availableBusinesses.length > 0;
+  const canCreateSubmission = admin
+    ? false
+    : hasBusiness && isBusinessVerified && Boolean(hasBusinessProfile);
+  const submissionDescription = admin
+    ? "Kelola review pengajuan UMKM, status approval, dan publikasi peluang."
+    : !hasBusiness
+    ? "Tambahkan bisnis terlebih dahulu sebelum membuat pengajuan pendanaan."
+    : !isBusinessVerified
+    ? "Bisnis belum terverifikasi admin. Pengajuan akan dibuka setelah verifikasi."
+    : !hasBusinessProfile
+    ? "Lengkapi bisnis profile terlebih dahulu agar pengajuan bisa dibuat."
+    : "Kelola target pendanaan, return tahunan, dan detail peluang.";
+  const umkmEmptyDescription = !hasBusiness
+    ? "Tambahkan bisnis dulu agar bisa membuat pengajuan."
+    : !isBusinessVerified
+    ? "Tunggu verifikasi bisnis dari admin sebelum membuat pengajuan."
+    : !hasBusinessProfile
+    ? "Lengkapi bisnis profile sebelum membuat pengajuan."
+    : "Buat pengajuan agar investor bisa melihat peluang pendanaan.";
   const fields = useMemo<ResourceField<Entity>[]>(() => {
     if (admin) return submissionFields;
     return [
@@ -485,6 +561,7 @@ export function SubmissionsPage({ admin = false }: { admin?: boolean }) {
         label: "Bisnis",
         type: "select",
         required: true,
+        hideOnEdit: true,
         options: asOptions(businessOptionsQuery.data ?? [], ["nama_bisnis", "nama"]),
       },
       { name: "target_pendanaan", label: "Target Pendanaan", type: "number", required: true },
@@ -504,28 +581,38 @@ export function SubmissionsPage({ admin = false }: { admin?: boolean }) {
   return (
     <ResourcePage
       title="Pengajuan Dana"
-      description="Kelola target pendanaan, return tahunan, progress pendanaan, status publikasi, dan approval."
+      description={submissionDescription}
       config={submissionConfig}
       columns={submissionColumns}
       fields={fields}
       createLabel="Tambah Pengajuan"
       actions={admin ? submissionActions : []}
-      allowCreate={!admin}
+      allowCreate={canCreateSubmission}
       allowEdit={!admin}
       allowDelete={admin}
       emptyTitle={admin ? "Belum ada pengajuan" : "Belum ada pengajuan dana"}
       emptyDescription={
         admin
           ? "Pengajuan UMKM akan muncul di sini untuk proses review."
-          : "Buat pengajuan setelah profil bisnis tersedia agar investor bisa melihat peluang pendanaan."
+          : umkmEmptyDescription
       }
       searchableFields={[
         "id",
         "target_pendanaan",
         "per_anual_return",
         "deskripsi_peluang",
-        (item) => readPath(item, ["bisnis.nama_bisnis", "bisnis.nama"]),
+        (item) => readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "bisnis_nama"]),
       ]}
+      rowFilter={
+        admin
+          ? undefined
+          : (item) => {
+              const businessId = Number(readPath(item, ["bisnis_id", "bisnis.id"], ""));
+              return Number.isFinite(businessId) && myBusinessIds.has(businessId);
+            }
+      }
+      maxCreateItems={admin ? undefined : 1}
+      createLimitMessage="Setiap bisnis hanya bisa memiliki 1 pengajuan aktif."
     />
   );
 }
@@ -555,7 +642,9 @@ export function SalesPage() {
 }
 
 function UmkmSalesPage() {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
+  const { user } = useAuth();
+  const toast = useToast();
   const queryClient = useQueryClient();
   const [form, setForm] = useState({
     pengajuans_id: "",
@@ -565,36 +654,113 @@ function UmkmSalesPage() {
     laba_bersih: "",
     jumlah_transaksi: "",
   });
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const submissionsQuery = useQuery({
-    queryKey: ["sales-submission-options"],
-    queryFn: () => resourceApi.list(submissionConfig),
+  const myBusinessesQuery = useQuery({
+    queryKey: ["sales-business-options", user?.id ?? "guest", user?.role ?? "guest"],
+    queryFn: () => resourceApi.list(myBusinessConfig),
+    enabled: user?.role === "umkm",
+    retry: false,
   });
-  const submissionOptions = asOptions(submissionsQuery.data ?? [], [
-    "bisnis.nama_bisnis",
-    "bisnis.nama",
-    "nama",
-    "id",
-  ]);
+  const submissionsQuery = useQuery({
+    queryKey: ["sales-submission-options", user?.id ?? "guest", user?.role ?? "guest"],
+    queryFn: () => resourceApi.list(submissionConfig),
+    enabled: user?.role === "umkm",
+    retry: false,
+  });
+  const ownBusinessIds = useMemo(
+    () =>
+      new Set(
+        (myBusinessesQuery.data ?? [])
+          .map((item) => Number(readPath(item, ["id"], "")))
+          .filter((value) => Number.isFinite(value)),
+      ),
+    [myBusinessesQuery.data],
+  );
+  const ownSubmissions = useMemo(
+    () =>
+      (submissionsQuery.data ?? []).filter((item) => {
+        const businessId = Number(readPath(item, ["bisnis_id", "bisnis.id"], ""));
+        return Number.isFinite(businessId) && ownBusinessIds.has(businessId);
+      }),
+    [ownBusinessIds, submissionsQuery.data],
+  );
+  const submissionOptions = useMemo(
+    () =>
+      ownSubmissions.map((item) => {
+        const businessLabel = textValue(
+          readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "bisnis_nama", "nama", "id"]),
+        );
+        const statusRaw = textValue(
+          readPath(item, ["approval.status", "approval_status", "status"]),
+          "-",
+        );
+        const statusLabel = statusRaw === "-" ? statusRaw : t(statusRaw);
+        const targetLabel = currency(readPath(item, ["target_pendanaan"]));
+        return {
+          value: item.id,
+          label: `${businessLabel} | ${targetLabel} | ${statusLabel}`,
+        };
+      }),
+    [ownSubmissions, t],
+  );
+  const isOptionsLoading = myBusinessesQuery.isLoading || submissionsQuery.isLoading;
+  const isOptionsError = myBusinessesQuery.isError || submissionsQuery.isError;
+  const hasBusiness = (myBusinessesQuery.data ?? []).length > 0;
+  const hasSubmissions = ownSubmissions.length > 0;
+  const selectPlaceholder = isOptionsLoading
+    ? language === "id"
+      ? "Memuat pengajuan..."
+      : "Loading submissions..."
+    : language === "id"
+      ? "Pilih pengajuan"
+      : "Choose submission";
   const selectedPengajuanId = form.pengajuans_id.trim();
+  const submitDisabledReason = isOptionsLoading
+    ? language === "id"
+      ? "Data pengajuan masih dimuat."
+      : "Submission data is still loading."
+    : isOptionsError
+      ? language === "id"
+        ? "Perbaiki error data pengajuan terlebih dahulu."
+        : "Fix submission data error first."
+      : !hasBusiness
+        ? language === "id"
+          ? "Tambahkan bisnis terlebih dahulu."
+          : "Create a business profile first."
+        : !hasSubmissions
+          ? language === "id"
+            ? "Buat pengajuan pendanaan terlebih dahulu."
+            : "Create a funding submission first."
+          : !selectedPengajuanId
+            ? language === "id"
+              ? "Pilih pengajuan terlebih dahulu."
+              : "Choose a submission first."
+            : null;
+
+  useEffect(() => {
+    if (!selectedPengajuanId) return;
+    const stillValid = submissionOptions.some(
+      (option) => String(option.value) === selectedPengajuanId,
+    );
+    if (!stillValid) {
+      setForm((current) => ({ ...current, pengajuans_id: "" }));
+    }
+  }, [selectedPengajuanId, submissionOptions]);
 
   const mutation = useMutation({
     mutationFn: async () => {
       const response = await apiClient.post("/businesses/proposals/sales", {
         pengajuans_id: Number(form.pengajuans_id),
         periode: form.periode,
-        total_penjualan: Number(form.total_penjualan),
-        laba_kotor: Number(form.laba_kotor),
-        laba_bersih: Number(form.laba_bersih),
-        jumlah_transaksi: Number(form.jumlah_transaksi),
+        total_penjualan: parseNumberInput(form.total_penjualan),
+        laba_kotor: parseNumberInput(form.laba_kotor),
+        laba_bersih: parseNumberInput(form.laba_bersih),
+        jumlah_transaksi: parseNumberInput(form.jumlah_transaksi),
       });
       return unwrap<unknown>(response.data);
     },
     onSuccess: async () => {
       const selectedId = form.pengajuans_id;
-      setMessage(t("salesReportSubmitSuccess"));
-      setError("");
+      toast.success(t("salesReportSubmitSuccess"), { title: t("dataAdded") });
       setForm({
         pengajuans_id: selectedId,
         periode: "",
@@ -610,8 +776,9 @@ function UmkmSalesPage() {
       }
     },
     onError: (err) => {
-      setMessage("");
-      setError(apiErrorMessage(err, t("salesReportSubmitError")));
+      toast.error(apiErrorMessage(err, t("salesReportSubmitError")), {
+        title: t("saveFailed"),
+      });
     },
   });
 
@@ -636,20 +803,61 @@ function UmkmSalesPage() {
           {salesFields.map((field) => (
             <label key={field.name} className="form-control">
               <span className="label-text mb-2 font-semibold">{t(field.label)}</span>
-              {field.name === "pengajuans_id" && submissionOptions.length > 0 ? (
+              {field.name === "pengajuans_id" ? (
                 <select
                   className="select select-bordered rounded-md"
                   value={form.pengajuans_id}
                   onChange={(event) => update("pengajuans_id", event.target.value)}
+                  disabled={isOptionsLoading || isOptionsError || !hasSubmissions}
                   required
                 >
-                  <option value="">{t("chooseSubmission")}</option>
+                  <option value="">{selectPlaceholder}</option>
                   {submissionOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
                   ))}
                 </select>
+              ) : field.name === "periode" ? (
+                <input
+                  className="input input-bordered rounded-md"
+                  type="month"
+                  value={form.periode}
+                  onChange={(event) => update("periode", event.target.value)}
+                  required
+                />
+              ) : field.name === "total_penjualan" ||
+                field.name === "laba_kotor" ||
+                field.name === "laba_bersih" ? (
+                <div className="input input-bordered flex items-center gap-2 rounded-md">
+                  <span className="text-sm font-semibold text-neutral/60">Rp</span>
+                  <input
+                    className="w-full bg-transparent text-sm font-semibold outline-none"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={formatNumberInput(form[field.name as keyof typeof form] ?? "")}
+                    onChange={(event) =>
+                      update(
+                        field.name as keyof typeof form,
+                        onlyDigits(event.target.value),
+                      )
+                    }
+                    placeholder="0"
+                    required
+                  />
+                </div>
+              ) : field.name === "jumlah_transaksi" ? (
+                <input
+                  className="input input-bordered rounded-md"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={form.jumlah_transaksi}
+                  onChange={(event) =>
+                    update("jumlah_transaksi", onlyDigits(event.target.value))
+                  }
+                  required
+                />
               ) : (
                 <input
                   className="input input-bordered rounded-md"
@@ -663,13 +871,43 @@ function UmkmSalesPage() {
             </label>
           ))}
         </div>
+        {isOptionsError ? (
+          <div className="mt-4 rounded-md border border-error/20 bg-error/5 px-3 py-2 text-sm font-semibold text-error">
+            {language === "id"
+              ? "Gagal memuat data pengajuan. Coba muat ulang halaman."
+              : "Failed to load submission data. Please refresh the page."}
+          </div>
+        ) : null}
+        {!isOptionsLoading && !isOptionsError && !hasBusiness ? (
+          <div className="mt-4 rounded-md border border-base-300 bg-base-100 px-3 py-2 text-sm font-semibold text-neutral/65">
+            {language === "id"
+              ? "Belum ada bisnis aktif. Tambahkan bisnis terlebih dahulu sebelum mengirim laporan penjualan."
+              : "No active business found. Add a business first before submitting sales reports."}
+          </div>
+        ) : null}
+        {!isOptionsLoading && !isOptionsError && hasBusiness && !hasSubmissions ? (
+          <div className="mt-4 space-y-3 rounded-md border border-base-300 bg-base-100 px-3 py-2">
+            <p className="text-sm font-semibold text-neutral/65">
+              {language === "id"
+                ? "Belum ada pengajuan untuk bisnis kamu."
+                : "No submission found for your business yet."}
+            </p>
+            <Link className="btn btn-sm btn-primary rounded-md text-white" to="/dashboard/umkm/pengajuan">
+              {language === "id" ? "Buka halaman pengajuan" : "Open submissions page"}
+            </Link>
+          </div>
+        ) : null}
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <button className="btn btn-primary rounded-md text-white" disabled={mutation.isPending}>
+          <button
+            className="btn btn-primary rounded-md text-white"
+            disabled={mutation.isPending || isOptionsLoading || isOptionsError || !selectedPengajuanId}
+          >
             {mutation.isPending ? <Loader2 className="animate-spin" size={18} /> : null}
             {t("Tambah Laporan")}
           </button>
-          {message ? <span className="text-sm font-semibold text-success">{message}</span> : null}
-          {error ? <span className="text-sm font-semibold text-error">{error}</span> : null}
+          {submitDisabledReason ? (
+            <span className="text-sm font-semibold text-neutral/60">{submitDisabledReason}</span>
+          ) : null}
         </div>
       </form>
       {selectedPengajuanId ? (
@@ -679,6 +917,9 @@ function UmkmSalesPage() {
           config={salesByPengajuanConfig(selectedPengajuanId)}
           columns={salesColumns}
           fields={[]}
+          showTitle={false}
+          showBreadcrumb={false}
+          showStatusFilter={false}
           readonly
           allowCreate={false}
           allowEdit={false}
@@ -961,17 +1202,64 @@ export function InvestmentsPage({ investor = false }: { investor?: boolean }) {
 }
 
 export function InvestmentsByProposalPage() {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
+  const { user } = useAuth();
   const [pengajuanId, setPengajuanId] = useState("");
-  const submissionsQuery = useQuery({
-    queryKey: ["investments-submission-options"],
-    queryFn: () => resourceApi.list(submissionConfig),
+  const myBusinessesQuery = useQuery({
+    queryKey: ["investments-business-options", user?.id ?? "guest", user?.role ?? "guest"],
+    queryFn: () => resourceApi.list(myBusinessConfig),
+    enabled: user?.role === "umkm",
+    retry: false,
   });
-  const submissionOptions = asOptions(submissionsQuery.data ?? [], [
+  const submissionsQuery = useQuery({
+    queryKey: ["investments-submission-options", user?.id ?? "guest", user?.role ?? "guest"],
+    queryFn: () => resourceApi.list(submissionConfig),
+    retry: false,
+  });
+  const ownBusinessIds = useMemo(
+    () =>
+      new Set(
+        (myBusinessesQuery.data ?? [])
+          .map((item) => Number(readPath(item, ["id"], "")))
+          .filter((value) => Number.isFinite(value)),
+      ),
+    [myBusinessesQuery.data],
+  );
+  const ownSubmissions = useMemo(
+    () =>
+      (submissionsQuery.data ?? []).filter((item) => {
+        const businessId = Number(readPath(item, ["bisnis_id", "bisnis.id"], ""));
+        return Number.isFinite(businessId) && ownBusinessIds.has(businessId);
+      }),
+    [ownBusinessIds, submissionsQuery.data],
+  );
+  const submissionOptions = asOptions(ownSubmissions, [
     "bisnis.nama_bisnis",
     "bisnis.nama",
+    "bisnis_nama",
     "nama",
+    "bisnis_id",
   ]);
+  const isOptionsLoading =
+    myBusinessesQuery.isLoading || submissionsQuery.isLoading;
+  const isOptionsError = myBusinessesQuery.isError || submissionsQuery.isError;
+  const hasBusiness = (myBusinessesQuery.data ?? []).length > 0;
+  const hasSubmissions = ownSubmissions.length > 0;
+  const selectPlaceholder = isOptionsLoading
+    ? language === "id"
+      ? "Memuat pengajuan..."
+      : "Loading submissions..."
+    : language === "id"
+    ? "Pilih pengajuan"
+    : "Choose submission";
+
+  useEffect(() => {
+    if (!pengajuanId) return;
+    const stillValid = submissionOptions.some(
+      (option) => String(option.value) === pengajuanId,
+    );
+    if (!stillValid) setPengajuanId("");
+  }, [pengajuanId, submissionOptions]);
 
   if (!pengajuanId.trim()) {
     return (
@@ -989,8 +1277,9 @@ export function InvestmentsByProposalPage() {
               className="select select-bordered rounded-md bg-white"
               value={pengajuanId}
               onChange={(event) => setPengajuanId(event.target.value)}
+              disabled={isOptionsLoading}
             >
-              <option value="">{t("chooseSubmission")}</option>
+              <option value="">{selectPlaceholder}</option>
               {submissionOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -998,14 +1287,41 @@ export function InvestmentsByProposalPage() {
               ))}
             </select>
           ) : (
-            <input
-              className="input input-bordered rounded-md bg-white"
-              value={pengajuanId}
-              onChange={(event) => setPengajuanId(event.target.value)}
-              placeholder={t("example101")}
-            />
+            <select
+              className="select select-bordered rounded-md bg-white"
+              value=""
+              disabled
+            >
+              <option value="">{selectPlaceholder}</option>
+            </select>
           )}
         </label>
+        {isOptionsError ? (
+          <div className="rounded-md border border-error/20 bg-error/5 px-3 py-2 text-sm font-semibold text-error">
+            {language === "id"
+              ? "Gagal memuat data pengajuan. Coba muat ulang halaman."
+              : "Failed to load submission data. Please refresh the page."}
+          </div>
+        ) : null}
+        {!isOptionsLoading && !isOptionsError && !hasBusiness ? (
+          <div className="rounded-md border border-base-300 bg-base-100 px-3 py-2 text-sm font-semibold text-neutral/65">
+            {language === "id"
+              ? "Belum ada bisnis aktif. Tambahkan bisnis terlebih dahulu sebelum melihat investasi per pengajuan."
+              : "No active business found. Add a business first before viewing investments by submission."}
+          </div>
+        ) : null}
+        {!isOptionsLoading && !isOptionsError && hasBusiness && !hasSubmissions ? (
+          <div className="space-y-3 rounded-md border border-base-300 bg-base-100 px-3 py-2">
+            <p className="text-sm font-semibold text-neutral/65">
+              {language === "id"
+                ? "Belum ada pengajuan untuk bisnis kamu."
+                : "No submission found for your business yet."}
+            </p>
+            <Link className="btn btn-sm btn-primary rounded-md text-white" to="/dashboard/umkm/pengajuan">
+              {language === "id" ? "Buka halaman pengajuan" : "Open submissions page"}
+            </Link>
+          </div>
+        ) : null}
       </section>
     );
   }
@@ -1019,8 +1335,9 @@ export function InvestmentsByProposalPage() {
             className="select select-bordered rounded-md bg-white"
             value={pengajuanId}
             onChange={(event) => setPengajuanId(event.target.value)}
+            disabled={isOptionsLoading}
           >
-            <option value="">{t("chooseSubmission")}</option>
+            <option value="">{selectPlaceholder}</option>
             {submissionOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -1028,13 +1345,20 @@ export function InvestmentsByProposalPage() {
             ))}
           </select>
         ) : (
-          <input
-            className="input input-bordered rounded-md bg-white"
-            value={pengajuanId}
-            onChange={(event) => setPengajuanId(event.target.value)}
-          />
+          <select
+            className="select select-bordered rounded-md bg-white"
+            value=""
+            disabled
+          >
+            <option value="">{selectPlaceholder}</option>
+          </select>
         )}
       </label>
+      <p className="text-xs font-semibold text-neutral/45">
+        {language === "id"
+          ? "Menampilkan maksimum 200 data investasi terbaru untuk pengajuan terpilih."
+          : "Showing up to 200 latest investment records for the selected submission."}
+      </p>
       <ResourcePage
         title="Investasi Pengajuan"
         description="Investasi yang tercatat untuk pengajuan bisnis tertentu."
@@ -1069,17 +1393,87 @@ export function ProfitsPage({ investor = false }: { investor?: boolean }) {
 }
 
 export function ProfitsBySalesPage() {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const { user } = useAuth();
   const isUmkm = user?.role === "umkm";
   const [penjualanId, setPenjualanId] = useState("");
-  const salesQuery = useQuery({
-    queryKey: ["profit-sales-options"],
-    queryFn: () => resourceApi.list(salesConfig),
-    enabled: !isUmkm,
+  const myBusinessesQuery = useQuery({
+    queryKey: ["profit-business-options", user?.id ?? "guest", user?.role ?? "guest"],
+    queryFn: () => resourceApi.list(myBusinessConfig),
+    enabled: isUmkm,
     retry: false,
   });
-  const salesOptions = asOptions(salesQuery.data ?? [], ["periode", "pengajuans_id"]);
+  const submissionsQuery = useQuery({
+    queryKey: ["profit-submission-options", user?.id ?? "guest", user?.role ?? "guest"],
+    queryFn: () => resourceApi.list(submissionConfig),
+    enabled: isUmkm,
+    retry: false,
+  });
+  const salesQuery = useQuery({
+    queryKey: ["profit-sales-options", user?.id ?? "guest", user?.role ?? "guest"],
+    queryFn: () => resourceApi.list(salesConfig),
+    retry: false,
+  });
+  const ownBusinessIds = useMemo(
+    () =>
+      new Set(
+        (myBusinessesQuery.data ?? [])
+          .map((item) => Number(readPath(item, ["id"], "")))
+          .filter((value) => Number.isFinite(value)),
+      ),
+    [myBusinessesQuery.data],
+  );
+  const ownSubmissionIds = useMemo(
+    () =>
+      new Set(
+        (submissionsQuery.data ?? [])
+          .filter((item) => {
+            const businessId = Number(readPath(item, ["bisnis_id", "bisnis.id"], ""));
+            return Number.isFinite(businessId) && ownBusinessIds.has(businessId);
+          })
+          .map((item) => Number(readPath(item, ["id"], "")))
+          .filter((value) => Number.isFinite(value)),
+      ),
+    [ownBusinessIds, submissionsQuery.data],
+  );
+  const salesOptions = useMemo(() => {
+    const source = isUmkm
+      ? (salesQuery.data ?? []).filter((item) => {
+          const submissionId = Number(readPath(item, ["pengajuans_id", "pengajuan.id"], ""));
+          return Number.isFinite(submissionId) && ownSubmissionIds.has(submissionId);
+        })
+      : salesQuery.data ?? [];
+
+    return source.map((item) => {
+      const periodLabel = textValue(readPath(item, ["periode", "period"]), "-");
+      const totalLabel = currency(readPath(item, ["total_penjualan"]));
+      const submissionId = textValue(readPath(item, ["pengajuans_id", "pengajuan.id"]), "-");
+      return {
+        value: item.id,
+        label: `${periodLabel} | ${totalLabel} | #${submissionId}`,
+      };
+    });
+  }, [isUmkm, ownSubmissionIds, salesQuery.data]);
+  const isOptionsLoading =
+    salesQuery.isLoading || (isUmkm && (myBusinessesQuery.isLoading || submissionsQuery.isLoading));
+  const isOptionsError =
+    salesQuery.isError || (isUmkm && (myBusinessesQuery.isError || submissionsQuery.isError));
+  const hasBusiness = !isUmkm || (myBusinessesQuery.data ?? []).length > 0;
+  const hasSubmissions = !isUmkm || ownSubmissionIds.size > 0;
+  const hasSales = salesOptions.length > 0;
+  const selectPlaceholder = isOptionsLoading
+    ? language === "id"
+      ? "Memuat laporan penjualan..."
+      : "Loading sales reports..."
+    : language === "id"
+      ? "Pilih laporan penjualan"
+      : "Choose sales report";
+
+  useEffect(() => {
+    if (!penjualanId) return;
+    const stillValid = salesOptions.some((option) => String(option.value) === penjualanId);
+    if (!stillValid) setPenjualanId("");
+  }, [penjualanId, salesOptions]);
 
   if (!penjualanId.trim()) {
     return (
@@ -1092,28 +1486,58 @@ export function ProfitsBySalesPage() {
         </div>
         <label className="form-control max-w-sm">
           <span className="label-text mb-2 font-semibold">{t("Penjualan")}</span>
-          {salesOptions.length > 0 ? (
-            <select
-              className="select select-bordered rounded-md bg-white"
-              value={penjualanId}
-              onChange={(event) => setPenjualanId(event.target.value)}
-            >
-              <option value="">{t("chooseSalesReport")}</option>
-              {salesOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              className="input input-bordered rounded-md bg-white"
-              value={penjualanId}
-              onChange={(event) => setPenjualanId(event.target.value)}
-              placeholder={t("example201")}
-            />
-          )}
+          <select
+            className="select select-bordered rounded-md bg-white"
+            value={penjualanId}
+            onChange={(event) => setPenjualanId(event.target.value)}
+            disabled={isOptionsLoading || isOptionsError || !hasSales}
+          >
+            <option value="">{selectPlaceholder}</option>
+            {salesOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </label>
+        {isOptionsError ? (
+          <div className="rounded-md border border-error/20 bg-error/5 px-3 py-2 text-sm font-semibold text-error">
+            {language === "id"
+              ? "Gagal memuat laporan penjualan. Coba muat ulang halaman."
+              : "Failed to load sales reports. Please refresh the page."}
+          </div>
+        ) : null}
+        {!isOptionsLoading && !isOptionsError && !hasBusiness ? (
+          <div className="rounded-md border border-base-300 bg-base-100 px-3 py-2 text-sm font-semibold text-neutral/65">
+            {language === "id"
+              ? "Belum ada bisnis aktif. Tambahkan bisnis terlebih dahulu."
+              : "No active business found. Add a business first."}
+          </div>
+        ) : null}
+        {!isOptionsLoading && !isOptionsError && hasBusiness && !hasSubmissions ? (
+          <div className="space-y-3 rounded-md border border-base-300 bg-base-100 px-3 py-2">
+            <p className="text-sm font-semibold text-neutral/65">
+              {language === "id"
+                ? "Belum ada pengajuan untuk bisnis kamu."
+                : "No submission found for your business yet."}
+            </p>
+            <Link className="btn btn-sm btn-primary rounded-md text-white" to="/dashboard/umkm/pengajuan">
+              {language === "id" ? "Buka halaman pengajuan" : "Open submissions page"}
+            </Link>
+          </div>
+        ) : null}
+        {!isOptionsLoading && !isOptionsError && hasSubmissions && !hasSales ? (
+          <div className="space-y-3 rounded-md border border-base-300 bg-base-100 px-3 py-2">
+            <p className="text-sm font-semibold text-neutral/65">
+              {language === "id"
+                ? "Belum ada laporan penjualan untuk pengajuan kamu."
+                : "No sales report found for your submissions yet."}
+            </p>
+            <Link className="btn btn-sm btn-primary rounded-md text-white" to="/dashboard/umkm/penjualan">
+              {language === "id" ? "Input laporan penjualan" : "Input sales report"}
+            </Link>
+          </div>
+        ) : null}
       </section>
     );
   }
@@ -1122,32 +1546,33 @@ export function ProfitsBySalesPage() {
     <div className="space-y-5">
       <label className="form-control max-w-sm">
         <span className="label-text mb-2 font-semibold">{t("Penjualan")}</span>
-        {salesOptions.length > 0 ? (
-          <select
-            className="select select-bordered rounded-md bg-white"
-            value={penjualanId}
-            onChange={(event) => setPenjualanId(event.target.value)}
-          >
-            <option value="">{t("chooseSalesReport")}</option>
-            {salesOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <input
-            className="input input-bordered rounded-md bg-white"
-            value={penjualanId}
-            onChange={(event) => setPenjualanId(event.target.value)}
-          />
-        )}
+        <select
+          className="select select-bordered rounded-md bg-white"
+          value={penjualanId}
+          onChange={(event) => setPenjualanId(event.target.value)}
+          disabled={isOptionsLoading}
+        >
+          <option value="">{selectPlaceholder}</option>
+          {salesOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
       </label>
+      <p className="text-xs font-semibold text-neutral/45">
+        {language === "id"
+          ? "Menampilkan maksimum 200 data distribusi terbaru untuk laporan penjualan yang dipilih."
+          : "Showing up to 200 latest distribution records for the selected sales report."}
+      </p>
       <ResourcePage
         title="Profit Penjualan"
-        description="Distribusi profit investor berdasarkan laporan penjualan tertentu."
+        description="Distribusi profit untuk laporan penjualan yang dipilih."
         config={profitBySalesConfig(penjualanId)}
         columns={profitColumns}
+        showTitle={false}
+        showBreadcrumb={false}
+        showStatusFilter={false}
         readonly
         emptyTitle="Belum ada profit untuk penjualan ini"
         emptyDescription="Distribusi profit akan muncul setelah backend membuat distribusi untuk laporan yang dipilih."
@@ -1242,6 +1667,7 @@ export function NotificationsPage() {
       actions={notificationActions}
       allowCreate={false}
       allowEdit={false}
+      allowDelete={false}
       emptyTitle="Belum ada notifikasi"
       emptyDescription="Notifikasi sistem dan aktivitas user akan muncul di sini."
       searchableFields={["title", "message", "type", "status"]}

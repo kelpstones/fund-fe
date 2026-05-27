@@ -127,7 +127,7 @@ export const salesConfig: ResourceConfig<Entity> = {
 export const salesByPengajuanConfig = (pengajuansId: string): ResourceConfig<Entity> => ({
   ...salesConfig,
   key: `sales-pengajuan-${pengajuansId}`,
-  listPath: `/businesses/proposals/sales/pengajuan?pengajuans_id=${encodeURIComponent(pengajuansId)}`,
+  listPath: `/businesses/proposals/sales/pengajuan?pengajuans_id=${encodeURIComponent(pengajuansId)}&page=1&limit=200`,
   notFoundIsEmpty: true,
 });
 
@@ -186,7 +186,7 @@ export const investmentConfig: ResourceConfig<Entity> = {
 export const investmentByPengajuanConfig = (pengajuansId: string): ResourceConfig<Entity> => ({
   ...investmentConfig,
   key: `investments-pengajuan-${pengajuansId}`,
-  listPath: `/investasi/proposals?pengajuans_id=${encodeURIComponent(pengajuansId)}`,
+  listPath: `/investasi/proposals?pengajuans_id=${encodeURIComponent(pengajuansId)}&page=1&limit=200`,
   detailPath: undefined,
 });
 
@@ -213,8 +213,9 @@ export const investorProfitConfig: ResourceConfig<Entity> = {
 export const profitBySalesConfig = (penjualansId: string): ResourceConfig<Entity> => ({
   ...profitConfig,
   key: `profits-penjualan-${penjualansId}`,
-  listPath: `/profit-distributions/sales?penjualans_id=${encodeURIComponent(penjualansId)}`,
+  listPath: `/profit-distributions/sales?penjualans_id=${encodeURIComponent(penjualansId)}&page=1&limit=200`,
   detailPath: undefined,
+  notFoundIsEmpty: true,
 });
 
 export const classConfig: ResourceConfig<Entity> = {
