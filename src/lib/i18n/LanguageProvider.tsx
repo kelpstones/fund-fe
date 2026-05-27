@@ -75,6 +75,10 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     dashboardClasses: "Kelas",
     dashboardInvestments: "Investasi",
     dashboardAdmins: "Admin",
+    dashboardWallet: "Dompet",
+    dashboardBankAccounts: "Rekening",
+    dashboardWithdrawals: "Withdrawal",
+    dashboardSupportedBanks: "Bank & E-Wallet",
     dashboardGroupMain: "Utama",
     dashboardGroupAccount: "Akun",
     dashboardGroupBusiness: "Bisnis",
@@ -139,6 +143,10 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     dashboardClasses: "Classes",
     dashboardInvestments: "Investments",
     dashboardAdmins: "Admins",
+    dashboardWallet: "Wallet",
+    dashboardBankAccounts: "Bank Accounts",
+    dashboardWithdrawals: "Withdrawals",
+    dashboardSupportedBanks: "Banks & E-Wallets",
     dashboardGroupMain: "Main",
     dashboardGroupAccount: "Account",
     dashboardGroupBusiness: "Business",
@@ -200,6 +208,11 @@ Object.assign(translations.id, {
   subject: "Subjek",
   message: "Pesan",
   sendMessage: "Kirim Pesan",
+  notFoundBody:
+    "URL yang kamu akses tidak tersedia atau sudah dipindahkan. Coba kembali ke beranda atau hubungi tim kami.",
+  notFoundHome: "Kembali ke Beranda",
+  notFoundBack: "Halaman Sebelumnya",
+  notFoundHelp: "Butuh bantuan?",
   aboutHeroTitle: "Infrastruktur pendanaan untuk UMKM dan investor modern",
   aboutHeroBody:
     "FundRaise dibuat untuk mempertemukan pemilik usaha dan investor melalui data bisnis, preferensi investasi, negosiasi yang jelas, dan monitoring investasi yang rapi.",
@@ -207,6 +220,10 @@ Object.assign(translations.id, {
   aboutTeamTitle: "Capstone Project Tim Kelpstone",
   aboutTeamBody:
     "FundRaise adalah capstone project dari tim Kelpstone. Proyek ini dikembangkan untuk Coding Camp 2026 powered by DBS Foundation.",
+  aboutCapstoneProgram:
+    "FundRaise dibuat sebagai capstone project Coding Camp 2026 dari DBS Foundation dan Dicoding.",
+  aboutTapHint: "Klik 3x untuk kejutan",
+  aboutThanksTitle: "Terima kasih",
   aboutMemberAlt: "Foto {name}",
   aboutValueContextTitle: "Konteks bisnis dibaca utuh",
   aboutValueContextBody:
@@ -318,6 +335,11 @@ Object.assign(translations.en, {
   subject: "Subject",
   message: "Message",
   sendMessage: "Send Message",
+  notFoundBody:
+    "The URL you requested is unavailable or has moved. Go back to the homepage or contact our team.",
+  notFoundHome: "Back to Home",
+  notFoundBack: "Previous Page",
+  notFoundHelp: "Need help?",
   aboutHeroTitle: "Funding infrastructure for modern UMKM and investors",
   aboutHeroBody:
     "FundRaise connects business owners and investors through business data, investment preferences, clear negotiations, and organized investment monitoring.",
@@ -325,6 +347,10 @@ Object.assign(translations.en, {
   aboutTeamTitle: "Kelpstone Team Capstone Project",
   aboutTeamBody:
     "FundRaise is the capstone project from Team Kelpstone, developed for Coding Camp 2026 powered by DBS Foundation.",
+  aboutCapstoneProgram:
+    "FundRaise was built as a Coding Camp 2026 capstone project from DBS Foundation and Dicoding.",
+  aboutTapHint: "Tap 3x for a surprise",
+  aboutThanksTitle: "Thank you",
   aboutMemberAlt: "Photo of {name}",
   "Full-Stack Web Developer": "Full-Stack Web Developer",
   "Data Scientist": "Data Scientist",
@@ -1543,7 +1569,7 @@ Object.assign(translations.id, {
   servicesBottomCtaTitle: "Siap mulai dari role kamu?",
   servicesBottomCtaBody:
     "Daftar sebagai UMKM atau investor, lalu masuk ke dashboard yang sesuai dengan kebutuhan pendanaanmu.",
-  contactFormSuccessTitle: "Pesan siap dikirim",
+  contactFormSuccessTitle: "Mode demo aktif",
   contactFormSuccessBody:
     "Terima kasih. Untuk demo ini, form menampilkan feedback lokal tanpa mengirim data ke backend.",
   contactMapTitle: "Area operasional Jakarta",
@@ -1551,6 +1577,10 @@ Object.assign(translations.id, {
     "Placeholder peta disiapkan untuk embed lokasi kantor atau area layanan FundRaise.",
   portfolioDemoMode:
     "Demo mode: data portfolio masih contoh statis untuk memperlihatkan pengalaman katalog peluang.",
+  portfolioLiveMode:
+    "Live mode: peluang sekarang dibaca dari endpoint preview backend.",
+  portfolioPreviewFallbackWarning:
+    "Backend preview sedang bermasalah. Halaman menampilkan contoh data statis sementara.",
   portfolioEmpty: "Tidak ada peluang yang cocok dengan filter saat ini.",
   portfolioCompareTitle: "Bandingkan Peluang",
   portfolioCompareBody:
@@ -1654,7 +1684,7 @@ Object.assign(translations.en, {
   servicesBottomCtaTitle: "Ready to start from your role?",
   servicesBottomCtaBody:
     "Register as UMKM or investor, then enter the dashboard that matches your funding needs.",
-  contactFormSuccessTitle: "Message ready",
+  contactFormSuccessTitle: "Demo mode active",
   contactFormSuccessBody:
     "Thank you. For this demo, the form shows local feedback without sending data to the backend.",
   contactMapTitle: "Jakarta operating area",
@@ -1662,6 +1692,10 @@ Object.assign(translations.en, {
     "Map placeholder prepared for an office embed or FundRaise service area.",
   portfolioDemoMode:
     "Demo mode: portfolio data is still static sample data to show the opportunity catalog experience.",
+  portfolioLiveMode:
+    "Live mode: opportunities are now read from the backend preview endpoint.",
+  portfolioPreviewFallbackWarning:
+    "The backend preview is currently unavailable. This page is showing static sample data temporarily.",
   portfolioEmpty: "No opportunities match the current filters.",
   portfolioCompareTitle: "Compare Opportunities",
   portfolioCompareBody:

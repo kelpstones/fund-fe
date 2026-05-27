@@ -1,10 +1,17 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { ArrowRight, Search } from "lucide-react";
 import { compactCurrency } from "../../lib/format";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import { useScrollReveal } from "../../lib/ui/useScrollReveal";
+import { apiClient, unwrap } from "../../lib/api/client";
+import { dashboardPathFor, useAuth } from "../../lib/auth/AuthProvider";
 import { portfolios, riskLabelKey, riskOptions } from "./portfolioData";
+import {
+  mapPreviewBusinessesToPortfolios,
+  unwrapPreviewList,
+} from "./portfolioPreviewAdapter";
 
 function BusinessVisual({
   image,
@@ -25,20 +32,45 @@ function BusinessVisual({
 
 export function PortfolioPage() {
   const { t } = useLanguage();
+  const { isAuthenticated, user } = useAuth();
   useScrollReveal();
   const [search, setSearch] = useState("");
   const [risk, setRisk] = useState("all");
   const [sector, setSector] = useState("all");
-  const sectors = useMemo(() => Array.from(new Set(portfolios.map((item) => item.sectorKey))), []);
+
+  const previewQuery = useQuery({
+    queryKey: ["public-portfolio-preview"],
+    queryFn: async () => {
+      const response = await apiClient.get("/businesses/preview?page=1");
+      return unwrapPreviewList(unwrap<unknown>(response.data));
+    },
+    retry: false,
+  });
+
+  const previewPortfolios = useMemo(
+    () => mapPreviewBusinessesToPortfolios(previewQuery.data ?? []),
+    [previewQuery.data],
+  );
+
+  const activePortfolios = previewPortfolios.length > 0 ? previewPortfolios : portfolios;
+  const showPreviewFallbackWarning = previewQuery.isError && previewPortfolios.length === 0;
+  const startNowTarget = isAuthenticated
+    ? dashboardPathFor(user?.role ?? "umkm")
+    : "/register";
+  const sectors = useMemo(
+    () => Array.from(new Set(activePortfolios.map((item) => item.sectorKey))),
+    [activePortfolios],
+  );
+
   const filtered = useMemo(() => {
     const needle = search.toLowerCase();
-    return portfolios.filter((item) => {
+    return activePortfolios.filter((item) => {
       const matchSearch = `${item.name} ${t(item.sectorKey)} ${item.city}`.toLowerCase().includes(needle);
       const matchRisk = risk === "all" || item.risk === risk;
       const matchSector = sector === "all" || item.sectorKey === sector;
       return matchSearch && matchRisk && matchSector;
     });
-  }, [risk, search, sector, t]);
+  }, [activePortfolios, risk, search, sector, t]);
 
   return (
     <main className="bg-white">
@@ -55,7 +87,7 @@ export function PortfolioPage() {
               {t("portfolioHeroBody")}
             </p>
           </div>
-          <Link to="/register" className="btn btn-primary rounded-md text-white">
+          <Link to={startNowTarget} className="btn btn-primary rounded-md text-white">
             {t("portfolioCta")}
             <ArrowRight size={18} />
           </Link>
@@ -69,6 +101,7 @@ export function PortfolioPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={t("portfolioSearchPlaceholder")}
+              aria-label={t("portfolioSearchPlaceholder")}
             />
           </label>
           <select className="select select-bordered rounded-md bg-white" value={risk} onChange={(event) => setRisk(event.target.value)}>
@@ -85,8 +118,19 @@ export function PortfolioPage() {
           </select>
         </div>
 
-        <div className="mt-4 rounded-md border border-info/20 bg-info/10 px-4 py-3 text-sm font-semibold text-info">
-          {t("portfolioDemoMode")}
+        <div
+          className={[
+            "mt-4 rounded-md px-4 py-3 text-sm font-semibold",
+            showPreviewFallbackWarning
+              ? "border border-warning/20 bg-warning/10 text-warning"
+              : "border border-info/20 bg-info/10 text-info",
+          ].join(" ")}
+        >
+          {showPreviewFallbackWarning
+            ? t("portfolioPreviewFallbackWarning")
+            : previewPortfolios.length > 0
+              ? t("portfolioLiveMode")
+              : t("portfolioDemoMode")}
         </div>
 
         <div className="mt-12 grid gap-5 lg:grid-cols-3">

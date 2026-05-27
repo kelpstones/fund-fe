@@ -555,6 +555,7 @@ export function ResourcePage<T extends Entity>({
               className="w-full min-w-0"
               placeholder={copy.search}
               value={search}
+              aria-label={copy.search}
               onChange={(event) => {
                 setSearch(event.target.value);
                 setPage(1);

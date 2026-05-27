@@ -55,9 +55,10 @@ export function AboutPage() {
   const tapStateRef = useRef<{ count: number; timeoutId?: number }>({ count: 0 });
 
   useEffect(() => {
+    const tapState = tapStateRef.current;
     return () => {
-      if (tapStateRef.current.timeoutId) {
-        window.clearTimeout(tapStateRef.current.timeoutId);
+      if (tapState.timeoutId) {
+        window.clearTimeout(tapState.timeoutId);
       }
     };
   }, []);
@@ -115,7 +116,7 @@ export function AboutPage() {
       <section className="border-y border-base-300 bg-white">
         <div className="mx-auto grid max-w-7xl gap-4 px-4 py-8 sm:px-6 md:grid-cols-[0.7fr_1.3fr] md:items-center lg:px-8">
           <p className="mt-2 text-sm leading-6 text-neutral/60">
-            FundRaise dibuat sebagai capstone project Coding Camp 2026 dari DBS Foundation dan Dicoding.
+            {t("aboutCapstoneProgram")}
           </p>
           <div className="grid grid-cols-3 gap-2 sm:gap-4">
             {capstonePartners.map((partner) => (
@@ -148,26 +149,32 @@ export function AboutPage() {
             {teamMembers.map((member) => (
               <article
                 key={member.name}
-                className="group cursor-pointer overflow-hidden rounded-md border border-base-300 bg-white shadow-sm"
-                onPointerUp={handleProfileTap}
-                title="Klik 3x"
+                className="overflow-hidden rounded-md border border-base-300 bg-white shadow-sm"
               >
-                <div className="aspect-square bg-base-300">
-                  <img
-                    src={member.image}
-                    alt={t("aboutMemberAlt", { name: member.name })}
-                    className="h-full w-full object-cover grayscale transition duration-300 group-hover:grayscale-0"
-                    loading="lazy"
-                  />
-                </div>
-                <div className="min-h-28 p-4">
-                  <h3 className="text-base font-black leading-6 text-neutral">
-                    {member.name}
-                  </h3>
-                  <p className="mt-2 text-sm font-semibold text-primary">
-                    {t(member.role)}
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  className="group block w-full text-left"
+                  onClick={handleProfileTap}
+                  title={t("aboutTapHint")}
+                  aria-label={`${member.name} - ${t("aboutTapHint")}`}
+                >
+                  <div className="aspect-square bg-base-300">
+                    <img
+                      src={member.image}
+                      alt={t("aboutMemberAlt", { name: member.name })}
+                      className="h-full w-full object-cover grayscale transition duration-300 group-hover:grayscale-0"
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="min-h-28 p-4">
+                    <h3 className="text-base font-black leading-6 text-neutral">
+                      {member.name}
+                    </h3>
+                    <p className="mt-2 text-sm font-semibold text-primary">
+                      {t(member.role)}
+                    </p>
+                  </div>
+                </button>
               </article>
             ))}
           </div>
@@ -190,9 +197,9 @@ export function AboutPage() {
                 loading="lazy"
               />
             </div>
-            <h3 className="mt-4 text-center text-xl font-black tracking-normal">
-              Terimakasih
-            </h3>
+             <h3 className="mt-4 text-center text-xl font-black tracking-normal">
+               {t("aboutThanksTitle")}
+             </h3>
             <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-4">
               {capstonePartners.map((partner) => (
                 <div
@@ -213,7 +220,7 @@ export function AboutPage() {
               className="btn btn-primary mt-5 w-full rounded-md text-white"
               onClick={() => setShowThanksPopup(false)}
             >
-              Tutup
+              {t("close")}
             </button>
           </div>
         </div>

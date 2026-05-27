@@ -64,9 +64,11 @@ export function PublicLayout() {
           </nav>
           <div className="hidden items-center gap-3 lg:flex">
             <LanguageSwitcher compact />
-            <Link to="/login" className="btn btn-ghost btn-sm w-20">
-              {t("loginLink")}
-            </Link>
+            {!isAuthenticated ? (
+              <Link to="/login" className="btn btn-ghost btn-sm w-20">
+                {t("loginLink")}
+              </Link>
+            ) : null}
             <Link
               to={isAuthenticated ? dashboardPath : "/register"}
               className="btn btn-primary btn-sm w-40 rounded-md text-white"
@@ -134,13 +136,15 @@ export function PublicLayout() {
             <span className="text-sm font-bold text-neutral/70">{t("language")}</span>
             <LanguageSwitcher compact />
           </div>
-          <Link
-            to="/login"
-            className="btn btn-outline rounded-md"
-            onClick={() => setIsMobileMenuOpen(false)}
-          >
-            {t("loginLink")}
-          </Link>
+          {!isAuthenticated ? (
+            <Link
+              to="/login"
+              className="btn btn-outline rounded-md"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              {t("loginLink")}
+            </Link>
+          ) : null}
           <Link
             to={isAuthenticated ? dashboardPath : "/register"}
             className="btn btn-primary rounded-md text-white"

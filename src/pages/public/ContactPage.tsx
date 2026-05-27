@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { CheckCircle2, Mail, MapPin, Phone } from "lucide-react";
+import { Info, Mail, MapPin, Phone } from "lucide-react";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 
 export function ContactPage() {
@@ -9,7 +9,6 @@ export function ContactPage() {
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSent(true);
-    event.currentTarget.reset();
   };
 
   return (
@@ -32,8 +31,11 @@ export function ContactPage() {
         </div>
         <form className="rounded-md border border-base-300 bg-white p-6 shadow-sm" onSubmit={submit}>
           {isSent ? (
-            <div className="mb-5 flex gap-3 rounded-md border border-success/20 bg-success/10 p-4 text-success">
-              <CheckCircle2 className="mt-0.5 shrink-0" size={20} />
+            <div
+              className="mb-5 flex gap-3 rounded-md border border-info/20 bg-info/10 p-4 text-info"
+              aria-live="polite"
+            >
+              <Info className="mt-0.5 shrink-0" size={20} />
               <div>
                 <p className="font-black">{t("contactFormSuccessTitle")}</p>
                 <p className="mt-1 text-sm font-semibold opacity-80">{t("contactFormSuccessBody")}</p>

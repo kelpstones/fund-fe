@@ -1,15 +1,44 @@
 import { Link, useParams } from "react-router-dom";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Bookmark } from "lucide-react";
 import { compactCurrency, percent } from "../../lib/format";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import { useScrollReveal } from "../../lib/ui/useScrollReveal";
+import { apiClient, unwrap } from "../../lib/api/client";
+import { dashboardPathFor, useAuth } from "../../lib/auth/AuthProvider";
 import { portfolios, riskLabelKey } from "./portfolioData";
+import {
+  mapPreviewBusinessesToPortfolios,
+  unwrapPreviewList,
+} from "./portfolioPreviewAdapter";
 
 export function PortfolioDetailPage() {
   const { t } = useLanguage();
+  const { isAuthenticated, user } = useAuth();
   useScrollReveal();
   const { slug = "" } = useParams();
-  const item = portfolios.find((entry) => entry.slug === slug);
+
+  const previewQuery = useQuery({
+    queryKey: ["public-portfolio-preview"],
+    queryFn: async () => {
+      const response = await apiClient.get("/businesses/preview?page=1");
+      return unwrapPreviewList(unwrap<unknown>(response.data));
+    },
+    retry: false,
+  });
+
+  const previewPortfolios = useMemo(
+    () => mapPreviewBusinessesToPortfolios(previewQuery.data ?? []),
+    [previewQuery.data],
+  );
+
+  const activePortfolios = previewPortfolios.length > 0 ? previewPortfolios : portfolios;
+  const showPreviewFallbackWarning = previewQuery.isError && previewPortfolios.length === 0;
+  const startNowTarget = isAuthenticated
+    ? dashboardPathFor(user?.role ?? "umkm")
+    : "/login";
+  const item = activePortfolios.find((entry) => entry.slug === slug);
 
   if (!item) {
     return (
@@ -37,6 +66,11 @@ export function PortfolioDetailPage() {
           <ArrowLeft size={17} />
           {t("portfolioDetailBack")}
         </Link>
+        {showPreviewFallbackWarning ? (
+          <div className="mb-6 rounded-md border border-warning/20 bg-warning/10 px-4 py-3 text-sm font-semibold text-warning">
+            {t("portfolioPreviewFallbackWarning")}
+          </div>
+        ) : null}
 
         <div className="relative overflow-hidden rounded-md border border-base-300">
           <img src={item.heroImage} alt={item.name} className="h-[340px] w-full object-cover sm:h-[420px]" />
@@ -129,7 +163,7 @@ export function PortfolioDetailPage() {
                   <Bookmark size={17} />
                   {t("save")}
                 </button>
-                <Link to="/register" className="btn btn-primary rounded-md text-white">
+                <Link to={startNowTarget} className="btn btn-primary rounded-md text-white">
                   {t("portfolioDetailStart")}
                   <ArrowRight size={17} />
                 </Link>
