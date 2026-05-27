@@ -520,7 +520,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pb-16 sm:px-6 lg:px-8" data-reveal>
+      <section className="relative -mt-px bg-white px-4 pb-16 sm:px-6 lg:px-8" data-reveal>
         <div className="mx-auto max-w-7xl rounded-md bg-neutral p-8 text-white lg:p-10">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
