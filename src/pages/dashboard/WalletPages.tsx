@@ -230,9 +230,6 @@ export function InvestorWalletPage() {
       <div>
         <h2 className="text-2xl font-black tracking-normal text-neutral">{copy.pageTitle}</h2>
         <DashboardBreadcrumb />
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">
-          {copy.pageBody}
-        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
