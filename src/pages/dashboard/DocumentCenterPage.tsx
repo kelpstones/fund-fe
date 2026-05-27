@@ -5,12 +5,9 @@ import {
   CheckCircle2,
   Download,
   FileText,
-  Receipt,
-  ShieldCheck,
   Trash2,
   UploadCloud,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { useAuth } from "../../lib/auth/AuthProvider";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import { dateShort } from "../../lib/format";
@@ -277,15 +274,6 @@ export function DocumentCenterPage() {
       )
     : Math.round((uploadedCount / Math.max(requirements.length, 1)) * 100);
 
-  const summaryCards = useMemo<Array<[string, string, LucideIcon]>>(
-    () => [
-      ["documentUploaded", `${uploadedCount}/${requirements.length}`, CheckCircle2],
-      ["documentRequired", String(requirements.filter((item) => item.status === "required").length), ShieldCheck],
-      ["documentLocalMode", isUmkm ? "BE" : "FE", FileText],
-    ],
-    [isUmkm, requirements, uploadedCount],
-  );
-
   const upload = (requirement: Requirement, file: File | null) => {
     if (!file) return;
     if (isUmkm) {
@@ -343,166 +331,122 @@ export function DocumentCenterPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {summaryCards.map(([label, value, Icon]) => (
-          <article key={label} className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
-            <Icon className="text-primary" size={24} />
-            <p className="mt-4 text-sm font-bold text-neutral/50">{t(String(label))}</p>
-            <p className="mt-1 text-2xl font-black">{String(value)}</p>
-          </article>
-        ))}
-      </div>
+      <div className="grid gap-4">
+        {requirements.map((requirement) => {
+          const document = documents[requirement.key];
+          const backendDocument = requirement.backend
+            ? backendByDocName.get(requirement.backend.nama_dokumen)
+            : undefined;
+          const status = requirement.status;
+          const canRemove = !isUmkm && Boolean(document);
+          const isPending = backendDocument?.status === "pending";
+          const isValid = backendDocument?.status === "valid";
+          const isInvalid = backendDocument?.status === "invalid";
+          const fileName = isUmkm ? backendDocument?.nama_dokumen : document?.name;
+          const uploadDate = isUmkm
+            ? backendDocument?.updated_at || backendDocument?.created_at
+            : document?.uploaded_at;
+          const fileSize = isUmkm ? null : document?.size;
 
-      <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="grid gap-4">
-          {requirements.map((requirement) => {
-            const document = documents[requirement.key];
-            const backendDocument = requirement.backend
-              ? backendByDocName.get(requirement.backend.nama_dokumen)
-              : undefined;
-            const status = requirement.status;
-            const canRemove = !isUmkm && Boolean(document);
-            const isPending = backendDocument?.status === "pending";
-            const isValid = backendDocument?.status === "valid";
-            const isInvalid = backendDocument?.status === "invalid";
-            const fileName = isUmkm ? backendDocument?.nama_dokumen : document?.name;
-            const uploadDate = isUmkm
-              ? backendDocument?.updated_at || backendDocument?.created_at
-              : document?.uploaded_at;
-            const fileSize = isUmkm ? null : document?.size;
-
-            return (
-              <article key={requirement.key} className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="flex gap-4">
-                    <div
-                      className={`grid h-12 w-12 shrink-0 place-items-center rounded-md ${
-                        (isUmkm && backendDocument) || (!isUmkm && document)
-                          ? "bg-success text-white"
-                          : "bg-base-200 text-primary"
-                      }`}
-                    >
-                      {(isUmkm && backendDocument) || (!isUmkm && document) ? (
-                        <CheckCircle2 size={22} />
-                      ) : (
-                        <FileText size={22} />
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-black">{localizedText(requirement.title, language)}</h3>
+          return (
+            <article key={requirement.key} className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex gap-4">
+                  <div
+                    className={`grid h-12 w-12 shrink-0 place-items-center rounded-md ${
+                      (isUmkm && backendDocument) || (!isUmkm && document)
+                        ? "bg-success text-white"
+                        : "bg-base-200 text-primary"
+                    }`}
+                  >
+                    {(isUmkm && backendDocument) || (!isUmkm && document) ? (
+                      <CheckCircle2 size={22} />
+                    ) : (
+                      <FileText size={22} />
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-black">{localizedText(requirement.title, language)}</h3>
+                      <span
+                        className={`badge ${status === "required" ? "badge-warning" : "badge-info"} text-white`}
+                      >
+                        {t(status)}
+                      </span>
+                      {isUmkm && backendDocument ? (
                         <span
-                          className={`badge ${status === "required" ? "badge-warning" : "badge-info"} text-white`}
+                          className={`badge text-white ${
+                            isValid
+                              ? "badge-success"
+                              : isInvalid
+                                ? "badge-error"
+                                : "badge-warning"
+                          }`}
                         >
-                          {t(status)}
+                          {backendDocument.status}
                         </span>
-                        {isUmkm && backendDocument ? (
-                          <span
-                            className={`badge text-white ${
-                              isValid
-                                ? "badge-success"
-                                : isInvalid
-                                  ? "badge-error"
-                                  : "badge-warning"
-                            }`}
-                          >
-                            {backendDocument.status}
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">
-                        {localizedText(requirement.body, language)}
-                      </p>
-                      {fileName ? (
-                        <div className="mt-4 rounded-md bg-base-200 p-3 text-sm">
-                          <p className="font-black">{fileName}</p>
-                          <p className="mt-1 text-neutral/55">
-                            {fileSize ? `${formatSize(fileSize)} - ` : ""}
-                            {uploadDate ? dateShort(uploadDate) : "-"}
-                          </p>
-                          {isUmkm && backendDocument?.catatan ? (
-                            <p className="mt-2 text-xs font-semibold text-error">
-                              {backendDocument.catatan}
-                            </p>
-                          ) : null}
-                        </div>
                       ) : null}
                     </div>
-                  </div>
-                  <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-                    <label className="btn btn-primary rounded-md text-white">
-                      <UploadCloud size={17} />
-                      {(isUmkm ? backendDocument : document) ? t("replace") : t("upload")}
-                      <input
-                        type="file"
-                        className="hidden"
-                        onChange={(event) => upload(requirement, event.target.files?.[0] ?? null)}
-                        disabled={uploadBackendMutation.isPending}
-                      />
-                    </label>
-                    {isUmkm && backendDocument?.file_url ? (
-                      <a
-                        className="btn btn-outline rounded-md"
-                        href={backendDocument.file_url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <Download size={17} />
-                        {language === "id" ? "Buka" : "Open"}
-                      </a>
-                    ) : null}
-                    {canRemove ? (
-                      <button
-                        className="btn btn-outline rounded-md"
-                        onClick={() => setPendingDeleteKey(requirement.key)}
-                      >
-                        <Trash2 size={17} />
-                        {t("delete")}
-                      </button>
-                    ) : null}
-                    {isUmkm && isPending ? (
-                      <span className="self-center text-xs font-semibold text-warning">
-                        {language === "id" ? "Menunggu review admin" : "Waiting for admin review"}
-                      </span>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">
+                      {localizedText(requirement.body, language)}
+                    </p>
+                    {fileName ? (
+                      <div className="mt-4 rounded-md bg-base-200 p-3 text-sm">
+                        <p className="font-black">{fileName}</p>
+                        <p className="mt-1 text-neutral/55">
+                          {fileSize ? `${formatSize(fileSize)} - ` : ""}
+                          {uploadDate ? dateShort(uploadDate) : "-"}
+                        </p>
+                        {isUmkm && backendDocument?.catatan ? (
+                          <p className="mt-2 text-xs font-semibold text-error">
+                            {backendDocument.catatan}
+                          </p>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
                 </div>
-              </article>
-            );
-          })}
-        </div>
-
-        <aside className="grid content-start gap-5">
-          <div className="rounded-md border border-info/20 bg-info/10 p-5 text-info">
-            <ShieldCheck size={24} />
-            <h3 className="mt-4 font-black">
-              {isUmkm
-                ? language === "id"
-                  ? "Terhubung ke backend dokumen"
-                  : "Connected to document backend"
-                : t("documentLocalNoticeTitle")}
-            </h3>
-            <p className="mt-2 text-sm font-semibold leading-6 opacity-80">
-              {isUmkm
-                ? language === "id"
-                  ? "Dokumen UMKM akan masuk ke status pending, lalu direview admin menjadi valid atau invalid."
-                  : "UMKM documents are submitted with pending status, then reviewed by admins to valid or invalid."
-                : t("documentLocalNoticeBody")}
-            </p>
-          </div>
-          <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
-            <Receipt className="text-primary" size={24} />
-            <h3 className="mt-4 font-black">{t("documentConnectedFlowTitle")}</h3>
-            <div className="mt-4 grid gap-3">
-              {["documentFlowInvoice", "documentFlowPayment", "documentFlowContract", "documentFlowProfit"].map((item) => (
-                <div key={item} className="flex items-center gap-3 rounded-md bg-base-200 p-3">
-                  <Download className="text-primary" size={17} />
-                  <span className="text-sm font-semibold">{t(item)}</span>
+                <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                  <label className="btn btn-primary rounded-md text-white">
+                    <UploadCloud size={17} />
+                    {(isUmkm ? backendDocument : document) ? t("replace") : t("upload")}
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={(event) => upload(requirement, event.target.files?.[0] ?? null)}
+                      disabled={uploadBackendMutation.isPending}
+                    />
+                  </label>
+                  {isUmkm && backendDocument?.file_url ? (
+                    <a
+                      className="btn btn-outline rounded-md"
+                      href={backendDocument.file_url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Download size={17} />
+                      {language === "id" ? "Buka" : "Open"}
+                    </a>
+                  ) : null}
+                  {canRemove ? (
+                    <button
+                      className="btn btn-outline rounded-md"
+                      onClick={() => setPendingDeleteKey(requirement.key)}
+                    >
+                      <Trash2 size={17} />
+                      {t("delete")}
+                    </button>
+                  ) : null}
+                  {isUmkm && isPending ? (
+                    <span className="self-center text-xs font-semibold text-warning">
+                      {language === "id" ? "Menunggu review admin" : "Waiting for admin review"}
+                    </span>
+                  ) : null}
                 </div>
-              ))}
-            </div>
-          </div>
-        </aside>
+              </div>
+            </article>
+          );
+        })}
       </div>
       <ConfirmDialog
         open={!isUmkm && Boolean(pendingDeleteKey)}
