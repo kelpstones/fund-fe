@@ -88,6 +88,9 @@ type OverviewBannerItem = {
 
 type ViewportVariant = "mobile" | "tablet" | "desktop";
 
+const overviewBannerBasePath = (language: "id" | "en") =>
+  language === "en" ? "/images/overview-banners/en" : "/images/overview-banners";
+
 const resolveViewportVariant = (width: number): ViewportVariant => {
   if (width < 768) return "mobile";
   if (width >= 1280) return "desktop";
@@ -476,8 +479,9 @@ function OnboardingOverviewCard({
 }
 
 export function UmkmOverviewPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
+  const bannerBasePath = overviewBannerBasePath(language);
   const scopeKey = user?.id ? String(user.id) : undefined;
   const dashboardQuery = useDashboard("umkm", scopeKey);
   const dashboard = dashboardQuery.data;
@@ -609,9 +613,9 @@ export function UmkmOverviewPage() {
           {
             key: "umkm-model",
             to: "/dashboard/umkm/bisnis-profile",
-            imageSrc: "/images/overview-banners/umkm-lengkapi-profil-bisnis.webp",
-            imageMobileSrc: "/images/overview-banners/umkm-lengkapi-profil-bisnis-mobile.webp",
-            imageDesktopSrc: "/images/overview-banners/umkm-lengkapi-profil-bisnis-desktop.webp",
+            imageSrc: `${bannerBasePath}/umkm-lengkapi-profil-bisnis.webp`,
+            imageMobileSrc: `${bannerBasePath}/umkm-lengkapi-profil-bisnis-mobile.webp`,
+            imageDesktopSrc: `${bannerBasePath}/umkm-lengkapi-profil-bisnis-desktop.webp`,
             title: t("onboardingModelTitle"),
             priority: 3,
           },
@@ -622,9 +626,9 @@ export function UmkmOverviewPage() {
           {
             key: "umkm-submission",
             to: "/dashboard/umkm/pengajuan",
-            imageSrc: "/images/overview-banners/umkm-buat-pengajuan-pendanaan.webp",
-            imageMobileSrc: "/images/overview-banners/umkm-buat-pengajuan-pendanaan-mobile.webp",
-            imageDesktopSrc: "/images/overview-banners/umkm-buat-pengajuan-pendanaan-desktop.webp",
+            imageSrc: `${bannerBasePath}/umkm-buat-pengajuan-pendanaan.webp`,
+            imageMobileSrc: `${bannerBasePath}/umkm-buat-pengajuan-pendanaan-mobile.webp`,
+            imageDesktopSrc: `${bannerBasePath}/umkm-buat-pengajuan-pendanaan-desktop.webp`,
             title: t("onboardingSubmissionTitle"),
             priority: 3,
           },
@@ -633,18 +637,18 @@ export function UmkmOverviewPage() {
     {
       key: "umkm-sales",
       to: "/dashboard/umkm/penjualan",
-      imageSrc: "/images/overview-banners/umkm-update-laporan-penjualan.webp",
-      imageMobileSrc: "/images/overview-banners/umkm-update-laporan-penjualan-mobile.webp",
-      imageDesktopSrc: "/images/overview-banners/umkm-update-laporan-penjualan-desktop.webp",
+      imageSrc: `${bannerBasePath}/umkm-update-laporan-penjualan.webp`,
+      imageMobileSrc: `${bannerBasePath}/umkm-update-laporan-penjualan-mobile.webp`,
+      imageDesktopSrc: `${bannerBasePath}/umkm-update-laporan-penjualan-desktop.webp`,
       title: t("sales"),
       priority: 1,
     },
     {
       key: "umkm-notification",
       to: "/dashboard/umkm/notifikasi",
-      imageSrc: "/images/overview-banners/umkm-cek-notifikasi-aktivitas.webp",
-      imageMobileSrc: "/images/overview-banners/umkm-cek-notifikasi-aktivitas-mobile.webp",
-      imageDesktopSrc: "/images/overview-banners/umkm-cek-notifikasi-aktivitas-desktop.webp",
+      imageSrc: `${bannerBasePath}/umkm-cek-notifikasi-aktivitas.webp`,
+      imageMobileSrc: `${bannerBasePath}/umkm-cek-notifikasi-aktivitas-mobile.webp`,
+      imageDesktopSrc: `${bannerBasePath}/umkm-cek-notifikasi-aktivitas-desktop.webp`,
       title: t("notifications"),
       priority: 1,
     },
@@ -685,8 +689,9 @@ export function UmkmOverviewPage() {
 }
 
 export function InvestorOverviewPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
+  const bannerBasePath = overviewBannerBasePath(language);
   const scopeKey = user?.id ? String(user.id) : undefined;
   const dashboardQuery = useDashboard("investor", scopeKey);
   const dashboard = dashboardQuery.data;
@@ -788,9 +793,9 @@ export function InvestorOverviewPage() {
           {
             key: "investor-survey",
             to: "/dashboard/investor/survey",
-            imageSrc: "/images/overview-banners/investor-isi-survey-preferensi.webp",
-            imageMobileSrc: "/images/overview-banners/investor-isi-survey-preferensi-mobile.webp",
-            imageDesktopSrc: "/images/overview-banners/investor-isi-survey-preferensi-desktop.webp",
+            imageSrc: `${bannerBasePath}/investor-isi-survey-preferensi.webp`,
+            imageMobileSrc: `${bannerBasePath}/investor-isi-survey-preferensi-mobile.webp`,
+            imageDesktopSrc: `${bannerBasePath}/investor-isi-survey-preferensi-desktop.webp`,
             title: t("dashboardSurvey"),
             priority: 3,
           },
@@ -815,18 +820,18 @@ export function InvestorOverviewPage() {
     {
       key: "investor-opportunity",
       to: "/dashboard/investor/peluang",
-      imageSrc: "/images/overview-banners/investor-jelajahi-peluang-umkm.webp",
-      imageMobileSrc: "/images/overview-banners/investor-jelajahi-peluang-umkm-mobile.webp",
-      imageDesktopSrc: "/images/overview-banners/investor-jelajahi-peluang-umkm-desktop.webp",
+      imageSrc: `${bannerBasePath}/investor-jelajahi-peluang-umkm.webp`,
+      imageMobileSrc: `${bannerBasePath}/investor-jelajahi-peluang-umkm-mobile.webp`,
+      imageDesktopSrc: `${bannerBasePath}/investor-jelajahi-peluang-umkm-desktop.webp`,
       title: t("opportunities"),
       priority: 1,
     },
     {
       key: "investor-portfolio",
       to: "/dashboard/investor/portfolio",
-      imageSrc: "/images/overview-banners/investor-pantau-portfolio-aktif.webp",
-      imageMobileSrc: "/images/overview-banners/investor-pantau-portfolio-aktif-mobile.webp",
-      imageDesktopSrc: "/images/overview-banners/investor-pantau-portfolio-aktif-desktop.webp",
+      imageSrc: `${bannerBasePath}/investor-pantau-portfolio-aktif.webp`,
+      imageMobileSrc: `${bannerBasePath}/investor-pantau-portfolio-aktif-mobile.webp`,
+      imageDesktopSrc: `${bannerBasePath}/investor-pantau-portfolio-aktif-desktop.webp`,
       title: t("dashboardPortfolio"),
       priority: 1,
     },
