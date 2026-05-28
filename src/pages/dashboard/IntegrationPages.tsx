@@ -214,20 +214,8 @@ export function ProfilePage() {
     if (canEditProfile) updateMutation.mutate();
   };
 
-  const profileRecord: Record<string, unknown> = {
-    ...meRecord,
-    ...adminRecord,
-    ...(user ?? {}),
-    ...(saveMessage
-      ? {
-        ...activeForm,
-        ...(isAdmin ? { level: activeForm.level } : {}),
-      }
-      : {}),
-  };
-
   return (
-    <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
+    <div className="grid gap-5">
       <Panel
         title="Profile"
         description="profilePanelDescription"
@@ -313,19 +301,6 @@ export function ProfilePage() {
           ) : null}
         </form>
       </Panel>
-      <div className="grid gap-5">
-        <Panel title="accountSummary" description="accountSummaryDescription">
-          <DetailRows
-            rows={[
-              ["name", profileRecord.nama],
-              ["Email", profileRecord.email],
-              ["Role", profileRecord.role || profileRecord.role_name || profileRecord.level || profileRecord.role_id],
-              ["phone", profileRecord.no_telp],
-              ["createdAt", profileRecord.created_at],
-            ]}
-          />
-        </Panel>
-      </div>
     </div>
   );
 }
@@ -348,28 +323,105 @@ const defaultInvestorPreference: InvestorPreferenceForm = {
 
 const investorPreferenceFields: Array<{
   key: keyof InvestorPreferenceForm;
-  label: string;
+  label: LocalizedCopy;
+  help: LocalizedCopy;
   min: number;
   max: number;
   step: number;
+  unit?: LocalizedCopy;
 }> = [
-  { key: "kepuasan_pelanggan", label: "Kepuasan Pelanggan", min: 1, max: 5, step: 0.1 },
-  { key: "digital_adoption_score", label: "Digital Adoption Score", min: 1, max: 10, step: 1 },
-  { key: "net_profit_margin", label: "Net Profit Margin", min: -35, max: 100, step: 0.1 },
-  { key: "year_revenue", label: "Year Revenue", min: 18000000, max: 50000000000, step: 1000000 },
-  { key: "business_tenure_years", label: "Business Tenure", min: 0, max: 50, step: 0.1 },
+  {
+    key: "year_revenue",
+    label: { id: "Target omzet tahunan", en: "Target yearly revenue" },
+    help: { id: "Estimasi omzet dalam 12 bulan terakhir.", en: "Estimated revenue in the last 12 months." },
+    min: 18000000,
+    max: 50000000000,
+    step: 1000000,
+    unit: { id: "Rp", en: "IDR" },
+  },
+  {
+    key: "kepuasan_pelanggan",
+    label: { id: "Target kepuasan pelanggan", en: "Target customer satisfaction" },
+    help: { id: "Skor 1-5 dari kualitas layanan.", en: "Score 1-5 based on service quality." },
+    min: 1,
+    max: 5,
+    step: 0.1,
+    unit: { id: "/5", en: "/5" },
+  },
+  {
+    key: "digital_adoption_score",
+    label: { id: "Target kematangan digital", en: "Target digital maturity" },
+    help: { id: "Skor 1-10 untuk kesiapan digital bisnis.", en: "Score 1-10 for business digital readiness." },
+    min: 1,
+    max: 10,
+    step: 1,
+    unit: { id: "/10", en: "/10" },
+  },
+  {
+    key: "net_profit_margin",
+    label: { id: "Target margin laba bersih", en: "Target net profit margin" },
+    help: { id: "Persentase laba bersih terhadap omzet.", en: "Net profit percentage against revenue." },
+    min: -35,
+    max: 100,
+    step: 0.1,
+    unit: { id: "%", en: "%" },
+  },
+  {
+    key: "business_tenure_years",
+    label: { id: "Lama usaha", en: "Business tenure" },
+    help: { id: "Total usia usaha dalam tahun.", en: "Total business age in years." },
+    min: 0,
+    max: 50,
+    step: 0.1,
+    unit: { id: "tahun", en: "years" },
+  },
 ];
 
+const investorPreferenceFieldByKey = Object.fromEntries(
+  investorPreferenceFields.map((field) => [field.key, field]),
+) as Record<keyof InvestorPreferenceForm, (typeof investorPreferenceFields)[number]>;
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
+
+const decimalFromStep = (step: number) => {
+  const stepText = String(step);
+  return stepText.includes(".") ? stepText.split(".")[1].length : 0;
+};
+
+const sanitizePreferenceValue = (rawValue: unknown, field: (typeof investorPreferenceFields)[number]) => {
+  const parsedValue = Number(rawValue);
+  if (!Number.isFinite(parsedValue)) return field.min;
+  const clampedValue = clamp(parsedValue, field.min, field.max);
+  const decimals = decimalFromStep(field.step);
+  return Number(clampedValue.toFixed(decimals));
+};
+
+const sanitizePreferenceForm = (source: Record<string, unknown> | InvestorPreferenceForm) =>
+  investorPreferenceFields.reduce<InvestorPreferenceForm>(
+    (accumulator, field) => ({
+      ...accumulator,
+      [field.key]: sanitizePreferenceValue(source[field.key], field),
+    }),
+    defaultInvestorPreference,
+  );
+
 export function InvestorPreferencesPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
+  const revenueNumberFormatter = useMemo(
+    () => new Intl.NumberFormat(language === "id" ? "id-ID" : "en-US"),
+    [language],
+  );
   const [form, setForm] = useState<InvestorPreferenceForm>(defaultInvestorPreference);
   const [isDirty, setIsDirty] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const preferenceQueryKey = ["investor-preferences", user?.id ?? "guest"];
 
   const preferenceQuery = useQuery({
-    queryKey: ["investor-preferences"],
+    queryKey: preferenceQueryKey,
     queryFn: async () => {
       try {
         const response = await apiClient.get("/user/investor/preferences");
@@ -382,27 +434,22 @@ export function InvestorPreferencesPage() {
   });
 
   const savedPreference = preferenceQuery.data
-    ? {
-      kepuasan_pelanggan: Number(preferenceQuery.data.kepuasan_pelanggan ?? defaultInvestorPreference.kepuasan_pelanggan),
-      digital_adoption_score: Number(preferenceQuery.data.digital_adoption_score ?? defaultInvestorPreference.digital_adoption_score),
-      net_profit_margin: Number(preferenceQuery.data.net_profit_margin ?? defaultInvestorPreference.net_profit_margin),
-      year_revenue: Number(preferenceQuery.data.year_revenue ?? defaultInvestorPreference.year_revenue),
-      business_tenure_years: Number(preferenceQuery.data.business_tenure_years ?? defaultInvestorPreference.business_tenure_years),
-    }
+    ? sanitizePreferenceForm(preferenceQuery.data)
     : defaultInvestorPreference;
   const activeForm = isDirty ? form : savedPreference;
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiClient.post("/user/investor/preferences", activeForm);
+      const payload = sanitizePreferenceForm(activeForm);
+      const response = await apiClient.post("/user/investor/preferences", payload);
       return unwrap<unknown>(response.data);
     },
     onSuccess: async () => {
-      setForm(activeForm);
+      setForm(sanitizePreferenceForm(activeForm));
       setIsDirty(false);
       setMessage(t("preferencesSaveSuccess"));
       setError("");
-      await queryClient.invalidateQueries({ queryKey: ["investor-preferences"] });
+      await queryClient.invalidateQueries({ queryKey: preferenceQueryKey });
       await queryClient.invalidateQueries({ queryKey: ["ai-recommendations"] });
     },
     onError: (err) => {
@@ -428,12 +475,20 @@ export function InvestorPreferencesPage() {
   });
 
   const update = (key: keyof InvestorPreferenceForm, value: string) => {
+    const field = investorPreferenceFieldByKey[key];
+    const parsedValue = Number(value.replace(",", "."));
     setIsDirty(true);
-    setForm({ ...activeForm, [key]: Number(value) });
+    setForm({
+      ...activeForm,
+      [key]: Number.isFinite(parsedValue) ? parsedValue : field.min,
+    });
   };
+  const canSave = isDirty && !saveMutation.isPending && !preferenceQuery.isLoading;
+  const hasSavedPreference = Boolean(preferenceQuery.data);
+  const canRefresh = hasSavedPreference && !isDirty && !refreshMutation.isPending;
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+    <div className="grid gap-5">
       <Panel
         title="investorPreferencesTitle"
         description="investorPreferencesBody"
@@ -443,28 +498,84 @@ export function InvestorPreferencesPage() {
           className="grid gap-4"
           onSubmit={(event) => {
             event.preventDefault();
+            if (!canSave) return;
             saveMutation.mutate();
           }}
         >
+          {preferenceQuery.isError ? (
+            <div className="rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-semibold text-error">
+              {apiErrorMessage(preferenceQuery.error, t("preferencesSaveError"))}
+            </div>
+          ) : null}
           <div className="grid gap-4 sm:grid-cols-2">
             {investorPreferenceFields.map((field) => (
-              <label className="form-control" key={field.key}>
-                <span className="label-text mb-2 font-semibold">{t(field.label)}</span>
-                <input
-                  type="number"
-                  min={field.min}
-                  max={field.max}
-                  step={field.step}
-                  className="input input-bordered rounded-md"
-                  value={String(activeForm[field.key])}
-                  onChange={(event) => update(field.key, event.target.value)}
-                  required
-                />
+              <label
+                className={`form-control ${field.key === "year_revenue" ? "sm:col-span-2" : ""}`}
+                key={field.key}
+              >
+                <span className="label-text mb-2 font-semibold">
+                  {localeText(field.label, language)}
+                </span>
+                {field.key === "year_revenue" ? (
+                  <div className="relative">
+                    <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-xs font-black text-neutral/55">
+                      IDR
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className="input input-bordered w-full rounded-md pl-14"
+                      value={revenueNumberFormatter.format(Number(activeForm[field.key] || 0))}
+                      onChange={(event) =>
+                        update(field.key, event.target.value.replace(/[^\d]/g, ""))
+                      }
+                      required
+                    />
+                  </div>
+                ) : (
+                  <div className="grid gap-2 sm:grid-cols-[1fr_120px] sm:items-center">
+                    <input
+                      type="range"
+                      min={field.min}
+                      max={field.max}
+                      step={field.step}
+                      className="range range-neutral range-sm"
+                      value={Number(activeForm[field.key] || 0)}
+                      onChange={(event) => update(field.key, event.target.value)}
+                      aria-label={localeText(field.label, language)}
+                    />
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={field.min}
+                        max={field.max}
+                        step={field.step}
+                        className={`input input-bordered w-full rounded-md text-right ${field.unit ? "pr-10" : ""}`}
+                        value={String(activeForm[field.key])}
+                        onChange={(event) => update(field.key, event.target.value)}
+                        required
+                      />
+                      {field.unit ? (
+                        <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-black text-neutral/45">
+                          {localeText(field.unit, language)}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                )}
+                <span className="mt-2 text-xs font-semibold text-neutral/55">
+                  {localeText(field.help, language)}{" "}
+                  {field.unit ? `(${localeText(field.unit, language)})` : ""}
+                  {" - "}
+                  {language === "id"
+                    ? `Rentang ${field.min} - ${field.max}`
+                    : `Range ${field.min} - ${field.max}`}
+                </span>
               </label>
             ))}
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <button className="btn btn-primary rounded-md text-white" disabled={saveMutation.isPending}>
+            <button className="btn btn-primary rounded-md text-white" disabled={!canSave}>
               {saveMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
               {t("savePreferences")}
             </button>
@@ -472,7 +583,7 @@ export function InvestorPreferencesPage() {
               type="button"
               className="btn btn-secondary rounded-md text-white"
               onClick={() => refreshMutation.mutate()}
-              disabled={refreshMutation.isPending}
+              disabled={!canRefresh}
             >
               {refreshMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} />}
               {t("refreshRecommendations")}
@@ -490,28 +601,6 @@ export function InvestorPreferencesPage() {
           ) : null}
         </form>
       </Panel>
-      <div className="grid gap-5">
-        <Panel title="activePreferences" description="activePreferencesBody">
-          <div className="mb-4">
-            <SyncStatus
-              label="investorPreferences"
-              isLoading={preferenceQuery.isLoading}
-              isError={preferenceQuery.isError}
-              hasData={Boolean(preferenceQuery.data)}
-            />
-          </div>
-          <DetailRows
-            rows={[
-              ["Kepuasan Pelanggan", preferenceQuery.data?.kepuasan_pelanggan],
-              ["Digital Adoption Score", preferenceQuery.data?.digital_adoption_score],
-              ["Net Profit Margin", preferenceQuery.data?.net_profit_margin],
-              ["Year Revenue", preferenceQuery.data?.year_revenue],
-              ["Business Tenure", preferenceQuery.data?.business_tenure_years],
-              ["Updated", preferenceQuery.data?.updated_at],
-            ]}
-          />
-        </Panel>
-      </div>
     </div>
   );
 }

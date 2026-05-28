@@ -1722,7 +1722,7 @@ Object.assign(translations.id, {
   investorSurveyBody:
     "Isi preferensi investor yang sudah sesuai dengan kontrak backend. Setelah disimpan, sistem akan meminta rekomendasi UMKM dari endpoint AI matchmaking.",
   investorSurveyBackendMode:
-    "Backend mode: tersimpan ke /user/investor/preferences dan rekomendasi dibaca dari /user/investor/recommendations.",
+    "Isi preferensi berdasarkan target investasimu. Sistem akan memakai data ini untuk menampilkan rekomendasi UMKM yang lebih relevan.",
   surveyCustomerSatisfaction: "Minimal Kepuasan Pelanggan",
   surveyCustomerSatisfactionHelp:
     "Skala 1-5 untuk preferensi kualitas pelanggan UMKM.",
@@ -1765,7 +1765,7 @@ Object.assign(translations.en, {
   investorSurveyBody:
     "Fill investor preferences that match the backend contract. After saving, the system requests UMKM recommendations from the AI matchmaking endpoint.",
   investorSurveyBackendMode:
-    "Backend mode: saved to /user/investor/preferences and recommendations read from /user/investor/recommendations.",
+    "Set preferences based on your investment target. The system uses them to show more relevant UMKM recommendations.",
   surveyCustomerSatisfaction: "Minimum Customer Satisfaction",
   surveyCustomerSatisfactionHelp:
     "Scale 1-5 for the preferred UMKM customer quality.",

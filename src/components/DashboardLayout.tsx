@@ -118,7 +118,6 @@ const navByRole: Record<UserRole, NavGroup[]> = {
         { to: "/dashboard/investor/rekomendasi", labelKey: "dashboardRecommendations", icon: Scale },
         { to: "/dashboard/investor/negosiasi", labelKey: "dashboardNegotiations", icon: Handshake },
         { to: "/dashboard/investor/deal-room/active", labelKey: "dashboardDealRoom", icon: Handshake },
-        { to: "/dashboard/investor/kelas", labelKey: "dashboardClasses", icon: Scale },
       ],
     },
     {
@@ -325,7 +324,6 @@ function useNavLocks(role: UserRole) {
       const hasInvestment = (investorInvestmentsQuery.data ?? []).length > 0;
 
       if (!hasPreferences) {
-        locked.add("/dashboard/investor/survey");
         locked.add("/dashboard/investor/peluang");
         locked.add("/dashboard/investor/saved");
         locked.add("/dashboard/investor/compare");

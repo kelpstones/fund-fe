@@ -241,7 +241,6 @@ export default function App() {
               <Route path="rekomendasi" element={<AiRecommendationsPage />} />
               <Route path="negosiasi" element={<NegotiationsPage mine />} />
               <Route path="deal-room/:id" element={<DealRoomPage />} />
-              <Route path="kelas" element={<ClassesPage />} />
               <Route path="wallet" element={<InvestorWalletPage />} />
               <Route path="invoice" element={<InvoicesPage investor />} />
               <Route path="portfolio" element={<InvestmentsPage investor />} />

@@ -2,11 +2,13 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { ArrowDownCircle, ArrowUpCircle, Loader2, Wallet } from "lucide-react";
+import { Link } from "react-router-dom";
 import { DashboardBreadcrumb } from "../../components/DashboardBreadcrumb";
 import { ResourcePage } from "../../components/ResourcePage";
 import { useToast } from "../../components/ToastProvider";
 import { apiClient, unwrap } from "../../lib/api/client";
 import { resourceApi } from "../../lib/api/resources";
+import { useAuth } from "../../lib/auth/AuthProvider";
 import { useLanguage, type Language } from "../../lib/i18n/LanguageProvider";
 import {
   adminBankConfig,
@@ -37,6 +39,22 @@ type WithdrawForm = WalletForm & {
   user_bank_account_id: string;
 };
 
+const TOP_UP_MIN_AMOUNT = 10000;
+const WITHDRAW_MIN_AMOUNT = 50000;
+
+const keepDigits = (value: string) => value.replace(/\D/g, "");
+
+const amountFromInput = (value: string) => {
+  const digits = keepDigits(value);
+  if (!digits) return 0;
+  return Number(digits);
+};
+
+const displayAmountInput = (value: string) => {
+  const amount = amountFromInput(value);
+  return amount > 0 ? new Intl.NumberFormat("id-ID").format(amount) : "";
+};
+
 const walletInvestorCopy: Record<
   Language,
   {
@@ -48,17 +66,23 @@ const walletInvestorCopy: Record<
     activeAccountsBody: string;
     topupTitle: string;
     amountLabel: string;
+    amountHint: (minAmount: number) => string;
+    amountPreview: (amount: number) => string;
     createTopupInvoice: string;
-    mockTopup: string;
     topupSuccess: string;
     topupError: string;
+    topupValidationError: string;
     withdrawTitle: string;
     destinationAccount: string;
-    usePrimaryAccount: string;
+    selectAccountPlaceholder: string;
+    usePrimaryAccountHint: string;
+    noAccountHint: string;
+    addAccountCta: string;
     primaryAccountTag: string;
     submitWithdrawal: string;
     withdrawSuccess: string;
     withdrawError: string;
+    withdrawValidationError: string;
     historyTitle: string;
     tableId: string;
     tableType: string;
@@ -69,7 +93,6 @@ const walletInvestorCopy: Record<
     tableLoading: string;
     tableLoadError: string;
     tableEmpty: string;
-    mockTopupSuccess: string;
   }
 > = {
   id: {
@@ -82,17 +105,23 @@ const walletInvestorCopy: Record<
     activeAccountsBody: "Kelola rekening di menu Rekening",
     topupTitle: "Top Up Saldo",
     amountLabel: "Nominal",
+    amountHint: (minAmount) => `Minimal ${currency(minAmount)}`,
+    amountPreview: (amount) => `Estimasi nominal: ${currency(amount)}`,
     createTopupInvoice: "Buat Invoice Top Up",
-    mockTopup: "Mock Top Up",
     topupSuccess: "Permintaan top up berhasil dibuat.",
     topupError: "Top up gagal diproses.",
+    topupValidationError: "Nominal top up belum valid.",
     withdrawTitle: "Tarik Dana",
     destinationAccount: "Rekening Tujuan",
-    usePrimaryAccount: "Gunakan rekening utama",
+    selectAccountPlaceholder: "Pilih rekening tujuan (opsional)",
+    usePrimaryAccountHint: "Kosongkan untuk memakai rekening utama yang aktif.",
+    noAccountHint: "Belum ada rekening tersimpan. Tambahkan rekening dulu agar penarikan lebih aman.",
+    addAccountCta: "Tambah rekening",
     primaryAccountTag: "Utama",
     submitWithdrawal: "Ajukan Penarikan",
     withdrawSuccess: "Permintaan penarikan dana berhasil diajukan.",
     withdrawError: "Penarikan dana gagal diproses.",
+    withdrawValidationError: "Nominal penarikan belum valid.",
     historyTitle: "Riwayat Transaksi",
     tableId: "ID",
     tableType: "Tipe",
@@ -103,7 +132,6 @@ const walletInvestorCopy: Record<
     tableLoading: "Memuat transaksi...",
     tableLoadError: "Gagal memuat data dompet.",
     tableEmpty: "Belum ada transaksi.",
-    mockTopupSuccess: "Mock top up berhasil.",
   },
   en: {
     pageTitle: "Investor Wallet",
@@ -115,17 +143,23 @@ const walletInvestorCopy: Record<
     activeAccountsBody: "Manage accounts in Bank Accounts menu",
     topupTitle: "Top Up Balance",
     amountLabel: "Amount",
+    amountHint: (minAmount) => `Minimum ${currency(minAmount)}`,
+    amountPreview: (amount) => `Estimated amount: ${currency(amount)}`,
     createTopupInvoice: "Create Top Up Invoice",
-    mockTopup: "Mock Top Up",
     topupSuccess: "Top up request has been created.",
     topupError: "Top up request failed.",
+    topupValidationError: "Top up amount is not valid.",
     withdrawTitle: "Withdraw Funds",
     destinationAccount: "Destination Account",
-    usePrimaryAccount: "Use primary account",
+    selectAccountPlaceholder: "Select destination account (optional)",
+    usePrimaryAccountHint: "Leave empty to use active primary account.",
+    noAccountHint: "No bank account saved yet. Add one first to make withdrawals safer.",
+    addAccountCta: "Add bank account",
     primaryAccountTag: "Primary",
     submitWithdrawal: "Submit Withdrawal",
     withdrawSuccess: "Withdrawal request has been submitted.",
     withdrawError: "Withdrawal request failed.",
+    withdrawValidationError: "Withdrawal amount is not valid.",
     historyTitle: "Transaction History",
     tableId: "ID",
     tableType: "Type",
@@ -136,12 +170,12 @@ const walletInvestorCopy: Record<
     tableLoading: "Loading transactions...",
     tableLoadError: "Failed to load wallet data.",
     tableEmpty: "No transactions yet.",
-    mockTopupSuccess: "Mock top up completed.",
   },
 };
 
 export function InvestorWalletPage() {
   const { language } = useLanguage();
+  const { user } = useAuth();
   const copy = walletInvestorCopy[language];
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -150,9 +184,13 @@ export function InvestorWalletPage() {
     jumlah: "50000",
     user_bank_account_id: "",
   });
+  const topUpAmount = amountFromInput(topupForm.jumlah);
+  const withdrawAmount = amountFromInput(withdrawForm.jumlah);
+  const walletQueryKey = ["wallet-dashboard", user?.id ?? "guest"];
+  const bankAccountsQueryKey = ["wallet-bank-accounts", user?.id ?? "guest"];
 
   const walletQuery = useQuery({
-    queryKey: ["wallet-dashboard"],
+    queryKey: walletQueryKey,
     queryFn: async (): Promise<WalletDashboard> => {
       const response = await apiClient.get("/wallet/dashboard?page=1&limit=50");
       const payload = unwrap<Record<string, unknown>>(response.data);
@@ -164,7 +202,7 @@ export function InvestorWalletPage() {
   });
 
   const bankAccountsQuery = useQuery({
-    queryKey: ["wallet-bank-accounts"],
+    queryKey: bankAccountsQueryKey,
     queryFn: () => resourceApi.list(userBankAccountConfig),
     retry: false,
   });
@@ -172,7 +210,7 @@ export function InvestorWalletPage() {
   const topUpMutation = useMutation({
     mutationFn: async () => {
       const response = await apiClient.post("/wallet/topup", {
-        jumlah: Number(topupForm.jumlah),
+        jumlah: topUpAmount,
       });
       return unwrap<Record<string, unknown>>(response.data);
     },
@@ -182,7 +220,7 @@ export function InvestorWalletPage() {
       if (paymentUrl && paymentUrl !== "-") {
         window.open(paymentUrl, "_blank", "noopener,noreferrer");
       }
-      await queryClient.invalidateQueries({ queryKey: ["wallet-dashboard"] });
+      await queryClient.invalidateQueries({ queryKey: walletQueryKey });
     },
     onError: (error) => {
       toast.error(apiErrorMessage(error, copy.topupError));
@@ -192,7 +230,7 @@ export function InvestorWalletPage() {
   const withdrawMutation = useMutation({
     mutationFn: async () => {
       const payload: Record<string, unknown> = {
-        jumlah: Number(withdrawForm.jumlah),
+        jumlah: withdrawAmount,
       };
       if (withdrawForm.user_bank_account_id) {
         payload.user_bank_account_id = Number(withdrawForm.user_bank_account_id);
@@ -202,28 +240,18 @@ export function InvestorWalletPage() {
     },
     onSuccess: async () => {
       toast.success(copy.withdrawSuccess);
-      await queryClient.invalidateQueries({ queryKey: ["wallet-dashboard"] });
-      await queryClient.invalidateQueries({ queryKey: ["wallet-bank-accounts"] });
+      await queryClient.invalidateQueries({ queryKey: walletQueryKey });
+      await queryClient.invalidateQueries({ queryKey: bankAccountsQueryKey });
     },
     onError: (error) => {
       toast.error(apiErrorMessage(error, copy.withdrawError));
     },
   });
 
-  const mockTopUpMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiClient.post("/wallet/mock-topup", { jumlah: 1000000 });
-      return unwrap(response.data);
-    },
-    onSuccess: async () => {
-      toast.success(copy.mockTopupSuccess);
-      await queryClient.invalidateQueries({ queryKey: ["wallet-dashboard"] });
-    },
-    onError: () => undefined,
-  });
-
   const transactions = walletQuery.data?.transactions ?? [];
   const saldo = walletQuery.data?.saldo ?? 0;
+  const bankAccounts = bankAccountsQuery.data ?? [];
+  const hasBankAccounts = bankAccounts.length > 0;
 
   return (
     <section className="space-y-5">
@@ -242,7 +270,7 @@ export function InvestorWalletPage() {
         </article>
         <article className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
           <p className="text-sm font-semibold text-neutral/55">{copy.activeAccounts}</p>
-          <p className="mt-2 text-3xl font-black">{bankAccountsQuery.data?.length ?? 0}</p>
+          <p className="mt-2 text-3xl font-black">{bankAccounts.length}</p>
           <p className="mt-2 text-xs font-semibold text-neutral/45">
             {copy.activeAccountsBody}
           </p>
@@ -254,6 +282,10 @@ export function InvestorWalletPage() {
           className="rounded-md border border-base-300 bg-white p-5 shadow-sm"
           onSubmit={(event: FormEvent<HTMLFormElement>) => {
             event.preventDefault();
+            if (topUpAmount < TOP_UP_MIN_AMOUNT) {
+              toast.error(copy.topupValidationError);
+              return;
+            }
             topUpMutation.mutate();
           }}
         >
@@ -265,15 +297,21 @@ export function InvestorWalletPage() {
             <span className="label-text mb-2 font-semibold">{copy.amountLabel}</span>
             <input
               className="input input-bordered rounded-md"
-              type="number"
-              min={10000}
-              step={1000}
-              value={topupForm.jumlah}
+              type="text"
+              inputMode="numeric"
+              placeholder="0"
+              value={displayAmountInput(topupForm.jumlah)}
               onChange={(event) =>
-                setTopupForm((current) => ({ ...current, jumlah: event.target.value }))
+                setTopupForm((current) => ({ ...current, jumlah: keepDigits(event.target.value) }))
               }
               required
             />
+            <span className="mt-2 text-xs font-semibold text-neutral/55">
+              {copy.amountHint(TOP_UP_MIN_AMOUNT)}
+            </span>
+            <span className="mt-1 text-xs font-semibold text-neutral/55">
+              {copy.amountPreview(topUpAmount)}
+            </span>
           </label>
           <div className="mt-5 flex flex-wrap gap-2">
             <button
@@ -284,15 +322,6 @@ export function InvestorWalletPage() {
               {topUpMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Wallet size={18} />}
               {copy.createTopupInvoice}
             </button>
-            <button
-              className="btn btn-outline rounded-md"
-              type="button"
-              onClick={() => mockTopUpMutation.mutate()}
-              disabled={mockTopUpMutation.isPending}
-            >
-              {mockTopUpMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : null}
-              {copy.mockTopup}
-            </button>
           </div>
         </form>
 
@@ -300,6 +329,10 @@ export function InvestorWalletPage() {
           className="rounded-md border border-base-300 bg-white p-5 shadow-sm"
           onSubmit={(event: FormEvent<HTMLFormElement>) => {
             event.preventDefault();
+            if (withdrawAmount < WITHDRAW_MIN_AMOUNT) {
+              toast.error(copy.withdrawValidationError);
+              return;
+            }
             withdrawMutation.mutate();
           }}
         >
@@ -311,15 +344,21 @@ export function InvestorWalletPage() {
             <span className="label-text mb-2 font-semibold">{copy.amountLabel}</span>
             <input
               className="input input-bordered rounded-md"
-              type="number"
-              min={50000}
-              step={1000}
-              value={withdrawForm.jumlah}
+              type="text"
+              inputMode="numeric"
+              placeholder="0"
+              value={displayAmountInput(withdrawForm.jumlah)}
               onChange={(event) =>
-                setWithdrawForm((current) => ({ ...current, jumlah: event.target.value }))
+                setWithdrawForm((current) => ({ ...current, jumlah: keepDigits(event.target.value) }))
               }
               required
             />
+            <span className="mt-2 text-xs font-semibold text-neutral/55">
+              {copy.amountHint(WITHDRAW_MIN_AMOUNT)}
+            </span>
+            <span className="mt-1 text-xs font-semibold text-neutral/55">
+              {copy.amountPreview(withdrawAmount)}
+            </span>
           </label>
           <label className="form-control mt-4">
             <span className="label-text mb-2 font-semibold">{copy.destinationAccount}</span>
@@ -333,14 +372,25 @@ export function InvestorWalletPage() {
                 }))
               }
             >
-              <option value="">{copy.usePrimaryAccount}</option>
-              {(bankAccountsQuery.data ?? []).map((account) => (
+              <option value="">{copy.selectAccountPlaceholder}</option>
+              {bankAccounts.map((account) => (
                 <option key={String(account.id)} value={String(account.id)}>
                   {textValue(account.bank_name)} - {textValue(account.bank_account_number)}
                   {account.is_primary ? ` (${copy.primaryAccountTag})` : ""}
                 </option>
               ))}
             </select>
+            <span className="mt-2 text-xs font-semibold text-neutral/55">
+              {copy.usePrimaryAccountHint}
+            </span>
+            {!hasBankAccounts ? (
+              <span className="mt-2 rounded-md border border-warning/20 bg-warning/10 px-3 py-2 text-xs font-semibold text-warning-content">
+                {copy.noAccountHint}{" "}
+                <Link className="underline" to="/dashboard/investor/rekening">
+                  {copy.addAccountCta}
+                </Link>
+              </span>
+            ) : null}
           </label>
           <div className="mt-5">
             <button
@@ -419,7 +469,7 @@ const bankAccountColumns: ResourceColumn<Entity>[] = [
       <div>
         <p className="font-black">{textValue(item.bank_name || item.name)}</p>
         <p className="mt-1 text-xs font-semibold text-neutral/55">
-          {textValue(item.bank_code)} · {textValue(item.bank_type)}
+          {textValue(item.bank_code)} - {textValue(item.bank_type)}
         </p>
       </div>
     ),

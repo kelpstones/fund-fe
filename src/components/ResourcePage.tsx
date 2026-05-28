@@ -47,6 +47,8 @@ type ResourcePageProps<T extends Entity> = {
   maxCreateItems?: number;
   createLimitMessage?: string;
   rowFilter?: (item: T) => boolean;
+  canEditRow?: (item: T) => boolean;
+  editDisabledReason?: string | ((item: T) => string | undefined);
   showTitle?: boolean;
   showBreadcrumb?: boolean;
   showSearch?: boolean;
@@ -233,6 +235,8 @@ export function ResourcePage<T extends Entity>({
   maxCreateItems,
   createLimitMessage,
   rowFilter,
+  canEditRow,
+  editDisabledReason,
   showTitle = true,
   showBreadcrumb = true,
   showSearch = true,
@@ -371,7 +375,7 @@ export function ResourcePage<T extends Entity>({
     setEditing(item);
     const next = emptyForm(fields);
     fields.forEach((field) => {
-      const value = item[field.name];
+      const value = field.getEditValue ? field.getEditValue(item) : item[field.name];
       if (field.type === "textarea" && value && typeof value === "object") {
         next[field.name] = JSON.stringify(value, null, 2);
         return;
@@ -510,61 +514,69 @@ export function ResourcePage<T extends Entity>({
   const visibleActionsFor = (item: T) =>
     actions.filter((action) => !action.isVisible || action.isVisible(item));
 
-  const renderActionButtons = (item: T) => (
-    <>
-      {config.detailPath ? (
-        <button
-          className="btn btn-square btn-ghost btn-sm"
-          onClick={() => showDetail(item)}
-          aria-label={copy.detail}
-          title={copy.detail}
-          disabled={isProcessing}
-        >
-          <Eye size={16} />
-        </button>
-      ) : null}
-      {canEdit ? (
-        <button
-          className="btn btn-square btn-ghost btn-sm"
-          onClick={() => openEdit(item)}
-          aria-label={copy.edit}
-          title={copy.edit}
-          disabled={isProcessing}
-        >
-          <Edit3 size={16} />
-        </button>
-      ) : null}
-      {canDelete ? (
-        <button
-          className="btn btn-square btn-ghost btn-sm text-error"
-          onClick={() => remove(item)}
-          aria-label={copy.delete}
-          title={copy.delete}
-          disabled={isProcessing}
-        >
-          <Trash2 size={16} />
-        </button>
-      ) : null}
-      {visibleActionsFor(item).map((action) => {
-        const disabled = isProcessing || Boolean(action.isDisabled?.(item));
-        const disabledReason =
-          typeof action.disabledReason === "function"
-            ? action.disabledReason(item)
-            : action.disabledReason;
-        return (
+  const renderActionButtons = (item: T) => {
+    const isEditable = canEditRow ? canEditRow(item) : true;
+    const editReason =
+      typeof editDisabledReason === "function"
+        ? editDisabledReason(item)
+        : editDisabledReason;
+
+    return (
+      <>
+        {config.detailPath ? (
           <button
-            key={`${item.id}-${action.label}`}
-            className={action.className ?? "btn btn-outline btn-xs rounded-md"}
-            onClick={() => runAction(action, item)}
-            disabled={disabled}
-            title={disabled && disabledReason ? t(disabledReason) : undefined}
+            className="btn btn-square btn-ghost btn-sm"
+            onClick={() => showDetail(item)}
+            aria-label={copy.detail}
+            title={copy.detail}
+            disabled={isProcessing}
           >
-            {t(action.label)}
+            <Eye size={16} />
           </button>
-        );
-      })}
-    </>
-  );
+        ) : null}
+        {canEdit ? (
+          <button
+            className="btn btn-square btn-ghost btn-sm"
+            onClick={() => openEdit(item)}
+            aria-label={copy.edit}
+            title={!isEditable && editReason ? editReason : copy.edit}
+            disabled={isProcessing || !isEditable}
+          >
+            <Edit3 size={16} />
+          </button>
+        ) : null}
+        {canDelete ? (
+          <button
+            className="btn btn-square btn-ghost btn-sm text-error"
+            onClick={() => remove(item)}
+            aria-label={copy.delete}
+            title={copy.delete}
+            disabled={isProcessing}
+          >
+            <Trash2 size={16} />
+          </button>
+        ) : null}
+        {visibleActionsFor(item).map((action) => {
+          const disabled = isProcessing || Boolean(action.isDisabled?.(item));
+          const disabledReason =
+            typeof action.disabledReason === "function"
+              ? action.disabledReason(item)
+              : action.disabledReason;
+          return (
+            <button
+              key={`${item.id}-${action.label}`}
+              className={action.className ?? "btn btn-outline btn-xs rounded-md"}
+              onClick={() => runAction(action, item)}
+              disabled={disabled}
+              title={disabled && disabledReason ? t(disabledReason) : undefined}
+            >
+              {t(action.label)}
+            </button>
+          );
+        })}
+      </>
+    );
+  };
 
   return (
     <section className="space-y-5" data-page-description={t(description)}>
@@ -815,14 +827,17 @@ export function ResourcePage<T extends Entity>({
                             ))}
                           </select>
                         ) : (
-                          <input
-                            {...commonProps}
-                            type={field.type ?? "text"}
-                            className="input input-bordered rounded-md"
-                            placeholder={field.placeholder ? t(field.placeholder) : undefined}
-                          />
-                        )}
-                      </label>
+                        <input
+                          {...commonProps}
+                          type={field.type ?? "text"}
+                          className="input input-bordered rounded-md"
+                          placeholder={field.placeholder ? t(field.placeholder) : undefined}
+                          min={field.type === "number" ? field.min : undefined}
+                          max={field.type === "number" ? field.max : undefined}
+                          step={field.type === "number" ? field.step : undefined}
+                        />
+                      )}
+                    </label>
                     );
                   })}
               </div>

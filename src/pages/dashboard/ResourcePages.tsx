@@ -203,10 +203,41 @@ const salesColumns: ResourceColumn<Entity>[] = [
 ];
 
 const negotiationFields: ResourceField<Entity>[] = [
-  { name: "pengajuans_id", label: "Pengajuan", type: "number", required: true },
-  { name: "penawaran_nominal", label: "Penawaran Nominal", type: "number", required: true },
-  { name: "penawaran_return", label: "Penawaran Return", type: "number", required: true },
-  { name: "catatan", label: "Catatan", type: "textarea" },
+  { name: "pengajuans_id", label: "Pengajuan", type: "number", required: true, hideOnEdit: true },
+  {
+    name: "penawaran_nominal",
+    label: "Penawaran Nominal",
+    type: "number",
+    required: true,
+    min: 1,
+    step: 1,
+    getEditValue: (item) => {
+      const value = readPath(item, ["negosiasi_terakhir.penawaran_nominal", "penawaran_nominal"]);
+      if (value === null || value === undefined || value === "") return undefined;
+      return Number(value);
+    },
+  },
+  {
+    name: "penawaran_return",
+    label: "Penawaran Return",
+    type: "number",
+    required: true,
+    min: 0.01,
+    max: 50,
+    step: 0.01,
+    getEditValue: (item) => {
+      const value = readPath(item, ["negosiasi_terakhir.penawaran_return", "penawaran_return"]);
+      if (value === null || value === undefined || value === "") return undefined;
+      return Number(value);
+    },
+  },
+  {
+    name: "catatan",
+    label: "Catatan",
+    type: "textarea",
+    getEditValue: (item) =>
+      String(readPath(item, ["negosiasi_terakhir.catatan", "catatan"], "")),
+  },
 ];
 
 const negotiationColumns: ResourceColumn<Entity>[] = [
@@ -934,13 +965,67 @@ function UmkmSalesPage() {
 }
 
 export function NegotiationsPage({ mine = false }: { mine?: boolean }) {
+  const { language } = useLanguage();
   const { user } = useAuth();
   const canNegotiate = user?.role === "umkm" || user?.role === "investor";
   const opportunitiesQuery = useQuery({
-    queryKey: ["negotiation-opportunity-options"],
+    queryKey: ["negotiation-opportunity-options", user?.id ?? "guest", user?.role ?? "guest"],
     queryFn: () => resourceApi.list(publishedSubmissionConfig),
     enabled: user?.role === "investor",
+    retry: false,
   });
+  const opportunities = opportunitiesQuery.data ?? [];
+  const canCreateNegotiation =
+    user?.role === "investor" &&
+    !opportunitiesQuery.isLoading &&
+    !opportunitiesQuery.isError &&
+    opportunities.length > 0;
+
+  const isEditableNegotiation = (item: Entity) => {
+    const status = String(readPath(item, ["status"], "")).toLowerCase();
+    if (status !== "active") return false;
+
+    const lastBy = String(readPath(item, ["id_terakhir_oleh"], ""));
+    const currentUserId = String(user?.id ?? "");
+    if (lastBy && currentUserId && lastBy === currentUserId) return false;
+    return true;
+  };
+
+  const editNegotiationReason = (item: Entity) => {
+    const status = String(readPath(item, ["status"], "")).toLowerCase();
+    if (status !== "active") {
+      return language === "id"
+        ? "Negosiasi sudah tidak aktif."
+        : "Negotiation is no longer active.";
+    }
+
+    const lastBy = String(readPath(item, ["id_terakhir_oleh"], ""));
+    const currentUserId = String(user?.id ?? "");
+    if (lastBy && currentUserId && lastBy === currentUserId) {
+      return language === "id"
+        ? "Menunggu pihak lawan membalas terlebih dahulu."
+        : "Waiting for the opposite party to reply first.";
+    }
+
+    return undefined;
+  };
+
+  const negotiationDescription =
+    user?.role === "investor"
+      ? opportunitiesQuery.isLoading
+        ? language === "id"
+          ? "Memuat peluang pendanaan yang bisa dinegosiasikan..."
+          : "Loading funding opportunities that can be negotiated..."
+        : opportunitiesQuery.isError
+          ? language === "id"
+            ? "Gagal memuat peluang pendanaan. Coba refresh halaman."
+            : "Failed to load funding opportunities. Please refresh the page."
+          : opportunities.length === 0
+            ? language === "id"
+              ? "Belum ada peluang pendanaan dipublikasikan untuk memulai negosiasi."
+              : "No published opportunities are available to start negotiation."
+            : "Kelola penawaran nominal, return, status, dan catatan antara investor dan pemilik bisnis."
+      : "Kelola penawaran nominal, return, status, dan catatan antara investor dan pemilik bisnis.";
   const fields = useMemo<ResourceField<Entity>[]>(() => {
     if (user?.role !== "investor") return negotiationFields.slice(1);
     return [
@@ -949,28 +1034,34 @@ export function NegotiationsPage({ mine = false }: { mine?: boolean }) {
         label: "Pengajuan",
         type: "select",
         required: true,
-        options: asOptions(opportunitiesQuery.data ?? [], ["bisnis.nama_bisnis", "bisnis.nama", "nama"]),
+        options: asOptions(opportunities, ["bisnis.nama_bisnis", "bisnis.nama", "nama"]),
       },
       ...negotiationFields.slice(1),
     ];
-  }, [opportunitiesQuery.data, user?.role]);
+  }, [opportunities, user?.role]);
 
   return (
     <ResourcePage
       title="Negosiasi"
-      description="Kelola penawaran nominal, return, status, dan catatan antara investor dan pemilik bisnis."
+      description={negotiationDescription}
       config={mine ? myNegotiationConfig : negotiationConfig}
       columns={negotiationColumns}
       fields={fields}
       createLabel="Mulai Negosiasi"
       actions={canNegotiate ? negotiationActions : []}
-      allowCreate={user?.role === "investor"}
+      allowCreate={canCreateNegotiation}
       allowEdit={canNegotiate}
+      canEditRow={isEditableNegotiation}
+      editDisabledReason={editNegotiationReason}
       allowDelete={false}
       emptyTitle="Belum ada negosiasi"
       emptyDescription={
         user?.role === "investor"
-          ? "Mulai negosiasi dari peluang pendanaan yang tersedia."
+          ? opportunitiesQuery.isError
+            ? "Peluang pendanaan gagal dimuat. Coba refresh halaman lalu ulangi."
+            : opportunities.length === 0
+              ? "Belum ada peluang pendanaan untuk memulai negosiasi."
+              : "Mulai negosiasi dari peluang pendanaan yang tersedia."
           : "Negosiasi investor akan muncul di sini setelah ada penawaran."
       }
       searchableFields={["status", "catatan", (item) => readPath(item, ["investor.nama", "bisnis.nama", "bisnis.nama_bisnis"])]}

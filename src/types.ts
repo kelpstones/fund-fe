@@ -55,6 +55,10 @@ export type ResourceField<T extends Entity> = {
   placeholder?: string;
   required?: boolean;
   hideOnEdit?: boolean;
+  min?: number;
+  max?: number;
+  step?: number;
+  getEditValue?: (item: T) => string | number | undefined;
   colSpan?: 1 | 2;
   options?: Array<{ value: string | number; label: string }>;
 };
