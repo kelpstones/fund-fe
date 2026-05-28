@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { CheckCircle2, Mail, MapPin, Phone } from "lucide-react";
+import { Info, Mail, MapPin, Phone } from "lucide-react";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 
 export function ContactPage() {
@@ -9,7 +9,6 @@ export function ContactPage() {
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSent(true);
-    event.currentTarget.reset();
   };
 
   return (
@@ -24,30 +23,19 @@ export function ContactPage() {
           </p>
           <div className="mt-8 aspect-[4/3] overflow-hidden rounded-md border border-base-300 bg-base-200 shadow-sm">
             <img
-              src="/images/contact.png"
+              src="/images/contact.webp"
               alt={t("contactImageAlt")}
               className="h-full w-full object-cover"
             />
           </div>
-          <div className="mt-10 grid gap-4">
-            {[
-              [Mail, "hello@fundraise.id"],
-              [Phone, "+62 21 5566 7788"],
-              [MapPin, "Jakarta, Indonesia"],
-            ].map(([Icon, value]) => (
-              <div key={String(value)} className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-md bg-primary/10 text-primary">
-                  <Icon size={18} />
-                </div>
-                <span className="font-semibold">{String(value)}</span>
-              </div>
-            ))}
-          </div>
         </div>
         <form className="rounded-md border border-base-300 bg-white p-6 shadow-sm" onSubmit={submit}>
           {isSent ? (
-            <div className="mb-5 flex gap-3 rounded-md border border-success/20 bg-success/10 p-4 text-success">
-              <CheckCircle2 className="mt-0.5 shrink-0" size={20} />
+            <div
+              className="mb-5 flex gap-3 rounded-md border border-info/20 bg-info/10 p-4 text-info"
+              aria-live="polite"
+            >
+              <Info className="mt-0.5 shrink-0" size={20} />
               <div>
                 <p className="font-black">{t("contactFormSuccessTitle")}</p>
                 <p className="mt-1 text-sm font-semibold opacity-80">{t("contactFormSuccessBody")}</p>
@@ -73,11 +61,20 @@ export function ContactPage() {
             </label>
           </div>
           <button className="btn btn-primary mt-6 rounded-md text-white">{t("sendMessage")}</button>
-          <div className="mt-8 overflow-hidden rounded-md border border-base-300 bg-base-200">
-            <div className="grid min-h-56 place-items-center p-6 text-center">
-              <MapPin className="text-primary" size={32} />
-              <h2 className="mt-4 text-xl font-black">{t("contactMapTitle")}</h2>
-              <p className="mt-2 max-w-sm text-sm leading-6 text-neutral/60">{t("contactMapBody")}</p>
+          <div className="mt-8 border-t border-base-300 pt-6">
+            <div className="grid gap-4">
+              {[
+                [Mail, "hello@fundraise.id"],
+                [Phone, "+62 21 5566 7788"],
+                [MapPin, "Jakarta, Indonesia"],
+              ].map(([Icon, value]) => (
+                <div key={String(value)} className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-md bg-primary/10 text-primary">
+                    <Icon size={18} />
+                  </div>
+                  <span className="font-semibold">{String(value)}</span>
+                </div>
+              ))}
             </div>
           </div>
         </form>

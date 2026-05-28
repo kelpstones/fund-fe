@@ -17,6 +17,7 @@ import {
 import { compactCurrency, percent } from "../../lib/format";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import { useScrollReveal } from "../../lib/ui/useScrollReveal";
+import { dashboardPathFor, useAuth } from "../../lib/auth/AuthProvider";
 
 const proofPoints = [
   { label: "homeProofFunding", value: compactCurrency(1250000000) },
@@ -78,15 +79,15 @@ const featuredOpportunities = [
 const programLogos = [
   {
     name: "Coding Camp 2026",
-    image: "/partners/coding-camp.png",
+    image: "/partners/coding-camp.webp",
   },
   {
     name: "DBS Foundation",
-    image: "/partners/dbs-foundation.png",
+    image: "/partners/dbs-foundation.webp",
   },
   {
     name: "Dicoding",
-    image: "/partners/dicoding.png",
+    image: "/partners/dicoding.webp",
   },
 ];
 
@@ -95,31 +96,31 @@ const testimonials = [
     name: "Rani Prameswari",
     role: "homeTestimonialRoleUmkm",
     quote: "homeTestimonialRani",
-    image: "/testimonials/rani-prameswari.png",
+    image: "/testimonials/rani-prameswari.webp",
   },
   {
     name: "Dimas Arya",
     role: "homeTestimonialRoleInvestor",
     quote: "homeTestimonialDimas",
-    image: "/testimonials/dimas-arya.png",
+    image: "/testimonials/dimas-arya.webp",
   },
   {
     name: "Nadia Putri",
     role: "homeTestimonialRoleAdmin",
     quote: "homeTestimonialNadia",
-    image: "/testimonials/nadia-putri.png",
+    image: "/testimonials/nadia-putri.webp",
   },
 ];
 
 const roleCards = [
   {
     title: "homeRoleUmkmTitle",
-    image: "/images/roles/umkm.png",
+    image: "/images/roles/umkm.webp",
     points: ["homeRoleUmkmPoint1", "homeRoleUmkmPoint2", "homeRoleUmkmPoint3"],
   },
   {
     title: "homeRoleInvestorTitle",
-    image: "/images/roles/investor.png",
+    image: "/images/roles/investor.webp",
     points: [
       "homeRoleInvestorPoint1",
       "homeRoleInvestorPoint2",
@@ -199,9 +200,13 @@ function PhoneMockup() {
 }
 
 export function HomePage() {
+  const { isAuthenticated, user } = useAuth();
   const { t } = useLanguage();
   const heroRef = useRef<HTMLDivElement | null>(null);
   useScrollReveal();
+  const startNowTarget = isAuthenticated
+    ? dashboardPathFor(user?.role ?? "umkm")
+    : "/login";
 
   useEffect(() => {
     const context = gsap.context(() => {
@@ -231,7 +236,7 @@ export function HomePage() {
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
-                to="/register"
+                to={startNowTarget}
                 className="btn btn-primary h-12 rounded-md px-7 text-white"
               >
                 {t("homePrimaryCta")}
@@ -515,7 +520,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pb-16 sm:px-6 lg:px-8" data-reveal>
+      <section className="relative -mt-px bg-white px-4 pb-16 sm:px-6 lg:px-8" data-reveal>
         <div className="mx-auto max-w-7xl rounded-md bg-neutral p-8 text-white lg:p-10">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -527,7 +532,7 @@ export function HomePage() {
               </p>
             </div>
             <Link
-              to="/register"
+              to={startNowTarget}
               className="btn btn-primary rounded-md text-white"
             >
               {t("homePrimaryCta")}

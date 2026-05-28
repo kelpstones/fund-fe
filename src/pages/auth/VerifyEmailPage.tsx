@@ -148,7 +148,7 @@ export function VerifyEmailPage() {
           )}
         </div>
 
-        {status !== "loading" ? (
+        {status === "error" ? (
           <p className="mt-6 text-center text-sm text-neutral/60">
             <Link className="font-bold text-primary" to="/login">
               {t("backToLogin")}

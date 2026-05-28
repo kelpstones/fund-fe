@@ -47,10 +47,10 @@ const EXIT_DURATION = 160;
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 const toneClass: Record<ToastTone, string> = {
-  success: "alert-success",
-  error: "alert-error",
-  info: "alert-info",
-  warning: "alert-warning",
+  success: "fr-toast-alert fr-toast-alert--success",
+  error: "fr-toast-alert fr-toast-alert--error",
+  info: "fr-toast-alert fr-toast-alert--info",
+  warning: "fr-toast-alert fr-toast-alert--warning",
 };
 
 const toneIcon: Record<ToastTone, typeof CheckCircle2> = {
@@ -161,25 +161,25 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="toast toast-top toast-end z-[1200] mt-16 w-[min(92vw,25rem)] sm:mt-20">
+      <div className="toast toast-top toast-end fr-toast-stack z-[1200] w-[min(92vw,25rem)]">
         {toasts.map((item) => {
           const Icon = toneIcon[item.tone];
           return (
             <div
               key={item.id}
               role="status"
-              className={`alert ${toneClass[item.tone]} pointer-events-auto shadow-soft ${
+              className={`alert ${toneClass[item.tone]} pointer-events-auto grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 shadow-soft ${
                 item.isExiting ? "fr-toast-exit" : "fr-toast-enter"
               }`}
             >
-              <Icon size={18} />
-              <div className="grid gap-0.5">
-                {item.title ? <p className="text-sm font-black">{item.title}</p> : null}
-                <p className="text-sm font-semibold">{item.message}</p>
+              <Icon size={18} className="mt-0.5 shrink-0" />
+              <div className="min-w-0 grid gap-0.5 text-left">
+                {item.title ? <p className="break-words text-sm font-black">{item.title}</p> : null}
+                <p className="break-words text-sm font-semibold">{item.message}</p>
               </div>
               <button
                 type="button"
-                className="btn btn-ghost btn-xs btn-square"
+                className="fr-toast-dismiss"
                 onClick={() => dismiss(item.id)}
                 aria-label="Dismiss toast"
               >

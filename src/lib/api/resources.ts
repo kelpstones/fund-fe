@@ -37,6 +37,28 @@ export const resourceApi = {
       return normalizeList<T>(unwrap<unknown>(response.data));
     } catch (error) {
       if (
+        config.key.startsWith("sales-pengajuan-") &&
+        axios.isAxiosError(error)
+      ) {
+        const pengajuansId = config.key.replace("sales-pengajuan-", "");
+        if (pengajuansId) {
+          try {
+            const fallbackResponse = await apiClient.get(
+              `/businesses/proposals/sales/pengajuan/${encodeURIComponent(pengajuansId)}`,
+            );
+            return normalizeList<T>(unwrap<unknown>(fallbackResponse.data));
+          } catch (fallbackError) {
+            if (
+              config.notFoundIsEmpty &&
+              axios.isAxiosError(fallbackError) &&
+              fallbackError.response?.status === 404
+            ) {
+              return config.fallback;
+            }
+          }
+        }
+      }
+      if (
         config.notFoundIsEmpty &&
         axios.isAxiosError(error) &&
         error.response?.status === 404
@@ -85,8 +107,19 @@ export const resourceApi = {
     );
     if (!apiPath) return item;
 
-    const response = await apiClient.get(apiPath);
-    return unwrap<unknown>(response.data);
+    try {
+      const response = await apiClient.get(apiPath);
+      return unwrap<unknown>(response.data);
+    } catch (error) {
+      if (
+        config.key === "users" &&
+        axios.isAxiosError(error) &&
+        error.response?.status === 403
+      ) {
+        return item;
+      }
+      throw error;
+    }
   },
 
   async request<T extends Entity>(

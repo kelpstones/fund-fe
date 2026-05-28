@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
+import axios from "axios";
 import { Logo } from "../../components/Logo";
 import { useAuth } from "../../lib/auth/AuthProvider";
 import { LanguageSwitcher } from "../../components/LanguageSwitcher";
@@ -34,20 +35,28 @@ export function RegisterPage() {
     setIsSubmitting(true);
     try {
       await register(form);
+      localStorage.setItem(
+        "fundraise_register_hint",
+        JSON.stringify({
+          email: form.email,
+          nama: form.nama,
+          no_telp: form.no_telp,
+          role: form.role,
+          saved_at: Date.now(),
+        }),
+      );
       navigate("/login", {
         replace: true,
         state: { message: t("registerSuccessVerifyEmail") },
       });
     } catch (err) {
-      import("axios").then(({ default: axios }) => {
-        if (axios.isAxiosError(err) && err.response?.data?.message) {
-          toast.error(err.response.data.message as string, {
-            title: t("registerError"),
-          });
-        } else {
-          toast.error(t("registerError"));
-        }
-      });
+      if (axios.isAxiosError(err) && err.response?.data?.message) {
+        toast.error(err.response.data.message as string, {
+          title: t("registerError"),
+        });
+      } else {
+        toast.error(t("registerError"));
+      }
     } finally {
       setIsSubmitting(false);
     }

@@ -37,6 +37,8 @@ export type ApiEnvelope<T> = {
   message: string;
   data?: T;
   token?: string;
+  accessToken?: string;
+  refreshToken?: string;
   pagination?: {
     total_items: number;
     total_pages: number;
@@ -52,6 +54,12 @@ export type ResourceField<T extends Entity> = {
   type?: "text" | "email" | "number" | "textarea" | "select";
   placeholder?: string;
   required?: boolean;
+  hideOnEdit?: boolean;
+  min?: number;
+  max?: number;
+  step?: number;
+  getEditValue?: (item: T) => string | number | undefined;
+  colSpan?: 1 | 2;
   options?: Array<{ value: string | number; label: string }>;
 };
 

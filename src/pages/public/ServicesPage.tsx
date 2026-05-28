@@ -72,7 +72,7 @@ export function ServicesPage() {
           </div>
           <div className="aspect-video overflow-hidden rounded-md border border-base-300 bg-base-200 shadow-sm">
             <img
-              src="/images/services.png"
+              src="/images/services.webp"
               alt={t("servicesImageAlt")}
               className="h-full w-full object-cover"
             />

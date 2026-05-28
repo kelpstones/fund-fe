@@ -76,6 +76,7 @@ export function HelpCenterPage() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder={t("helpSearchPlaceholder")}
+                aria-label={t("helpSearchPlaceholder")}
               />
             </label>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">

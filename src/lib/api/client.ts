@@ -37,5 +37,6 @@ export const unwrap = <T>(payload: ApiEnvelope<T> | T): T => {
 
 export const unwrapToken = <T>(payload: ApiEnvelope<T>) => ({
   data: unwrap<T>(payload),
-  token: payload.token,
+  token: payload.accessToken ?? payload.token,
+  refreshToken: payload.refreshToken,
 });

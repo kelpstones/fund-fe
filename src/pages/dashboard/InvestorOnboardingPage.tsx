@@ -17,6 +17,7 @@ import { apiClient } from "../../lib/api/client";
 import { resourceApi } from "../../lib/api/resources";
 import { useAuth } from "../../lib/auth/AuthProvider";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
+import { DashboardBreadcrumb } from "../../components/DashboardBreadcrumb";
 import {
   investorInvestmentConfig,
   myNegotiationConfig,
@@ -188,9 +189,10 @@ function InvestorStats({
 export function InvestorOnboardingPage() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const scopeKey = user?.id ? String(user.id) : undefined;
 
   const preferencesQuery = useQuery({
-    queryKey: ["investor-onboarding", "preferences"],
+    queryKey: ["investor-onboarding", scopeKey ?? "anonymous", "preferences"],
     queryFn: async () => {
       try {
         const response = await apiClient.get("/user/investor/preferences");
@@ -199,16 +201,19 @@ export function InvestorOnboardingPage() {
         return null;
       }
     },
+    enabled: Boolean(scopeKey),
   });
 
   const negotiationsQuery = useQuery({
-    queryKey: ["investor-onboarding", "negotiations"],
+    queryKey: ["investor-onboarding", scopeKey ?? "anonymous", "negotiations"],
     queryFn: () => resourceApi.list(myNegotiationConfig),
+    enabled: Boolean(scopeKey),
   });
 
   const investmentsQuery = useQuery({
-    queryKey: ["investor-onboarding", "investments"],
+    queryKey: ["investor-onboarding", scopeKey ?? "anonymous", "investments"],
     queryFn: () => resourceApi.list(investorInvestmentConfig),
+    enabled: Boolean(scopeKey),
   });
 
   const negotiations = negotiationsQuery.data ?? [];
@@ -322,6 +327,7 @@ export function InvestorOnboardingPage() {
             <h2 className="text-3xl font-black tracking-normal text-neutral">
               {t("investorOnboardingTitle")}
             </h2>
+            <DashboardBreadcrumb />
             <p className="mt-3 max-w-3xl text-sm leading-6 text-neutral/60">
               {t("investorOnboardingBody")}
             </p>

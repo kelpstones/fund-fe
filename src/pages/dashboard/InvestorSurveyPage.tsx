@@ -11,8 +11,10 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../lib/auth/AuthProvider";
 import { EmptyState } from "../../components/EmptyState";
 import { ListSkeleton } from "../../components/PageSkeleton";
+import { DashboardBreadcrumb } from "../../components/DashboardBreadcrumb";
 import { apiClient, unwrap } from "../../lib/api/client";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import { dateShort, percent, readPath, textValue } from "../../lib/format";
@@ -97,6 +99,9 @@ const apiErrorMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
+const clampValue = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
+
 const normalizeRecommendations = (value: unknown): Entity[] => {
   if (Array.isArray(value)) return value as Entity[];
   if (value && typeof value === "object") {
@@ -117,16 +122,23 @@ const businessClass = (item: Entity) =>
 const matchScore = (item: Entity) => Number(readPath(item, ["skor_kecocokan", "match_score"], "0"));
 
 export function InvestorSurveyPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
+  const revenueNumberFormatter = useMemo(
+    () => new Intl.NumberFormat(language === "id" ? "id-ID" : "en-US"),
+    [language],
+  );
   const [form, setForm] = useState<InvestorPreferenceForm>(defaultSurvey);
   const [isDirty, setIsDirty] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const preferenceQueryKey = ["investor-preferences", user?.id ?? "guest"] as const;
+  const recommendationsQueryKey = ["ai-recommendations", "survey", user?.id ?? "guest"] as const;
 
   const preferenceQuery = useQuery({
-    queryKey: ["investor-preferences"],
+    queryKey: preferenceQueryKey,
     queryFn: async () => {
       try {
         const response = await apiClient.get("/user/investor/preferences");
@@ -140,16 +152,20 @@ export function InvestorSurveyPage() {
   });
 
   const recommendationsQuery = useQuery({
-    queryKey: ["ai-recommendations", "survey"],
+    queryKey: recommendationsQueryKey,
     queryFn: async () => {
       const response = await apiClient.get("/user/investor/recommendations");
       return unwrap<unknown>(response.data);
     },
+    enabled: preferenceQuery.isSuccess && Boolean(preferenceQuery.data),
     retry: false,
   });
 
   const recommendations = useMemo(
-    () => normalizeRecommendations(recommendationsQuery.data),
+    () =>
+      normalizeRecommendations(recommendationsQuery.data).sort(
+        (a, b) => matchScore(b) - matchScore(a),
+      ),
     [recommendationsQuery.data],
   );
 
@@ -164,18 +180,41 @@ export function InvestorSurveyPage() {
     };
   }, [preferenceQuery.data]);
   const activeForm = isDirty ? form : savedPreference;
+  const hasSavedPreference = Boolean(preferenceQuery.data);
+  const isInitialLoading = preferenceQuery.isLoading && preferenceQuery.data === undefined;
+  const isFormValid = surveyFields.every((field) => {
+    const value = Number(activeForm[field.key]);
+    return Number.isFinite(value) && value >= field.min && value <= field.max;
+  });
+  const canSave = !isInitialLoading && isFormValid && (isDirty || !hasSavedPreference);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiClient.post("/user/investor/preferences", activeForm);
+      const sanitized = surveyFields.reduce<InvestorPreferenceForm>((payload, field) => {
+        const raw = Number(activeForm[field.key]);
+        if (!Number.isFinite(raw)) {
+          throw new Error(t("surveySubmitError"));
+        }
+        payload[field.key] = clampValue(raw, field.min, field.max);
+        return payload;
+      }, {} as InvestorPreferenceForm);
+
+      const response = await apiClient.post("/user/investor/preferences", sanitized);
       return unwrap<unknown>(response.data);
     },
     onSuccess: async () => {
       setSubmitted(true);
       setIsDirty(false);
-      setMessage(t("surveySubmitSuccess"));
-      setErrorMessage("");
-      await queryClient.invalidateQueries({ queryKey: ["investor-preferences"] });
+      try {
+        await apiClient.post("/user/investor/preferences/refresh");
+        setMessage(t("surveySubmitSuccess"));
+        setErrorMessage("");
+      } catch (error) {
+        setMessage("");
+        setErrorMessage(apiErrorMessage(error, t("recommendationsRefreshError")));
+      }
+      await queryClient.invalidateQueries({ queryKey: preferenceQueryKey });
+      await queryClient.invalidateQueries({ queryKey: recommendationsQueryKey });
       await queryClient.invalidateQueries({ queryKey: ["ai-recommendations"] });
     },
     onError: (error) => {
@@ -193,6 +232,7 @@ export function InvestorSurveyPage() {
     onSuccess: async () => {
       setMessage(t("recommendationsRefreshSuccess"));
       setErrorMessage("");
+      await queryClient.invalidateQueries({ queryKey: recommendationsQueryKey });
       await queryClient.invalidateQueries({ queryKey: ["ai-recommendations"] });
     },
     onError: (error) => {
@@ -200,14 +240,40 @@ export function InvestorSurveyPage() {
       setErrorMessage(apiErrorMessage(error, t("recommendationsRefreshError")));
     },
   });
+  const canRefresh =
+    hasSavedPreference &&
+    !isDirty &&
+    isFormValid &&
+    !saveMutation.isPending &&
+    !refreshMutation.isPending &&
+    !isInitialLoading;
 
   const update = (key: keyof InvestorPreferenceForm, value: string) => {
+    const field = surveyFields.find((item) => item.key === key);
+    if (!field) return;
+
     setIsDirty(true);
-    setForm({ ...activeForm, [key]: Number(value) });
+    setSubmitted(false);
+    setMessage("");
+    setErrorMessage("");
+
+    if (key === "year_revenue") {
+      const digits = value.replace(/[^\d]/g, "");
+      setForm({
+        ...activeForm,
+        [key]: digits.length > 0 ? Number(digits) : 0,
+      });
+      return;
+    }
+
+    const parsed = Number(value.replace(",", "."));
+    if (!Number.isFinite(parsed)) return;
+    setForm({ ...activeForm, [key]: clampValue(parsed, field.min, field.max) });
   };
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!canSave || saveMutation.isPending) return;
     saveMutation.mutate();
   };
 
@@ -220,82 +286,126 @@ export function InvestorSurveyPage() {
               <ClipboardList size={24} />
             </div>
             <h2 className="text-2xl font-black tracking-normal text-neutral">{t("investorSurveyTitle")}</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral/60">
-              {t("investorSurveyBody")}
-            </p>
-          </div>
-          <div className="rounded-md border border-info/20 bg-info/10 px-4 py-3 text-sm font-semibold text-info">
-            {t("investorSurveyBackendMode")}
+            <DashboardBreadcrumb />
           </div>
         </div>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
         <form className="rounded-md border border-base-300 bg-white p-6 shadow-sm" onSubmit={submit}>
-          <div className="grid gap-5">
-            {surveyFields.map((field) => (
-              <label className="form-control" key={field.key}>
-                <span className="label-text mb-2 font-semibold">{t(field.label)}</span>
-                <div className="grid gap-3 sm:grid-cols-[1fr_8rem] sm:items-center">
-                  <input
-                    className="range range-primary"
-                    type="range"
-                    min={field.min}
-                    max={field.max}
-                    step={field.step}
-                    value={activeForm[field.key]}
-                    onChange={(event) => update(field.key, event.target.value)}
-                  />
-                  <div className="input input-bordered flex items-center gap-1 rounded-md bg-base-100">
-                    <input
-                      className="w-full"
-                      type="number"
-                      min={field.min}
-                      max={field.max}
-                      step={field.step}
-                      value={activeForm[field.key]}
-                      onChange={(event) => update(field.key, event.target.value)}
-                      required
-                    />
-                    {field.unit ? (
-                      <span className="text-xs font-bold text-neutral/45">
-                        {field.unit === "yearUnit" ? t("yearUnit") : field.unit}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-                <span className="mt-2 text-xs font-semibold leading-5 text-neutral/45">{t(field.help)}</span>
-              </label>
-            ))}
-          </div>
+          {isInitialLoading ? (
+            <div className="mb-4 rounded-md border border-base-300 bg-base-200 px-4 py-3 text-sm font-semibold text-neutral/65">
+              {t("loading")}...
+            </div>
+          ) : null}
+          {preferenceQuery.isError ? (
+            <div className="mb-4 rounded-md border border-warning/20 bg-warning/10 px-4 py-3 text-sm font-semibold text-warning">
+              {apiErrorMessage(preferenceQuery.error, t("dataUnavailable"))}
+            </div>
+          ) : null}
+          {isInitialLoading ? <ListSkeleton rows={5} /> : null}
 
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <button className="btn btn-primary rounded-md text-white" disabled={saveMutation.isPending}>
-              {saveMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <BrainCircuit size={18} />}
-              {t("saveAndViewMatch")}
-            </button>
-            <button
-              className="btn btn-outline rounded-md"
-              type="button"
-              onClick={() => {
-                setForm(defaultSurvey);
-                setIsDirty(true);
-                setSubmitted(false);
-              }}
-            >
-              <RefreshCw size={18} />
-              {t("reset")}
-            </button>
-          </div>
+          {!isInitialLoading ? (
+            <>
+              <div className="grid gap-5">
+                {surveyFields.map((field) => (
+                  <label className="form-control" key={field.key}>
+                    <span className="label-text mb-2 font-semibold">{t(field.label)}</span>
+                    {field.key === "year_revenue" ? (
+                      <div className="input input-bordered flex items-center gap-2 rounded-md bg-base-100">
+                        <span className="pl-1 text-xs font-black text-neutral/55">IDR</span>
+                        <input
+                          className="w-full"
+                          type="text"
+                          inputMode="numeric"
+                          value={revenueNumberFormatter.format(
+                            Math.max(0, Math.round(Number(activeForm[field.key] || 0))),
+                          )}
+                          onChange={(event) => update(field.key, event.target.value)}
+                          required
+                        />
+                      </div>
+                    ) : (
+                      <div className="grid gap-3 sm:grid-cols-[1fr_8rem] sm:items-center">
+                        <input
+                          className="range range-primary"
+                          type="range"
+                          min={field.min}
+                          max={field.max}
+                          step={field.step}
+                          value={activeForm[field.key]}
+                          onChange={(event) => update(field.key, event.target.value)}
+                        />
+                        <div className="input input-bordered flex items-center gap-1 rounded-md bg-base-100">
+                          <input
+                            className="w-full"
+                            type="number"
+                            min={field.min}
+                            max={field.max}
+                            step={field.step}
+                            value={activeForm[field.key]}
+                            onChange={(event) => update(field.key, event.target.value)}
+                            required
+                          />
+                          {field.unit ? (
+                            <span className="text-xs font-bold text-neutral/45">
+                              {field.unit === "yearUnit" ? t("yearUnit") : field.unit}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    )}
+                    <span className="mt-2 text-xs font-semibold leading-5 text-neutral/45">{t(field.help)}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <button
+                  className="btn btn-primary rounded-md text-white"
+                  disabled={!canSave || saveMutation.isPending}
+                >
+                  {saveMutation.isPending ? (
+                    <Loader2 className="animate-spin" size={18} />
+                  ) : (
+                    <BrainCircuit size={18} />
+                  )}
+                  {t("saveAndViewMatch")}
+                </button>
+                <button
+                  className="btn btn-outline rounded-md"
+                  type="button"
+                  onClick={() => {
+                    setForm(hasSavedPreference ? savedPreference : defaultSurvey);
+                    setIsDirty(false);
+                    setSubmitted(false);
+                    setMessage("");
+                    setErrorMessage("");
+                  }}
+                >
+                  <RefreshCw size={18} />
+                  {t("reset")}
+                </button>
+              </div>
+            </>
+          ) : null}
 
           {message ? (
-            <div className="mt-5 flex gap-3 rounded-md border border-success/20 bg-success/10 p-4 text-success">
+            <div
+              className="mt-5 flex gap-3 rounded-md border border-success/20 bg-success/10 p-4 text-success"
+              role="status"
+              aria-live="polite"
+            >
               <CheckCircle2 className="mt-0.5 shrink-0" size={20} />
               <p className="text-sm font-semibold">{message}</p>
             </div>
           ) : null}
           {errorMessage ? (
-            <div className="mt-5 rounded-md border border-error/20 bg-error/10 p-4 text-sm font-semibold text-error">
+            <div
+              className="mt-5 rounded-md border border-error/20 bg-error/10 p-4 text-sm font-semibold text-error"
+              role="alert"
+              aria-live="assertive"
+            >
               {errorMessage}
             </div>
           ) : null}
@@ -313,7 +423,7 @@ export function InvestorSurveyPage() {
             <button
               className="btn btn-secondary rounded-md text-white"
               onClick={() => refreshMutation.mutate()}
-              disabled={refreshMutation.isPending}
+              disabled={!canRefresh}
             >
               {refreshMutation.isPending ? <Loader2 className="animate-spin" size={17} /> : <RefreshCw size={17} />}
               {t("refresh")}
@@ -333,7 +443,10 @@ export function InvestorSurveyPage() {
 
           <div className="mt-5 grid gap-4">
             {recommendations.slice(0, 3).map((item, index) => (
-              <article key={String(item.id)} className="rounded-md border border-base-300 p-4">
+              <article
+                key={String(item.id ?? `${businessName(item)}-${index}`)}
+                className="rounded-md border border-base-300 p-4"
+              >
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-black uppercase tracking-wide text-neutral/40">
@@ -361,7 +474,11 @@ export function InvestorSurveyPage() {
 
           {!recommendationsQuery.isLoading && !recommendationsQuery.isError && recommendations.length === 0 ? (
             <div className="mt-5">
-              <EmptyState title="noRecommendations" body="surveyBackendEmpty" compact />
+              <EmptyState
+                title="noRecommendations"
+                body={hasSavedPreference ? "surveyBackendEmpty" : "fillSurveyFirst"}
+                compact
+              />
             </div>
           ) : null}
 

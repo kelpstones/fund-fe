@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertCircle,
@@ -6,6 +7,8 @@ import {
   Bell,
   Building2,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   CircleDollarSign,
   FileCheck2,
   Handshake,
@@ -19,6 +22,7 @@ import {
 import { StatCard } from "../../components/StatCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ListSkeleton } from "../../components/PageSkeleton";
+import { DashboardBreadcrumb } from "../../components/DashboardBreadcrumb";
 import { directApi } from "../../lib/api/direct";
 import { resourceApi } from "../../lib/api/resources";
 import { useAuth } from "../../lib/auth/AuthProvider";
@@ -37,17 +41,19 @@ import {
 import { compactCurrency, currency, percent, readPath, statusTone, textValue } from "../../lib/format";
 import type { Entity, ResourceConfig } from "../../types";
 
-const useResource = (config: ResourceConfig<Entity>) =>
+const useResource = (config: ResourceConfig<Entity>, scopeKey?: string) =>
   useQuery({
-    queryKey: ["overview", config.key],
+    queryKey: ["overview", scopeKey ?? "anonymous", config.key],
     queryFn: () => resourceApi.list(config),
+    enabled: Boolean(scopeKey),
     retry: false,
   });
 
-const useDashboard = (role: "umkm" | "investor" | "admin") =>
+const useDashboard = (role: "umkm" | "investor" | "admin", scopeKey?: string) =>
   useQuery({
-    queryKey: ["dashboard-summary", role],
+    queryKey: ["dashboard-summary", role, scopeKey ?? "anonymous"],
     queryFn: () => directApi.get(`/dashboard/${role}`, null),
+    enabled: Boolean(scopeKey),
     retry: false,
   });
 
@@ -68,12 +74,49 @@ type OverviewStep = {
   helperParams?: Record<string, string | number>;
 };
 
+type OverviewBannerItem = {
+  key: string;
+  to: string;
+  imageSrc?: string;
+  imageMobileSrc?: string;
+  imageDesktopSrc?: string;
+  title: string;
+  body?: string;
+  priority?: number;
+  icon?: typeof Bell;
+};
+
+type ViewportVariant = "mobile" | "tablet" | "desktop";
+
+const resolveViewportVariant = (width: number): ViewportVariant => {
+  if (width < 768) return "mobile";
+  if (width >= 1280) return "desktop";
+  return "tablet";
+};
+
+function useViewportVariant() {
+  const [variant, setVariant] = useState<ViewportVariant>(() =>
+    typeof window === "undefined" ? "desktop" : resolveViewportVariant(window.innerWidth),
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setVariant(resolveViewportVariant(window.innerWidth));
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  return variant;
+}
+
 function PageHeader({
   title,
-  body,
 }: {
   title: string;
-  body: string;
 }) {
   const { t } = useLanguage();
 
@@ -82,9 +125,152 @@ function PageHeader({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="text-3xl font-black tracking-normal text-neutral">{t(title)}</h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-neutral/60">{t(body)}</p>
+          <DashboardBreadcrumb />
         </div>
       </div>
+    </div>
+  );
+}
+
+function OverviewBannerRail({ items }: { items: OverviewBannerItem[] }) {
+  const visible = useMemo(
+    () => [...items].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0)),
+    [items],
+  );
+  const viewportVariant = useViewportVariant();
+  const bannerAspectClass =
+    viewportVariant === "mobile"
+      ? "aspect-[3/1]"
+      : viewportVariant === "desktop"
+        ? "aspect-[5/1]"
+        : "aspect-[4/1]";
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const lastNavAtRef = useRef(0);
+  const currentIndex = visible.length > 0 ? activeIndex % visible.length : 0;
+
+  useEffect(() => {
+    if (visible.length <= 1 || paused) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % visible.length);
+    }, 4200);
+
+    return () => window.clearInterval(timer);
+  }, [paused, visible.length]);
+
+  if (visible.length === 0) {
+    return null;
+  }
+
+  const canNavigate = () => {
+    const now = Date.now();
+    if (now - lastNavAtRef.current < 180) return false;
+    lastNavAtRef.current = now;
+    return true;
+  };
+
+  const prevSlide = () => {
+    if (!canNavigate()) return;
+    setActiveIndex((prev) => (prev - 1 + visible.length) % visible.length);
+  };
+
+  const nextSlide = () => {
+    if (!canNavigate()) return;
+    setActiveIndex((prev) => (prev + 1) % visible.length);
+  };
+
+  return (
+    <div
+      className="rounded-md border border-base-300 bg-white p-2 shadow-sm"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <div className="relative overflow-hidden rounded-md border border-base-300 bg-base-100">
+        <div
+          className="flex transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+        >
+        {visible.map((item) => (
+          <div key={item.key} className="w-full shrink-0">
+            <Link to={item.to} className="group block">
+              <div className={bannerAspectClass}>
+                {item.imageSrc ? (
+                  <img
+                    src={
+                      viewportVariant === "mobile"
+                        ? item.imageMobileSrc || item.imageSrc || item.imageDesktopSrc
+                        : viewportVariant === "desktop"
+                          ? item.imageDesktopSrc || item.imageSrc || item.imageMobileSrc
+                          : item.imageSrc || item.imageDesktopSrc || item.imageMobileSrc
+                    }
+                    alt={item.title}
+                    loading="lazy"
+                    className="block h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-between gap-4 bg-neutral px-6 text-neutral-content">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black sm:text-base">{item.title}</p>
+                      {item.body ? (
+                        <p className="mt-1 text-xs text-neutral-content/75 sm:text-sm">{item.body}</p>
+                      ) : null}
+                    </div>
+                    {item.icon ? <item.icon className="shrink-0 text-neutral-content/80" size={22} /> : null}
+                  </div>
+                )}
+              </div>
+            </Link>
+          </div>
+        ))}
+        </div>
+        {visible.length > 1 ? (
+          <>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                prevSlide();
+              }}
+              className="btn btn-circle btn-sm absolute left-3 top-1/2 z-20 -translate-y-1/2 border border-white/40 bg-black/45 text-white hover:bg-black/60 touch-manipulation"
+              aria-label="Previous banner"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                nextSlide();
+              }}
+              className="btn btn-circle btn-sm absolute right-3 top-1/2 z-20 -translate-y-1/2 border border-white/40 bg-black/45 text-white hover:bg-black/60 touch-manipulation"
+              aria-label="Next banner"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </>
+        ) : null}
+      </div>
+      {visible.length > 1 ? (
+        <div className="mt-3 flex items-center justify-center gap-1.5">
+          {visible.map((item, index) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setActiveIndex(index)}
+              aria-label={`Go to banner ${index + 1}`}
+              className={[
+                "h-1.5 rounded-full transition-all",
+                index === currentIndex ? "w-6 bg-primary" : "w-2 bg-base-300 hover:bg-base-content/25",
+              ].join(" ")}
+            />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -206,14 +392,12 @@ function OnboardingOverviewCard({
   progress,
   icon: Icon,
   steps,
-  primaryHref,
 }: {
   titleKey: string;
   bodyKey: string;
   progress: number;
-  icon: typeof Rocket;
+  icon?: typeof Rocket;
   steps: OverviewStep[];
-  primaryHref: string;
 }) {
   const { t } = useLanguage();
 
@@ -221,9 +405,11 @@ function OnboardingOverviewCard({
     <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-4">
-          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
-            <Icon size={24} />
-          </div>
+          {Icon ? (
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+              <Icon size={24} />
+            </div>
+          ) : null}
           <div>
             <h3 className="text-xl font-black">{t(titleKey)}</h3>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-neutral/60">{t(bodyKey)}</p>
@@ -242,25 +428,40 @@ function OnboardingOverviewCard({
               />
             </div>
           </div>
-          <Link to={primaryHref} className="btn btn-primary h-10 rounded-md text-white">
-            {t("openOnboarding")}
-          </Link>
         </div>
       </div>
       <div className="mt-5 grid gap-2">
         {steps.map((step) => {
           const content = (
-            <div className="flex items-start justify-between gap-4 rounded-md border border-base-300 px-3 py-2">
+            <div
+              className={[
+                "flex items-start justify-between gap-4 rounded-md border border-base-300 px-3 py-2",
+                step.locked
+                  ? "cursor-not-allowed border-neutral/35 bg-neutral/10"
+                  : "bg-white",
+              ].join(" ")}
+            >
               <div className="min-w-0">
-                <p className="text-sm font-bold text-neutral">{t(step.titleKey)}</p>
-                <p className="mt-1 text-xs text-neutral/55">{t(step.helperKey, step.helperParams)}</p>
+                <div className="flex items-center gap-1.5">
+                  {step.locked ? <Lock size={13} className="shrink-0 text-neutral/45" /> : null}
+                  <p className={step.locked ? "text-sm font-bold text-neutral/50" : "text-sm font-bold text-neutral"}>
+                    {t(step.titleKey)}
+                  </p>
+                </div>
+                <p className={step.locked ? "mt-1 text-xs text-neutral/45" : "mt-1 text-xs text-neutral/55"}>
+                  {t(step.helperKey, step.helperParams)}
+                </p>
               </div>
               <OnboardingBadge done={step.done} locked={step.locked} />
             </div>
           );
 
           if (step.locked) {
-            return <div key={step.key}>{content}</div>;
+            return (
+              <div key={step.key} aria-disabled title={t("locked")}>
+                {content}
+              </div>
+            );
           }
 
           return (
@@ -277,7 +478,8 @@ function OnboardingOverviewCard({
 export function UmkmOverviewPage() {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const dashboardQuery = useDashboard("umkm");
+  const scopeKey = user?.id ? String(user.id) : undefined;
+  const dashboardQuery = useDashboard("umkm", scopeKey);
   const dashboard = dashboardQuery.data;
   const d = asRecord(dashboard);
   const dashboardBusiness = asRecord(d.bisnis);
@@ -285,16 +487,16 @@ export function UmkmOverviewPage() {
   const dashboardInvestor = asRecord(d.investor);
   const penjualanChart = asEntityArray(d.penjualan_chart);
 
-  const businessesQuery = useResource(myBusinessConfig);
-  const submissionsQuery = useResource(submissionConfig);
-  const negotiationsQuery = useResource(myNegotiationConfig);
+  const businessesQuery = useResource(myBusinessConfig, scopeKey);
+  const submissionsQuery = useResource(submissionConfig, scopeKey);
+  const negotiationsQuery = useResource(myNegotiationConfig, scopeKey);
   const businesses = businessesQuery.data ?? [];
   const submissions = submissionsQuery.data ?? [];
   const negotiations = negotiationsQuery.data ?? [];
   const primaryBusinessId = businesses[0]?.id ? String(businesses[0].id) : "";
 
   const modelProfileQuery = useQuery({
-    queryKey: ["overview", "umkm-profile", primaryBusinessId],
+    queryKey: ["overview", scopeKey ?? "anonymous", "umkm-profile", primaryBusinessId],
     queryFn: async () => {
       try {
         return await directApi.get(`/businesses/${primaryBusinessId}/profile`, null);
@@ -302,7 +504,7 @@ export function UmkmOverviewPage() {
         return null;
       }
     },
-    enabled: Boolean(primaryBusinessId),
+    enabled: Boolean(scopeKey && primaryBusinessId),
     retry: false,
   });
   const modelProfile = asRecord(modelProfileQuery.data);
@@ -399,13 +601,65 @@ export function UmkmOverviewPage() {
   const onboardingProgress = Math.round(
     (onboardingChecks.filter(Boolean).length / onboardingChecks.length) * 100,
   );
-  const nextStep = onboardingSteps.find((step) => !step.done && !step.locked);
+  const visibleOnboardingSteps = onboardingSteps.filter((step) => !step.done);
+  const shouldShowOnboardingCard = visibleOnboardingSteps.length > 0;
+  const umkmBannerItems: OverviewBannerItem[] = [
+    ...(hasBusiness && !hasModelProfile
+      ? [
+          {
+            key: "umkm-model",
+            to: "/dashboard/umkm/bisnis-profile",
+            imageSrc: "/images/overview-banners/umkm-lengkapi-profil-bisnis.webp",
+            imageMobileSrc: "/images/overview-banners/umkm-lengkapi-profil-bisnis-mobile.webp",
+            imageDesktopSrc: "/images/overview-banners/umkm-lengkapi-profil-bisnis-desktop.webp",
+            title: t("onboardingModelTitle"),
+            priority: 3,
+          },
+        ]
+      : []),
+    ...(hasBusiness && !hasSubmission
+      ? [
+          {
+            key: "umkm-submission",
+            to: "/dashboard/umkm/pengajuan",
+            imageSrc: "/images/overview-banners/umkm-buat-pengajuan-pendanaan.webp",
+            imageMobileSrc: "/images/overview-banners/umkm-buat-pengajuan-pendanaan-mobile.webp",
+            imageDesktopSrc: "/images/overview-banners/umkm-buat-pengajuan-pendanaan-desktop.webp",
+            title: t("onboardingSubmissionTitle"),
+            priority: 3,
+          },
+        ]
+      : []),
+    {
+      key: "umkm-sales",
+      to: "/dashboard/umkm/penjualan",
+      imageSrc: "/images/overview-banners/umkm-update-laporan-penjualan.webp",
+      imageMobileSrc: "/images/overview-banners/umkm-update-laporan-penjualan-mobile.webp",
+      imageDesktopSrc: "/images/overview-banners/umkm-update-laporan-penjualan-desktop.webp",
+      title: t("sales"),
+      priority: 1,
+    },
+    {
+      key: "umkm-notification",
+      to: "/dashboard/umkm/notifikasi",
+      imageSrc: "/images/overview-banners/umkm-cek-notifikasi-aktivitas.webp",
+      imageMobileSrc: "/images/overview-banners/umkm-cek-notifikasi-aktivitas-mobile.webp",
+      imageDesktopSrc: "/images/overview-banners/umkm-cek-notifikasi-aktivitas-desktop.webp",
+      title: t("notifications"),
+      priority: 1,
+    },
+  ];
+  const isOnboardingLoading =
+    businessesQuery.isLoading ||
+    submissionsQuery.isLoading ||
+    negotiationsQuery.isLoading ||
+    (Boolean(primaryBusinessId) && modelProfileQuery.isLoading);
 
   return (
     <div className="space-y-6">
+      <OverviewBannerRail items={umkmBannerItems} />
       <PageHeader
         title="umkmOverviewTitle"
-        body="umkmOverviewBody"
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t("business")} value={String(bisnisCount)} helper={t("activeProfile")} icon={Building2} loading={dashboardQuery.isLoading} />
@@ -413,18 +667,19 @@ export function UmkmOverviewPage() {
         <StatCard label={t("sales")} value={compactCurrency(totalSales)} helper={t("fromReports")} icon={BarChart3} tone="amber" loading={dashboardQuery.isLoading} />
         <StatCard label={t("investor")} value={String(investorCount)} helper={t("relatedInvestors")} icon={Handshake} loading={dashboardQuery.isLoading} />
       </div>
-      <OnboardingOverviewCard
-        titleKey="umkmReadinessTitle"
-        bodyKey="umkmReadinessBody"
-        progress={onboardingProgress}
-        icon={Rocket}
-        steps={onboardingSteps}
-        primaryHref={nextStep?.href ?? "/dashboard/umkm/penjualan"}
-      />
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <MatchList submissions={submissions} isLoading={submissionsQuery.isLoading} />
-        <ActivityPanel items={negotiations} isLoading={negotiationsQuery.isLoading} />
-      </div>
+      {isOnboardingLoading ? (
+        <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+          <ListSkeleton rows={4} />
+        </div>
+      ) : shouldShowOnboardingCard ? (
+        <OnboardingOverviewCard
+          titleKey="umkmReadinessTitle"
+          bodyKey="umkmReadinessBody"
+          progress={onboardingProgress}
+          steps={visibleOnboardingSteps}
+        />
+      ) : null}
+      <ActivityPanel items={negotiations} isLoading={negotiationsQuery.isLoading} />
     </div>
   );
 }
@@ -432,20 +687,21 @@ export function UmkmOverviewPage() {
 export function InvestorOverviewPage() {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const dashboardQuery = useDashboard("investor");
+  const scopeKey = user?.id ? String(user.id) : undefined;
+  const dashboardQuery = useDashboard("investor", scopeKey);
   const dashboard = dashboardQuery.data;
   const d = asRecord(dashboard);
   const dashboardInvestment = asRecord(d.investasi);
   const dashboardProfit = asRecord(d.profit);
   const recentDistribution = asEntityArray(d.recent_distribusi);
 
-  const submissionsQuery = useResource(submissionConfig);
-  const investmentsQuery = useResource(investorInvestmentConfig);
-  const invoicesQuery = useResource(investorInvoiceConfig);
-  const profitsQuery = useResource(investorProfitConfig);
-  const negotiationsQuery = useResource(myNegotiationConfig);
+  const submissionsQuery = useResource(submissionConfig, scopeKey);
+  const investmentsQuery = useResource(investorInvestmentConfig, scopeKey);
+  const invoicesQuery = useResource(investorInvoiceConfig, scopeKey);
+  const profitsQuery = useResource(investorProfitConfig, scopeKey);
+  const negotiationsQuery = useResource(myNegotiationConfig, scopeKey);
   const preferencesQuery = useQuery({
-    queryKey: ["overview", "investor-preferences"],
+    queryKey: ["overview", scopeKey ?? "anonymous", "investor-preferences"],
     queryFn: async () => {
       try {
         return await directApi.get("/user/investor/preferences", null);
@@ -453,6 +709,7 @@ export function InvestorOverviewPage() {
         return null;
       }
     },
+    enabled: Boolean(scopeKey),
     retry: false,
   });
   const submissions = submissionsQuery.data ?? [];
@@ -468,13 +725,16 @@ export function InvestorOverviewPage() {
     Number(dashboardProfit.total_diterima ?? 0) ||
     profits.reduce((sum, item) => sum + Number(item.nominal_profit || 0), 0);
   const pendingProfit = Number(dashboardProfit.total_pending ?? 0);
-  const peluangCount = Number(d.total_peluang ?? 0) || submissions.length;
   const investmentCount = Number(dashboardInvestment.jumlah_aktif ?? 0) || investments.length;
-  const invoiceCount = Number(d.total_invoice ?? 0) || invoices.length;
   const accountReady = Boolean(user?.nama && user?.email);
   const hasPreferences = Boolean(preferencesQuery.data);
   const hasNegotiation = negotiations.length > 0;
   const hasInvestment = investmentCount > 0;
+  const hasPendingInvoice = invoices.some((item) => {
+    const rawStatus = readPath(item, ["status", "invoice_status"], "");
+    const status = String(rawStatus || "").toLowerCase();
+    return ["pending", "unpaid", "waiting_payment", "belum_dibayar"].includes(status);
+  });
 
   const onboardingSteps: OverviewStep[] = [
     {
@@ -522,28 +782,80 @@ export function InvestorOverviewPage() {
   const onboardingProgress = Math.round(
     (onboardingSteps.filter((step) => step.done).length / onboardingSteps.length) * 100,
   );
-  const nextStep = onboardingSteps.find((step) => !step.done && !step.locked);
+  const investorBannerItems: OverviewBannerItem[] = [
+    ...(!hasPreferences
+      ? [
+          {
+            key: "investor-survey",
+            to: "/dashboard/investor/survey",
+            imageSrc: "/images/overview-banners/investor-isi-survey-preferensi.webp",
+            imageMobileSrc: "/images/overview-banners/investor-isi-survey-preferensi-mobile.webp",
+            imageDesktopSrc: "/images/overview-banners/investor-isi-survey-preferensi-desktop.webp",
+            title: t("dashboardSurvey"),
+            priority: 3,
+          },
+        ]
+      : []),
+    ...(hasPendingInvoice
+      ? [
+          {
+            key: "investor-invoice-pending",
+            to: "/dashboard/investor/invoice",
+            title: t("dashboardInvoices"),
+            body: t("pendingCount", { count: invoices.filter((item) => {
+              const rawStatus = readPath(item, ["status", "invoice_status"], "");
+              const status = String(rawStatus || "").toLowerCase();
+              return ["pending", "unpaid", "waiting_payment", "belum_dibayar"].includes(status);
+            }).length }),
+            icon: Receipt,
+            priority: 3,
+          },
+        ]
+      : []),
+    {
+      key: "investor-opportunity",
+      to: "/dashboard/investor/peluang",
+      imageSrc: "/images/overview-banners/investor-jelajahi-peluang-umkm.webp",
+      imageMobileSrc: "/images/overview-banners/investor-jelajahi-peluang-umkm-mobile.webp",
+      imageDesktopSrc: "/images/overview-banners/investor-jelajahi-peluang-umkm-desktop.webp",
+      title: t("opportunities"),
+      priority: 1,
+    },
+    {
+      key: "investor-portfolio",
+      to: "/dashboard/investor/portfolio",
+      imageSrc: "/images/overview-banners/investor-pantau-portfolio-aktif.webp",
+      imageMobileSrc: "/images/overview-banners/investor-pantau-portfolio-aktif-mobile.webp",
+      imageDesktopSrc: "/images/overview-banners/investor-pantau-portfolio-aktif-desktop.webp",
+      title: t("dashboardPortfolio"),
+      priority: 1,
+    },
+  ];
+  const isOnboardingLoading =
+    preferencesQuery.isLoading || negotiationsQuery.isLoading || investmentsQuery.isLoading;
 
   return (
     <div className="space-y-6">
+      <OverviewBannerRail items={investorBannerItems} />
       <PageHeader
         title="investorOverviewTitle"
-        body="investorOverviewBody"
       />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label={t("opportunities")} value={String(peluangCount)} helper={t("availableSubmissions")} icon={FileCheck2} loading={dashboardQuery.isLoading} />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
         <StatCard label={t("investments")} value={compactCurrency(invested)} helper={t("activePortfolio")} icon={TrendingUp} tone="green" loading={dashboardQuery.isLoading} />
         <StatCard label={t("profit")} value={compactCurrency(profitTotal)} helper={t("pendingAmount", { amount: compactCurrency(pendingProfit) })} icon={CircleDollarSign} tone="amber" loading={dashboardQuery.isLoading} />
-        <StatCard label={t("invoice")} value={String(invoiceCount)} helper={t("investorBills")} icon={Receipt} loading={dashboardQuery.isLoading} />
       </div>
-      <OnboardingOverviewCard
-        titleKey="investorOnboardingTitle"
-        bodyKey="investorOnboardingBody"
-        progress={onboardingProgress}
-        icon={Rocket}
-        steps={onboardingSteps}
-        primaryHref={nextStep?.href ?? "/dashboard/investor/peluang"}
-      />
+      {isOnboardingLoading ? (
+        <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+          <ListSkeleton rows={4} />
+        </div>
+      ) : (
+        <OnboardingOverviewCard
+          titleKey="investorOnboardingTitle"
+          bodyKey="investorOnboardingBody"
+          progress={onboardingProgress}
+          steps={onboardingSteps}
+        />
+      )}
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <MatchList submissions={submissions} isLoading={submissionsQuery.isLoading} />
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
@@ -584,7 +896,9 @@ export function InvestorOverviewPage() {
 
 export function AdminOverviewPage() {
   const { t } = useLanguage();
-  const dashboardQuery = useDashboard("admin");
+  const { user } = useAuth();
+  const scopeKey = user?.id ? String(user.id) : undefined;
+  const dashboardQuery = useDashboard("admin", scopeKey);
   const dashboard = dashboardQuery.data;
   const d = asRecord(dashboard);
   const dashboardBusiness = asRecord(d.bisnis);
@@ -593,10 +907,10 @@ export function AdminOverviewPage() {
   const submissionByStatus = asRecord(dashboardSubmission.by_status);
   const recentSubmissions = asEntityArray(d.recent_pengajuan);
 
-  const businessesQuery = useResource(businessConfig);
-  const submissionsQuery = useResource(submissionConfig);
-  const adminsQuery = useResource(adminConfig);
-  const notificationsQuery = useResource(notificationConfig);
+  const businessesQuery = useResource(businessConfig, scopeKey);
+  const submissionsQuery = useResource(submissionConfig, scopeKey);
+  const adminsQuery = useResource(adminConfig, scopeKey);
+  const notificationsQuery = useResource(notificationConfig, scopeKey);
   const businesses = businessesQuery.data ?? [];
   const submissions = submissionsQuery.data ?? [];
   const admins = adminsQuery.data ?? [];
@@ -610,18 +924,60 @@ export function AdminOverviewPage() {
   const pending =
     Number(submissionByStatus.pending ?? 0) ||
     submissions.filter((item) => String(readPath(item, ["approval.status", "approval_status", "status"])) === "pending").length;
+  const adminBannerItems: OverviewBannerItem[] = [
+    ...(pending > 0
+      ? [
+          {
+            key: "admin-review-pending",
+            to: "/dashboard/admin/review",
+            title: t("dashboardReviewQueue"),
+            body: t("pendingCount", { count: pending }),
+            icon: FileCheck2,
+            priority: 3,
+          },
+        ]
+      : []),
+    ...(notifCount > 0
+      ? [
+          {
+            key: "admin-notification",
+            to: "/dashboard/admin/notifikasi",
+            title: t("dashboardNotifications"),
+            body: t("pendingCount", { count: notifCount }),
+            icon: Bell,
+            priority: 3,
+          },
+        ]
+      : []),
+    {
+      key: "admin-submissions",
+      to: "/dashboard/admin/pengajuan",
+      title: t("dashboardSubmissions"),
+      body: t("submissionStatus"),
+      icon: FileCheck2,
+      priority: 1,
+    },
+    {
+      key: "admin-businesses",
+      to: "/dashboard/admin/bisnis",
+      title: t("dashboardBusiness"),
+      body: t("registered"),
+      icon: Building2,
+      priority: 1,
+    },
+  ];
 
   return (
     <div className="space-y-6">
+      <OverviewBannerRail items={adminBannerItems} />
       <PageHeader
         title="adminOverviewTitle"
-        body="adminOverviewBody"
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label={t("business")} value={String(bisnisCount)} helper={t("registered")} icon={Building2} loading={dashboardQuery.isLoading} />
-        <StatCard label={t("submissions")} value={String(submissionCount)} helper={t("pendingCount", { count: pending })} icon={FileCheck2} tone="amber" loading={dashboardQuery.isLoading} />
+        <StatCard label={t("submissions")} value={String(submissionCount)} helper={t("pendingCount", { count: pending })} icon={FileCheck2} tone="neutral" loading={dashboardQuery.isLoading} />
         <StatCard label={t("users")} value={String(userCount)} helper={t("platformAccounts")} icon={Users} loading={dashboardQuery.isLoading} />
-        <StatCard label={t("notifications")} value={String(notifCount)} helper={t("operational")} icon={Bell} tone="green" loading={dashboardQuery.isLoading} />
+        <StatCard label={t("notifications")} value={String(notifCount)} helper={t("operational")} icon={Bell} tone="neutral" loading={dashboardQuery.isLoading} />
       </div>
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">

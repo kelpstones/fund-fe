@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { EmptyState } from "../../components/EmptyState";
 import { CardSkeletonGrid, ListSkeleton } from "../../components/PageSkeleton";
+import { DashboardBreadcrumb } from "../../components/DashboardBreadcrumb";
 import { apiClient, unwrap } from "../../lib/api/client";
 import { resourceApi } from "../../lib/api/resources";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
@@ -38,7 +39,7 @@ import {
   publishedSubmissionConfig,
   submissionConfig,
 } from "../../lib/resourceConfigs";
-import { currency, percent, readPath, statusTone, textValue } from "../../lib/format";
+import { currency, dateShort, percent, readPath, statusTone, textValue } from "../../lib/format";
 import type { Entity } from "../../types";
 
 type SavedOpportunity = Entity & {
@@ -173,6 +174,7 @@ function MarketplaceHeader({
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="text-2xl font-black tracking-normal text-neutral">{t(title)}</h2>
+          <DashboardBreadcrumb />
           <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral/60">{t(description)}</p>
         </div>
         {actions ? <div className="flex flex-col gap-2 sm:flex-row">{actions}</div> : null}
@@ -692,6 +694,7 @@ export function OpportunityDetailPage() {
   const { data = [], isLoading } = usePublishedOpportunities();
   const { savedIds, toggle } = useSavedOpportunities();
   const opportunity = data.find((item) => opportunityId(item) === id);
+  const opportunityBusinessId = opportunity ? bookmarkKey(opportunity) : "";
   const [form, setForm] = useState({
     penawaran_nominal: "",
     penawaran_return: "",
@@ -699,6 +702,19 @@ export function OpportunityDetailPage() {
   });
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const bookmarkStatusQuery = useQuery({
+    queryKey: ["investor-bookmark-status", opportunityBusinessId],
+    queryFn: async () => {
+      const response = await apiClient.get(`/user/investor/bookmarks/${opportunityBusinessId}`);
+      const payload = unwrap<unknown>(response.data);
+      if (payload && typeof payload === "object" && "isBookmarked" in payload) {
+        return Boolean((payload as Record<string, unknown>).isBookmarked);
+      }
+      return false;
+    },
+    enabled: Boolean(opportunityBusinessId),
+    retry: false,
+  });
 
   const negotiationMutation = useMutation({
     mutationFn: async () => {
@@ -734,7 +750,7 @@ export function OpportunityDetailPage() {
     );
   }
 
-  const isSaved = savedIds.has(bookmarkKey(opportunity));
+  const isSaved = bookmarkStatusQuery.data ?? savedIds.has(opportunityBusinessId);
 
   return (
     <section className="space-y-5">
@@ -743,7 +759,18 @@ export function OpportunityDetailPage() {
         description="opportunityDetailBody"
         actions={
           <>
-            <button className="btn btn-outline rounded-md" onClick={() => toggle(opportunity)}>
+            <button
+              className="btn btn-outline rounded-md"
+              disabled={!opportunityBusinessId}
+              onClick={() => {
+                toggle(opportunity);
+                if (opportunityBusinessId) {
+                  void queryClient.invalidateQueries({
+                    queryKey: ["investor-bookmark-status", opportunityBusinessId],
+                  });
+                }
+              }}
+            >
               {isSaved ? <BookmarkCheck size={17} /> : <Bookmark size={17} />}
               {isSaved ? t("saved") : t("save")}
             </button>
@@ -1081,6 +1108,50 @@ export function AdminReviewQueuePage() {
     },
     onSuccess: async () => queryClient.invalidateQueries({ queryKey: ["admin-review-queue"] }),
   });
+  const documentsQuery = useQuery({
+    queryKey: ["admin-review-queue", "documents"],
+    queryFn: async () => {
+      const response = await apiClient.get("/businesses/documents/pending");
+      const payload = unwrap<unknown>(response.data);
+      if (Array.isArray(payload)) return payload as Entity[];
+      if (payload && typeof payload === "object") {
+        const objectPayload = payload as Record<string, unknown>;
+        if (Array.isArray(objectPayload.dokumen)) return objectPayload.dokumen as Entity[];
+      }
+      return [];
+    },
+    retry: false,
+  });
+  const documentReviewMutation = useMutation({
+    mutationFn: async ({
+      item,
+      status,
+      note,
+    }: {
+      item: Entity;
+      status: "valid" | "invalid";
+      note?: string;
+    }) => {
+      const response = await apiClient.patch(`/businesses/documents/${item.id}/review`, {
+        status,
+        ...(status === "invalid" ? { catatan: note } : {}),
+      });
+      return unwrap<unknown>(response.data);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-review-queue", "documents"] });
+    },
+  });
+  const verifyBusinessMutation = useMutation({
+    mutationFn: async (bisnisId: string | number) => {
+      const response = await apiClient.patch(`/businesses/documents/${bisnisId}/verify`);
+      return unwrap<unknown>(response.data);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-review-queue", "documents"] });
+    },
+  });
+  const pendingDocuments = documentsQuery.data ?? [];
 
   return (
     <section className="space-y-5">
@@ -1129,6 +1200,79 @@ export function AdminReviewQueuePage() {
             </div>
           </article>
         ))}
+      </div>
+      <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <h3 className="text-lg font-black">Review dokumen UMKM</h3>
+          <span className="badge badge-neutral text-white">{pendingDocuments.length}</span>
+        </div>
+        {documentsQuery.isLoading ? <ListSkeleton rows={3} /> : null}
+        {documentsQuery.isError ? (
+          <div className="mt-4 rounded-md border border-error/20 bg-error/10 p-4 text-sm font-semibold text-error">
+            {apiErrorMessage(documentsQuery.error, "Gagal memuat dokumen pending.")}
+          </div>
+        ) : null}
+        {!documentsQuery.isLoading && !documentsQuery.isError && pendingDocuments.length === 0 ? (
+          <div className="mt-4 rounded-md border border-base-300 bg-base-100 p-4 text-sm font-semibold text-neutral/60">
+            Tidak ada dokumen pending.
+          </div>
+        ) : null}
+        <div className="mt-4 grid gap-3">
+          {pendingDocuments.map((item) => (
+            <article key={String(item.id)} className="rounded-md border border-base-300 p-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <p className="font-black">
+                    {textValue(item.nama_bisnis)} - {textValue(item.nama_dokumen)}
+                  </p>
+                  <p className="mt-1 text-sm text-neutral/55">
+                    {textValue(item.jenis_dokumen)} - #{textValue(item.bisnis_id)} -{" "}
+                    {dateShort(item.updated_at || item.created_at)}
+                  </p>
+                  {item.file_url ? (
+                    <a
+                      href={String(item.file_url)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex text-sm font-semibold text-primary hover:underline"
+                    >
+                      Lihat file
+                    </a>
+                  ) : null}
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button
+                    className="btn btn-success rounded-md text-white"
+                    disabled={documentReviewMutation.isPending}
+                    onClick={() => documentReviewMutation.mutate({ item, status: "valid" })}
+                  >
+                    <CheckCircle2 size={17} />
+                    Validasi
+                  </button>
+                  <button
+                    className="btn btn-error rounded-md text-white"
+                    disabled={documentReviewMutation.isPending}
+                    onClick={() => {
+                      const note = window.prompt("Catatan penolakan dokumen:");
+                      if (!note?.trim()) return;
+                      documentReviewMutation.mutate({ item, status: "invalid", note: note.trim() });
+                    }}
+                  >
+                    <XCircle size={17} />
+                    Tolak
+                  </button>
+                  <button
+                    className="btn btn-outline rounded-md"
+                    disabled={verifyBusinessMutation.isPending}
+                    onClick={() => verifyBusinessMutation.mutate(String(item.bisnis_id))}
+                  >
+                    Verifikasi Bisnis
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   );
