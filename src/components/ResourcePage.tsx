@@ -18,6 +18,7 @@ import type {
   ResourceColumn,
   ResourceConfig,
   ResourceField,
+  ResourceFormContext,
 } from "../types";
 import { resourceApi } from "../lib/api/resources";
 import { useAuth } from "../lib/auth/AuthProvider";
@@ -49,6 +50,12 @@ type ResourcePageProps<T extends Entity> = {
   rowFilter?: (item: T) => boolean;
   canEditRow?: (item: T) => boolean;
   editDisabledReason?: string | ((item: T) => string | undefined);
+  hideDisabledEdit?: boolean;
+  validateForm?: (values: Partial<T>, context: ResourceFormContext<T>) => string | undefined;
+  extraInvalidateKeys?: Array<readonly unknown[]>;
+  detailRenderer?: (data: unknown) => ReactNode;
+  emptyAction?: ReactNode;
+  statusFilterVariant?: "select" | "tabs";
   showTitle?: boolean;
   showBreadcrumb?: boolean;
   showSearch?: boolean;
@@ -237,6 +244,12 @@ export function ResourcePage<T extends Entity>({
   rowFilter,
   canEditRow,
   editDisabledReason,
+  hideDisabledEdit = false,
+  validateForm,
+  extraInvalidateKeys = [],
+  detailRenderer,
+  emptyAction,
+  statusFilterVariant = "select",
   showTitle = true,
   showBreadcrumb = true,
   showSearch = true,
@@ -268,7 +281,10 @@ export function ResourcePage<T extends Entity>({
   });
 
   const invalidate = async () => {
-    await queryClient.invalidateQueries({ queryKey: resourceQueryKey });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: resourceQueryKey }),
+      ...extraInvalidateKeys.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+    ]);
   };
 
   const createMutation = useMutation({
@@ -399,6 +415,11 @@ export function ResourcePage<T extends Entity>({
       ? fields.filter((field) => !field.hideOnEdit)
       : fields;
     const values = coerceValues(submitFields, formValues);
+    const validationMessage = validateForm?.(values, { editing, fields: submitFields });
+    if (validationMessage) {
+      toast.error(t(validationMessage), { title: t("saveFailed") });
+      return;
+    }
     try {
       if (editing) {
         await updateMutation.mutateAsync({ ...editing, ...values });
@@ -520,6 +541,18 @@ export function ResourcePage<T extends Entity>({
       typeof editDisabledReason === "function"
         ? editDisabledReason(item)
         : editDisabledReason;
+    const visibleActions = visibleActionsFor(item);
+    const disabledReasons = new Set<string>();
+    if (!hideDisabledEdit && canEdit && !isEditable && editReason) disabledReasons.add(t(editReason));
+    visibleActions.forEach((action) => {
+      if (!action.isDisabled?.(item)) return;
+      const reason =
+        typeof action.disabledReason === "function"
+          ? action.disabledReason(item)
+          : action.disabledReason;
+      if (reason) disabledReasons.add(t(reason));
+    });
+    const visibleDisabledReasons = Array.from(disabledReasons);
 
     return (
       <>
@@ -534,7 +567,7 @@ export function ResourcePage<T extends Entity>({
             <Eye size={16} />
           </button>
         ) : null}
-        {canEdit ? (
+        {canEdit && (!hideDisabledEdit || isEditable) ? (
           <button
             className="btn btn-square btn-ghost btn-sm"
             onClick={() => openEdit(item)}
@@ -556,7 +589,7 @@ export function ResourcePage<T extends Entity>({
             <Trash2 size={16} />
           </button>
         ) : null}
-        {visibleActionsFor(item).map((action) => {
+        {visibleActions.map((action) => {
           const disabled = isProcessing || Boolean(action.isDisabled?.(item));
           const disabledReason =
             typeof action.disabledReason === "function"
@@ -574,9 +607,28 @@ export function ResourcePage<T extends Entity>({
             </button>
           );
         })}
+        {visibleDisabledReasons.map((reason) => (
+          <span
+            key={reason}
+            className="basis-full rounded-md bg-base-200 px-2 py-1 text-right text-xs font-bold text-neutral/60"
+          >
+            {reason}
+          </span>
+        ))}
       </>
     );
   };
+
+  const renderEmptyContent = (compact = false) => (
+    <div className="grid justify-items-center gap-3">
+      <EmptyState
+        title={emptyTitle}
+        body={search || statusFilter !== "all" ? "noFilterMatchInline" : emptyDescription}
+        compact={compact}
+      />
+      {!search && statusFilter === "all" && emptyAction ? emptyAction : null}
+    </div>
+  );
 
   return (
     <section className="space-y-5" data-page-description={t(description)}>
@@ -595,7 +647,29 @@ export function ResourcePage<T extends Entity>({
           ) : null}
           {hasTopControls ? (
             <div className="flex flex-col gap-3 sm:flex-row">
-              {canShowStatusFilter ? (
+              {canShowStatusFilter && statusFilterVariant === "tabs" ? (
+                <div className="flex flex-wrap gap-2" aria-label="Filter status">
+                  {["all", ...statusOptions].map((status) => {
+                    const active = statusFilter === status;
+                    return (
+                      <button
+                        key={status}
+                        type="button"
+                        className={[
+                          "btn btn-sm rounded-md",
+                          active ? "btn-neutral text-white" : "btn-outline bg-white",
+                        ].join(" ")}
+                        onClick={() => {
+                          setStatusFilter(status);
+                          setPage(1);
+                        }}
+                      >
+                        {status === "all" ? copy.allStatus : t(status)}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : canShowStatusFilter ? (
                 <select
                   className="select select-bordered h-11 rounded-md bg-white text-sm font-semibold"
                   value={statusFilter}
@@ -676,10 +750,7 @@ export function ResourcePage<T extends Entity>({
                 <tr>
                   <td colSpan={colSpan}>
                     <div className="py-6">
-                      <EmptyState
-                        title={emptyTitle}
-                        body={search || statusFilter !== "all" ? "noFilterMatchInline" : emptyDescription}
-                      />
+                      {renderEmptyContent()}
                     </div>
                   </td>
                 </tr>
@@ -713,11 +784,7 @@ export function ResourcePage<T extends Entity>({
               {apiErrorMessage(query.error, copy.loadError)}
             </div>
           ) : rows.length === 0 ? (
-            <EmptyState
-              title={emptyTitle}
-              body={search || statusFilter !== "all" ? "noFilterMatchInline" : emptyDescription}
-              compact
-            />
+            renderEmptyContent(true)
           ) : (
             visibleRows.map((item) => (
               <article key={item.id} className="rounded-md border border-base-300 p-4">
@@ -916,7 +983,7 @@ export function ResourcePage<T extends Entity>({
                 <X size={18} />
               </button>
             </div>
-            <DataPreview data={resultModal.data} />
+            {detailRenderer ? detailRenderer(resultModal.data) : <DataPreview data={resultModal.data} />}
           </div>
           <button className="modal-backdrop fr-modal-backdrop" onClick={() => setResultModal(null)}>
             close

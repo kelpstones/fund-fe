@@ -44,16 +44,23 @@ export const resourceApi = {
         if (pengajuansId) {
           try {
             const fallbackResponse = await apiClient.get(
-              `/businesses/proposals/sales/pengajuan/${encodeURIComponent(pengajuansId)}`,
+              `/businesses/proposals/sales/pengajuan?pengajuans_id=${encodeURIComponent(pengajuansId)}&page=1&limit=200`,
             );
             return normalizeList<T>(unwrap<unknown>(fallbackResponse.data));
-          } catch (fallbackError) {
-            if (
-              config.notFoundIsEmpty &&
-              axios.isAxiosError(fallbackError) &&
-              fallbackError.response?.status === 404
-            ) {
-              return config.fallback;
+          } catch {
+            try {
+              const legacyFallbackResponse = await apiClient.get(
+                `/businesses/proposals/sales/pengajuan/${encodeURIComponent(pengajuansId)}`,
+              );
+              return normalizeList<T>(unwrap<unknown>(legacyFallbackResponse.data));
+            } catch (fallbackError) {
+              if (
+                config.notFoundIsEmpty &&
+                axios.isAxiosError(fallbackError) &&
+                fallbackError.response?.status === 404
+              ) {
+                return config.fallback;
+              }
             }
           }
         }

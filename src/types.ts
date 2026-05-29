@@ -63,6 +63,11 @@ export type ResourceField<T extends Entity> = {
   options?: Array<{ value: string | number; label: string }>;
 };
 
+export type ResourceFormContext<T extends Entity> = {
+  editing: T | null;
+  fields: ResourceField<T>[];
+};
+
 export type ResourceColumn<T extends Entity> = {
   label: string;
   render: (item: T) => ReactNode;

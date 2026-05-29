@@ -77,9 +77,6 @@ const UmkmOnboardingPage = lazy(() =>
 const InvestorOnboardingPage = lazy(() =>
   import("./pages/dashboard/InvestorOnboardingPage").then((module) => ({ default: module.InvestorOnboardingPage })),
 );
-const InvestorSurveyPage = lazy(() =>
-  import("./pages/dashboard/InvestorSurveyPage").then((module) => ({ default: module.InvestorSurveyPage })),
-);
 const DocumentCenterPage = lazy(() =>
   import("./pages/dashboard/DocumentCenterPage").then((module) => ({ default: module.DocumentCenterPage })),
 );
@@ -117,14 +114,8 @@ const marketplacePagesModule = () => import("./pages/dashboard/MarketplacePages"
 const AdminReviewQueuePage = lazy(() =>
   marketplacePagesModule().then((module) => ({ default: module.AdminReviewQueuePage })),
 );
-const AiRecommendationsPage = lazy(() =>
-  marketplacePagesModule().then((module) => ({ default: module.AiRecommendationsPage })),
-);
 const CompareOpportunitiesPage = lazy(() =>
   marketplacePagesModule().then((module) => ({ default: module.CompareOpportunitiesPage })),
-);
-const DealRoomPage = lazy(() =>
-  marketplacePagesModule().then((module) => ({ default: module.DealRoomPage })),
 );
 const OpportunitiesPage = lazy(() =>
   marketplacePagesModule().then((module) => ({ default: module.OpportunitiesPage })),
@@ -156,9 +147,6 @@ const AdminBanksPage = lazy(() =>
 );
 const AdminWithdrawalsPage = lazy(() =>
   walletPagesModule().then((module) => ({ default: module.AdminWithdrawalsPage })),
-);
-const InvestorBankAccountsPage = lazy(() =>
-  walletPagesModule().then((module) => ({ default: module.InvestorBankAccountsPage })),
 );
 const InvestorWalletPage = lazy(() =>
   walletPagesModule().then((module) => ({ default: module.InvestorWalletPage })),
@@ -231,16 +219,16 @@ export default function App() {
               <Route index element={<InvestorOverviewPage />} />
               <Route path="onboarding" element={<InvestorOnboardingPage />} />
               <Route path="profile" element={<ProfilePage />} />
-              <Route path="rekening" element={<InvestorBankAccountsPage />} />
+              <Route path="rekening" element={<Navigate to="/dashboard/investor/wallet#rekening" replace />} />
               <Route path="preferensi" element={<InvestorPreferencesPage />} />
-              <Route path="survey" element={<InvestorSurveyPage />} />
+              <Route path="survey" element={<Navigate to="/dashboard/investor/preferensi" replace />} />
               <Route path="peluang" element={<OpportunitiesPage />} />
               <Route path="peluang/:id" element={<OpportunityDetailPage />} />
               <Route path="saved" element={<SavedOpportunitiesPage />} />
               <Route path="compare" element={<CompareOpportunitiesPage />} />
-              <Route path="rekomendasi" element={<AiRecommendationsPage />} />
+              <Route path="rekomendasi" element={<Navigate to="/dashboard/investor/peluang?tab=rekomendasi" replace />} />
               <Route path="negosiasi" element={<NegotiationsPage mine />} />
-              <Route path="deal-room/:id" element={<DealRoomPage />} />
+              <Route path="deal-room/:id" element={<Navigate to="/dashboard/investor/negosiasi" replace />} />
               <Route path="wallet" element={<InvestorWalletPage />} />
               <Route path="invoice" element={<InvoicesPage investor />} />
               <Route path="portfolio" element={<InvestmentsPage investor />} />

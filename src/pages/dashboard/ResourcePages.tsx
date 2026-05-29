@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { Link } from "react-router-dom";
@@ -240,23 +240,130 @@ const negotiationFields: ResourceField<Entity>[] = [
   },
 ];
 
-const negotiationColumns: ResourceColumn<Entity>[] = [
-  {
-    label: "Negosiasi",
-    render: (item) => (
-      <div>
-        <p className="font-black">{textValue(readPath(item, ["investor.nama", "investor"]))}</p>
-        <p className="mt-1 text-sm text-neutral/55">
-          {textValue(readPath(item, ["bisnis.nama", "bisnis.nama_bisnis", "bisnis_owner.nama", "bisnis"]))}
-        </p>
-      </div>
-    ),
-  },
-  { label: "Nominal", render: (item) => currency(readPath(item, ["negosiasi_terakhir.penawaran_nominal", "penawaran_nominal"])) },
-  { label: "Return", render: (item) => percent(readPath(item, ["negosiasi_terakhir.penawaran_return", "penawaran_return"])) },
-  { label: "Status", render: (item) => badge(item.status) },
-  { label: "Update", render: (item) => dateShort(item.updated_at || item.created_at) },
-];
+const negotiationStatus = (item: Entity) =>
+  String(readPath(item, ["status"], "")).toLowerCase();
+
+const latestOfferNominal = (item: Entity) =>
+  readPath(item, ["negosiasi_terakhir.penawaran_nominal", "penawaran_nominal"], "0");
+
+const latestOfferReturn = (item: Entity) =>
+  readPath(item, ["negosiasi_terakhir.penawaran_return", "penawaran_return"], "0");
+
+const latestOfferNote = (item: Entity) =>
+  textValue(readPath(item, ["negosiasi_terakhir.catatan", "catatan"], ""), "-");
+
+const negotiationBusinessName = (item: Entity) =>
+  textValue(readPath(item, [
+    "bisnis.nama_bisnis",
+    "bisnis.nama",
+    "pengajuan.bisnis.nama_bisnis",
+    "pengajuan.bisnis.nama",
+    "detail_pengajuan.bisnis.nama_bisnis",
+    "bisnis_owner.nama",
+    "nama_bisnis",
+    "bisnis",
+  ]));
+
+const negotiationProposalId = (item: Entity) =>
+  textValue(readPath(item, ["pengajuans_id", "pengajuan.id", "detail_pengajuan.id", "id"], ""));
+
+const fundingTarget = (item: Entity) =>
+  Number(readPath(item, [
+    "pengajuan.target_pendanaan",
+    "detail_pengajuan.target_pendanaan",
+    "target_pendanaan",
+  ], "0"));
+
+const proposalReturn = (item: Entity) =>
+  readPath(item, [
+    "pengajuan.per_anual_return",
+    "detail_pengajuan.per_anual_return",
+    "per_anual_return",
+  ], "0");
+
+const isCurrentUserLastSender = (item: Entity, userId?: string | number) => {
+  const lastBy = String(readPath(item, ["id_terakhir_oleh"], ""));
+  const currentUserId = String(userId ?? "");
+  return Boolean(lastBy && currentUserId && lastBy === currentUserId);
+};
+
+const negotiationTurnLabel = (item: Entity, userRole?: string, userId?: string | number, language: "id" | "en" = "id") => {
+  const status = negotiationStatus(item);
+  if (status === "deal" || status === "accepted") return language === "id" ? "Deal tercapai" : "Deal reached";
+  if (status === "rejected") return language === "id" ? "Ditolak" : "Rejected";
+  if (status !== "active") return language === "id" ? "Selesai" : "Closed";
+
+  if (isCurrentUserLastSender(item, userId)) {
+    if (userRole === "investor") return language === "id" ? "Menunggu UMKM membalas" : "Waiting for UMKM";
+    if (userRole === "umkm") return language === "id" ? "Menunggu investor membalas" : "Waiting for investor";
+    return language === "id" ? "Menunggu pihak lawan" : "Waiting for the other party";
+  }
+
+  return language === "id" ? "Perlu kamu tindak lanjuti" : "Your action is needed";
+};
+
+const negotiationStatusLabel = (item: Entity, language: "id" | "en" = "id") => {
+  const status = negotiationStatus(item);
+  const labels: Record<string, { id: string; en: string }> = {
+    active: { id: "Aktif", en: "Active" },
+    accepted: { id: "Disetujui", en: "Accepted" },
+    deal: { id: "Deal", en: "Deal" },
+    rejected: { id: "Ditolak", en: "Rejected" },
+  };
+  return labels[status]?.[language] ?? textValue(status, "-");
+};
+
+const negotiationStatusBadge = (item: Entity, language: "id" | "en" = "id") => (
+  <span className={`badge ${statusTone(negotiationStatus(item))}`}>
+    {negotiationStatusLabel(item, language)}
+  </span>
+);
+
+const latestOfferSenderLabel = (item: Entity, userId?: string | number, language: "id" | "en" = "id") =>
+  isCurrentUserLastSender(item, userId)
+    ? language === "id"
+      ? "Penawaran terakhir dari kamu"
+      : "Latest offer from you"
+    : language === "id"
+      ? "Penawaran terakhir dari pihak lawan"
+      : "Latest offer from the other party";
+
+const nextNegotiationStep = (item: Entity, userRole?: string, userId?: string | number, language: "id" | "en" = "id") => {
+  const status = negotiationStatus(item);
+  if (status === "deal" || status === "accepted") {
+    return {
+      title: language === "id" ? "Lanjutkan ke deal room" : "Continue to deal room",
+      body: language === "id" ? "Cek invoice, pembayaran, dan status investasi." : "Check invoice, payment, and investment status.",
+      tone: "success",
+    };
+  }
+  if (status === "rejected") {
+    return {
+      title: language === "id" ? "Negosiasi selesai" : "Negotiation closed",
+      body: language === "id" ? "Tidak ada aksi lanjutan untuk penawaran ini." : "No further action is needed for this offer.",
+      tone: "neutral",
+    };
+  }
+  if (isCurrentUserLastSender(item, userId)) {
+    return {
+      title: userRole === "investor"
+        ? language === "id" ? "Tunggu balasan UMKM" : "Wait for UMKM reply"
+        : language === "id" ? "Tunggu balasan investor" : "Wait for investor reply",
+      body: language === "id" ? "Aksi akan terbuka setelah pihak lawan membalas." : "Actions will open after the other party replies.",
+      tone: "warning",
+    };
+  }
+  return {
+    title: language === "id" ? "Balas penawaran" : "Reply to offer",
+    body: language === "id" ? "Kamu bisa counter offer, setujui, atau tolak." : "You can counter offer, accept, or reject.",
+    tone: "primary",
+  };
+};
+
+const isNegotiationOpen = (item: Entity) => negotiationStatus(item) === "active";
+
+const canRespondToNegotiation = (item: Entity, userId?: string | number) =>
+  isNegotiationOpen(item) && !isCurrentUserLastSender(item, userId);
 
 const _invoiceFields: ResourceField<Entity>[] = [
   { name: "nominal_tagihan", label: "Nominal Tagihan", type: "number", required: true },
@@ -390,26 +497,31 @@ const submissionActions: ResourceAction<Entity>[] = [
   },
 ];
 
-const negotiationActions: ResourceAction<Entity>[] = [
-  {
-    label: "Setujui",
-    method: "POST",
-    path: (item) => `/businesses/proposals/negotiations/accept/${item.id}`,
-    body: { catatan: "Negosiasi disetujui dari dashboard." },
-    confirm: "Setujui negosiasi ini?",
-    className: "btn btn-success btn-xs rounded-md text-white",
-    isVisible: (item) => !isStatus(item, ["accepted", "rejected", "deal"]),
-  },
-  {
-    label: "Tolak",
-    method: "POST",
-    path: (item) => `/businesses/proposals/negotiations/reject/${item.id}`,
-    body: { catatan: "Negosiasi ditolak dari dashboard." },
-    confirm: "Tolak negosiasi ini?",
-    className: "btn btn-error btn-xs rounded-md text-white",
-    isVisible: (item) => !isStatus(item, ["accepted", "rejected", "deal"]),
-  },
-];
+const negotiationActionsFor = (
+  userId?: string | number,
+  language: "id" | "en" = "id",
+): ResourceAction<Entity>[] => {
+  return [
+    {
+      label: language === "id" ? "Setujui" : "Accept",
+      method: "POST",
+      path: (item) => `/businesses/proposals/negotiations/accept/${item.id}`,
+      body: { catatan: "Negosiasi disetujui dari dashboard." },
+      confirm: language === "id" ? "Setujui negosiasi ini?" : "Accept this negotiation?",
+      className: "btn btn-success btn-xs rounded-md text-white",
+      isVisible: (item) => canRespondToNegotiation(item, userId),
+    },
+    {
+      label: language === "id" ? "Tolak" : "Reject",
+      method: "POST",
+      path: (item) => `/businesses/proposals/negotiations/reject/${item.id}`,
+      body: { catatan: "Negosiasi ditolak dari dashboard." },
+      confirm: language === "id" ? "Tolak negosiasi ini?" : "Reject this negotiation?",
+      className: "btn btn-error btn-xs rounded-md text-white",
+      isVisible: (item) => canRespondToNegotiation(item, userId),
+    },
+  ];
+};
 
 const invoiceActions: ResourceAction<Entity>[] = [
   {
@@ -457,6 +569,78 @@ const notificationActions: ResourceAction<Entity>[] = [
     isVisible: (item) => !item.is_read && !isStatus(item, ["read"]),
   },
 ];
+
+function NegotiationDetailPreview({ data }: { data: unknown }) {
+  const { language } = useLanguage();
+  const items = useMemo(() => {
+    if (Array.isArray(data)) return data as Entity[];
+    if (data && typeof data === "object") {
+      const objectData = data as Record<string, unknown>;
+      if (Array.isArray(objectData.items)) return objectData.items as Entity[];
+      if (Array.isArray(objectData.rows)) return objectData.rows as Entity[];
+      return [objectData as Entity];
+    }
+    return [];
+  }, [data]);
+
+  if (items.length === 0) {
+    return (
+      <div className="rounded-md border border-base-300 p-4 text-sm font-semibold text-neutral/55">
+        {language === "id" ? "Detail negosiasi belum tersedia." : "Negotiation detail is not available yet."}
+      </div>
+    );
+  }
+
+  const latest = items[0];
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 rounded-md border border-base-300 bg-base-100 p-4 sm:grid-cols-3">
+        <div>
+          <p className="text-xs font-bold uppercase text-neutral/45">{language === "id" ? "Bisnis" : "Business"}</p>
+          <p className="mt-1 font-black text-neutral">{negotiationBusinessName(latest)}</p>
+        </div>
+        <div>
+          <p className="text-xs font-bold uppercase text-neutral/45">{language === "id" ? "Status" : "Status"}</p>
+          <div className="mt-1">{negotiationStatusBadge(latest, language)}</div>
+        </div>
+        <div>
+          <p className="text-xs font-bold uppercase text-neutral/45">{language === "id" ? "Penawaran" : "Offer"}</p>
+          <p className="mt-1 font-black text-neutral">
+            {currency(latestOfferNominal(latest))} / {percent(latestOfferReturn(latest))}
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-md border border-base-300">
+        {items.map((item, index) => (
+          <div
+            key={`${item.id}-${index}`}
+            className="grid gap-3 border-b border-base-300 p-4 last:border-b-0 sm:grid-cols-[0.22fr_1fr]"
+          >
+            <div>
+              <p className="text-xs font-bold uppercase text-neutral/45">
+                {language === "id" ? "Tahap" : "Step"} {index + 1}
+              </p>
+              <p className="mt-1 text-sm font-bold text-neutral/60">
+                {dateShort(item.updated_at || item.created_at)}
+              </p>
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                {negotiationStatusBadge(item, language)}
+                <span className="text-sm font-bold text-neutral">
+                  {currency(latestOfferNominal(item))} - {percent(latestOfferReturn(item))}
+                </span>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-neutral/65">{latestOfferNote(item)}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function BusinessesPage({
   scope = "all",
@@ -535,7 +719,10 @@ export function SubmissionsPage({ admin = false }: { admin?: boolean }) {
     queryFn: () => resourceApi.list(admin ? businessConfig : myBusinessConfig),
     enabled: !admin,
   });
-  const availableBusinesses = businessOptionsQuery.data ?? [];
+  const availableBusinesses = useMemo(
+    () => businessOptionsQuery.data ?? [],
+    [businessOptionsQuery.data],
+  );
   const myBusinessIds = useMemo(
     () =>
       new Set(
@@ -745,6 +932,11 @@ function UmkmSalesPage() {
       ? "Pilih pengajuan"
       : "Choose submission";
   const selectedPengajuanId = form.pengajuans_id.trim();
+  const activePengajuanId =
+    !selectedPengajuanId ||
+    submissionOptions.some((option) => String(option.value) === selectedPengajuanId)
+      ? selectedPengajuanId
+      : "";
   const submitDisabledReason = isOptionsLoading
     ? language === "id"
       ? "Data pengajuan masih dimuat."
@@ -761,26 +953,16 @@ function UmkmSalesPage() {
           ? language === "id"
             ? "Buat pengajuan pendanaan terlebih dahulu."
             : "Create a funding submission first."
-          : !selectedPengajuanId
+          : !activePengajuanId
             ? language === "id"
               ? "Pilih pengajuan terlebih dahulu."
               : "Choose a submission first."
             : null;
 
-  useEffect(() => {
-    if (!selectedPengajuanId) return;
-    const stillValid = submissionOptions.some(
-      (option) => String(option.value) === selectedPengajuanId,
-    );
-    if (!stillValid) {
-      setForm((current) => ({ ...current, pengajuans_id: "" }));
-    }
-  }, [selectedPengajuanId, submissionOptions]);
-
   const mutation = useMutation({
     mutationFn: async () => {
       const response = await apiClient.post("/businesses/proposals/sales", {
-        pengajuans_id: Number(form.pengajuans_id),
+        pengajuans_id: Number(activePengajuanId),
         periode: form.periode,
         total_penjualan: parseNumberInput(form.total_penjualan),
         laba_kotor: parseNumberInput(form.laba_kotor),
@@ -790,7 +972,7 @@ function UmkmSalesPage() {
       return unwrap<unknown>(response.data);
     },
     onSuccess: async () => {
-      const selectedId = form.pengajuans_id;
+      const selectedId = activePengajuanId;
       toast.success(t("salesReportSubmitSuccess"), { title: t("dataAdded") });
       setForm({
         pengajuans_id: selectedId,
@@ -837,7 +1019,7 @@ function UmkmSalesPage() {
               {field.name === "pengajuans_id" ? (
                 <select
                   className="select select-bordered rounded-md"
-                  value={form.pengajuans_id}
+                  value={activePengajuanId}
                   onChange={(event) => update("pengajuans_id", event.target.value)}
                   disabled={isOptionsLoading || isOptionsError || !hasSubmissions}
                   required
@@ -931,7 +1113,7 @@ function UmkmSalesPage() {
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
           <button
             className="btn btn-primary rounded-md text-white"
-            disabled={mutation.isPending || isOptionsLoading || isOptionsError || !selectedPengajuanId}
+            disabled={mutation.isPending || isOptionsLoading || isOptionsError || !activePengajuanId}
           >
             {mutation.isPending ? <Loader2 className="animate-spin" size={18} /> : null}
             {t("Tambah Laporan")}
@@ -941,11 +1123,11 @@ function UmkmSalesPage() {
           ) : null}
         </div>
       </form>
-      {selectedPengajuanId ? (
+      {activePengajuanId ? (
         <ResourcePage
           title="Riwayat Penjualan Pengajuan"
           description="Laporan penjualan untuk pengajuan yang sedang dipilih."
-          config={salesByPengajuanConfig(selectedPengajuanId)}
+          config={salesByPengajuanConfig(activePengajuanId)}
           columns={salesColumns}
           fields={[]}
           showTitle={false}
@@ -967,6 +1149,7 @@ function UmkmSalesPage() {
 export function NegotiationsPage({ mine = false }: { mine?: boolean }) {
   const { language } = useLanguage();
   const { user } = useAuth();
+  const currentUserId = user?.id;
   const canNegotiate = user?.role === "umkm" || user?.role === "investor";
   const opportunitiesQuery = useQuery({
     queryKey: ["negotiation-opportunity-options", user?.id ?? "guest", user?.role ?? "guest"],
@@ -974,7 +1157,10 @@ export function NegotiationsPage({ mine = false }: { mine?: boolean }) {
     enabled: user?.role === "investor",
     retry: false,
   });
-  const opportunities = opportunitiesQuery.data ?? [];
+  const opportunities = useMemo(
+    () => opportunitiesQuery.data ?? [],
+    [opportunitiesQuery.data],
+  );
   const canCreateNegotiation =
     user?.role === "investor" &&
     !opportunitiesQuery.isLoading &&
@@ -982,33 +1168,101 @@ export function NegotiationsPage({ mine = false }: { mine?: boolean }) {
     opportunities.length > 0;
 
   const isEditableNegotiation = (item: Entity) => {
-    const status = String(readPath(item, ["status"], "")).toLowerCase();
-    if (status !== "active") return false;
-
-    const lastBy = String(readPath(item, ["id_terakhir_oleh"], ""));
-    const currentUserId = String(user?.id ?? "");
-    if (lastBy && currentUserId && lastBy === currentUserId) return false;
-    return true;
+    return canRespondToNegotiation(item, currentUserId);
   };
 
   const editNegotiationReason = (item: Entity) => {
-    const status = String(readPath(item, ["status"], "")).toLowerCase();
+    const status = negotiationStatus(item);
     if (status !== "active") {
       return language === "id"
         ? "Negosiasi sudah tidak aktif."
         : "Negotiation is no longer active.";
     }
 
-    const lastBy = String(readPath(item, ["id_terakhir_oleh"], ""));
-    const currentUserId = String(user?.id ?? "");
-    if (lastBy && currentUserId && lastBy === currentUserId) {
-      return language === "id"
-        ? "Menunggu pihak lawan membalas terlebih dahulu."
-        : "Waiting for the opposite party to reply first.";
+    if (isCurrentUserLastSender(item, currentUserId)) {
+      return negotiationTurnLabel(item, user?.role, currentUserId, language);
     }
 
     return undefined;
   };
+
+  const negotiationColumnsForRole = useMemo<ResourceColumn<Entity>[]>(
+    () => [
+      {
+        label: language === "id" ? "Peluang" : "Opportunity",
+        render: (item) => (
+          <div className="min-w-64">
+            <p className="text-base font-black leading-tight text-neutral">{negotiationBusinessName(item)}</p>
+            <p className="mt-1 text-sm font-semibold text-neutral/50">
+              #{negotiationProposalId(item)}
+              {fundingTarget(item) > 0 ? ` - ${currency(fundingTarget(item))}` : ""}
+            </p>
+          </div>
+        ),
+      },
+      {
+        label: language === "id" ? "Penawaran terakhir" : "Latest offer",
+        render: (item) => (
+          <div>
+            <p className="text-base font-black leading-tight text-neutral">{currency(latestOfferNominal(item))}</p>
+            <p className="mt-1 text-sm font-semibold text-neutral/55">
+              {language === "id" ? "Return" : "Return"} {percent(latestOfferReturn(item))}
+            </p>
+          </div>
+        ),
+      },
+      {
+        label: language === "id" ? "Giliran" : "Turn",
+        render: (item) => (
+          <div className="min-w-56">
+            <p className="font-black text-neutral">
+              {negotiationTurnLabel(item, user?.role, currentUserId, language)}
+            </p>
+            <p className="mt-1 text-sm font-semibold text-neutral/55">
+              {latestOfferSenderLabel(item, currentUserId, language)}
+            </p>
+          </div>
+        ),
+      },
+      {
+        label: language === "id" ? "Langkah berikutnya" : "Next step",
+        render: (item) => {
+          const step = nextNegotiationStep(item, user?.role, currentUserId, language);
+          const toneClass =
+            step.tone === "success"
+              ? "border-success/20 bg-success/5 text-success"
+              : step.tone === "primary"
+                ? "border-primary/20 bg-primary/5 text-primary"
+                : step.tone === "warning"
+                  ? "border-warning/30 bg-warning/10 text-warning-content"
+                  : "border-base-300 bg-base-100 text-neutral/65";
+          return (
+            <div className="min-w-64 space-y-2">
+              <div className={`rounded-md border px-3 py-2 ${toneClass}`}>
+                <div className="flex flex-wrap items-center gap-2">
+                  {negotiationStatusBadge(item, language)}
+                  <span className="text-sm font-black">{step.title}</span>
+                </div>
+                <p className="mt-1 text-xs font-semibold leading-5 opacity-75">{step.body}</p>
+              </div>
+              <p className="text-xs font-semibold text-neutral/45">
+                {language === "id" ? "Update" : "Updated"} {dateShort(item.updated_at || item.created_at)}
+              </p>
+              {user?.role === "investor" && ["deal", "accepted"].includes(negotiationStatus(item)) ? (
+                <Link
+                  className="btn btn-outline btn-xs rounded-md"
+                  to="/dashboard/investor/invoice"
+                >
+                  {language === "id" ? "Lihat invoice" : "View invoice"}
+                </Link>
+              ) : null}
+            </div>
+          );
+        },
+      },
+    ],
+    [currentUserId, language, user?.role],
+  );
 
   const negotiationDescription =
     user?.role === "investor"
@@ -1026,6 +1280,19 @@ export function NegotiationsPage({ mine = false }: { mine?: boolean }) {
               : "No published opportunities are available to start negotiation."
             : "Kelola penawaran nominal, return, status, dan catatan antara investor dan pemilik bisnis."
       : "Kelola penawaran nominal, return, status, dan catatan antara investor dan pemilik bisnis.";
+  const opportunityOptions = useMemo(
+    () =>
+      opportunities.map((item) => {
+        const target = fundingTarget(item);
+        const targetLabel = target > 0 ? currency(target) : "Target -";
+        const returnLabel = percent(proposalReturn(item));
+        return {
+          value: item.id,
+          label: `${negotiationBusinessName(item)} - ${targetLabel} - Return ${returnLabel}`,
+        };
+      }),
+    [opportunities],
+  );
   const fields = useMemo<ResourceField<Entity>[]>(() => {
     if (user?.role !== "investor") return negotiationFields.slice(1);
     return [
@@ -1034,26 +1301,84 @@ export function NegotiationsPage({ mine = false }: { mine?: boolean }) {
         label: "Pengajuan",
         type: "select",
         required: true,
-        options: asOptions(opportunities, ["bisnis.nama_bisnis", "bisnis.nama", "nama"]),
+        options: opportunityOptions,
       },
       ...negotiationFields.slice(1),
     ];
-  }, [opportunities, user?.role]);
+  }, [opportunityOptions, user?.role]);
+
+  const validateNegotiationForm = (
+    values: Partial<Entity>,
+    context: { editing: Entity | null; fields: ResourceField<Entity>[] },
+  ) => {
+    const amount = Number(values.penawaran_nominal);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return language === "id"
+        ? "Nominal penawaran harus lebih dari 0."
+        : "Offer amount must be greater than 0.";
+    }
+
+    const returnValue = Number(values.penawaran_return);
+    if (!Number.isFinite(returnValue) || returnValue <= 0 || returnValue > 50) {
+      return language === "id"
+        ? "Return penawaran harus berada di rentang 0,01 sampai 50 persen."
+        : "Offer return must be between 0.01 and 50 percent.";
+    }
+
+    const selectedOpportunity = context.editing
+      ? context.editing
+      : opportunities.find((item) => String(item.id) === String(values.pengajuans_id));
+    const maxAmount = selectedOpportunity ? fundingTarget(selectedOpportunity) : 0;
+    if (maxAmount > 0 && amount > maxAmount) {
+      return language === "id"
+        ? `Nominal penawaran tidak boleh melebihi target pendanaan ${currency(maxAmount)}.`
+        : `Offer amount cannot exceed the funding target ${currency(maxAmount)}.`;
+    }
+
+    return undefined;
+  };
+
+  const actions = useMemo(
+    () => (canNegotiate ? negotiationActionsFor(currentUserId, language) : []),
+    [canNegotiate, currentUserId, language],
+  );
+
+  const extraInvalidateKeys = useMemo(
+    () => [
+      ["resource", "my-negotiations"],
+      ["resource", "negotiations"],
+      ["resource", "investor-invoices"],
+      ["resource", "invoices"],
+      ["resource", "investor-investments"],
+      ["resource", "investments"],
+      ["overview"],
+      ["dashboard-summary"],
+      ["sidebar-locks"],
+      ["dashboard-notification-dot"],
+      ["ai-recommendations"],
+    ],
+    [],
+  );
 
   return (
     <ResourcePage
       title="Negosiasi"
       description={negotiationDescription}
       config={mine ? myNegotiationConfig : negotiationConfig}
-      columns={negotiationColumns}
+      columns={negotiationColumnsForRole}
       fields={fields}
       createLabel="Mulai Negosiasi"
-      actions={canNegotiate ? negotiationActions : []}
+      actions={actions}
       allowCreate={canCreateNegotiation}
       allowEdit={canNegotiate}
       canEditRow={isEditableNegotiation}
       editDisabledReason={editNegotiationReason}
+      hideDisabledEdit
       allowDelete={false}
+      validateForm={validateNegotiationForm}
+      extraInvalidateKeys={extraInvalidateKeys}
+      detailRenderer={(data) => <NegotiationDetailPreview data={data} />}
+      statusFilterVariant="tabs"
       emptyTitle="Belum ada negosiasi"
       emptyDescription={
         user?.role === "investor"
@@ -1063,6 +1388,13 @@ export function NegotiationsPage({ mine = false }: { mine?: boolean }) {
               ? "Belum ada peluang pendanaan untuk memulai negosiasi."
               : "Mulai negosiasi dari peluang pendanaan yang tersedia."
           : "Negosiasi investor akan muncul di sini setelah ada penawaran."
+      }
+      emptyAction={
+        user?.role === "investor" ? (
+          <Link className="btn btn-primary btn-sm rounded-md text-white" to="/dashboard/investor/peluang">
+            {language === "id" ? "Lihat peluang UMKM" : "View UMKM opportunities"}
+          </Link>
+        ) : undefined
       }
       searchableFields={["status", "catatan", (item) => readPath(item, ["investor.nama", "bisnis.nama", "bisnis.nama_bisnis"])]}
     />
@@ -1343,16 +1675,12 @@ export function InvestmentsByProposalPage() {
     : language === "id"
     ? "Pilih pengajuan"
     : "Choose submission";
+  const activePengajuanId =
+    !pengajuanId || submissionOptions.some((option) => String(option.value) === pengajuanId)
+      ? pengajuanId
+      : "";
 
-  useEffect(() => {
-    if (!pengajuanId) return;
-    const stillValid = submissionOptions.some(
-      (option) => String(option.value) === pengajuanId,
-    );
-    if (!stillValid) setPengajuanId("");
-  }, [pengajuanId, submissionOptions]);
-
-  if (!pengajuanId.trim()) {
+  if (!activePengajuanId.trim()) {
     return (
       <section className="space-y-5">
         <div>
@@ -1366,7 +1694,7 @@ export function InvestmentsByProposalPage() {
           {submissionOptions.length > 0 ? (
             <select
               className="select select-bordered rounded-md bg-white"
-              value={pengajuanId}
+              value={activePengajuanId}
               onChange={(event) => setPengajuanId(event.target.value)}
               disabled={isOptionsLoading}
             >
@@ -1424,7 +1752,7 @@ export function InvestmentsByProposalPage() {
         {submissionOptions.length > 0 ? (
           <select
             className="select select-bordered rounded-md bg-white"
-            value={pengajuanId}
+            value={activePengajuanId}
             onChange={(event) => setPengajuanId(event.target.value)}
             disabled={isOptionsLoading}
           >
@@ -1453,7 +1781,7 @@ export function InvestmentsByProposalPage() {
       <ResourcePage
         title="Investasi Pengajuan"
         description="Investasi yang tercatat untuk pengajuan bisnis tertentu."
-        config={investmentByPengajuanConfig(pengajuanId)}
+        config={investmentByPengajuanConfig(activePengajuanId)}
         columns={investmentColumns}
         readonly
         emptyTitle="Belum ada investasi untuk pengajuan ini"
@@ -1559,14 +1887,12 @@ export function ProfitsBySalesPage() {
     : language === "id"
       ? "Pilih laporan penjualan"
       : "Choose sales report";
+  const activePenjualanId =
+    !penjualanId || salesOptions.some((option) => String(option.value) === penjualanId)
+      ? penjualanId
+      : "";
 
-  useEffect(() => {
-    if (!penjualanId) return;
-    const stillValid = salesOptions.some((option) => String(option.value) === penjualanId);
-    if (!stillValid) setPenjualanId("");
-  }, [penjualanId, salesOptions]);
-
-  if (!penjualanId.trim()) {
+  if (!activePenjualanId.trim()) {
     return (
       <section className="space-y-5">
         <div>
@@ -1579,7 +1905,7 @@ export function ProfitsBySalesPage() {
           <span className="label-text mb-2 font-semibold">{t("Penjualan")}</span>
           <select
             className="select select-bordered rounded-md bg-white"
-            value={penjualanId}
+            value={activePenjualanId}
             onChange={(event) => setPenjualanId(event.target.value)}
             disabled={isOptionsLoading || isOptionsError || !hasSales}
           >
@@ -1639,7 +1965,7 @@ export function ProfitsBySalesPage() {
         <span className="label-text mb-2 font-semibold">{t("Penjualan")}</span>
         <select
           className="select select-bordered rounded-md bg-white"
-          value={penjualanId}
+          value={activePenjualanId}
           onChange={(event) => setPenjualanId(event.target.value)}
           disabled={isOptionsLoading}
         >
@@ -1659,7 +1985,7 @@ export function ProfitsBySalesPage() {
       <ResourcePage
         title="Profit Penjualan"
         description="Distribusi profit untuk laporan penjualan yang dipilih."
-        config={profitBySalesConfig(penjualanId)}
+        config={profitBySalesConfig(activePenjualanId)}
         columns={profitColumns}
         showTitle={false}
         showBreadcrumb={false}
@@ -1701,22 +2027,27 @@ const userColumns: ResourceColumn<Entity>[] = [
   { label: "No. Telp", render: (item) => textValue(item.no_telp) },
 ];
 
-const _userFields: ResourceField<Entity>[] = [
+const userFields: ResourceField<Entity>[] = [
   { name: "nama", label: "Nama", required: true },
   { name: "email", label: "Email", type: "email", required: true },
   { name: "no_telp", label: "No. Telp" },
 ];
 
 export function UsersPage() {
+  const { user } = useAuth();
+  const canMutate = user?.role === "admin" || user?.role === "superadmin";
+
   return (
     <ResourcePage
       title="Users"
       description="Kelola data user, role, dan informasi kontak akun platform."
       config={userManagementConfig}
       columns={userColumns}
-      fields={[]}
+      fields={userFields}
       createLabel="Update User"
-      readonly
+      allowCreate={false}
+      allowEdit={canMutate}
+      allowDelete={false}
       emptyTitle="Belum ada user"
       emptyDescription="Data user platform akan muncul setelah akun UMKM atau investor terdaftar."
       searchableFields={["nama", "email", "no_telp", (item) => readPath(item, ["role.nama_role", "role_name", "role_id"])]}

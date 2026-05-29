@@ -16,6 +16,7 @@ import {
   Receipt,
   Rocket,
   Scale,
+  SlidersHorizontal,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -63,6 +64,23 @@ const asRecord = (value: unknown): Record<string, unknown> =>
     : {};
 
 const asEntityArray = (value: unknown): Entity[] => (Array.isArray(value) ? (value as Entity[]) : []);
+const asRecommendationArray = (value: unknown): Entity[] => {
+  if (Array.isArray(value)) return value as Entity[];
+  if (value && typeof value === "object") {
+    const objectValue = value as Record<string, unknown>;
+    if (Array.isArray(objectValue.rekomendasi)) return objectValue.rekomendasi as Entity[];
+    if (Array.isArray(objectValue.items)) return objectValue.items as Entity[];
+    if (Array.isArray(objectValue.results)) return objectValue.results as Entity[];
+    if (Array.isArray(objectValue.data)) return objectValue.data as Entity[];
+    if ("id" in objectValue || "pengajuan_id" in objectValue) return [objectValue as Entity];
+  }
+  return [];
+};
+const toNumber = (value: unknown) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+const clampPercent = (value: number) => Math.max(0, Math.min(100, value));
 
 type OverviewStep = {
   key: string;
@@ -84,6 +102,14 @@ type OverviewBannerItem = {
   body?: string;
   priority?: number;
   icon?: typeof Bell;
+};
+
+type NextAction = {
+  titleKey: string;
+  bodyKey: string;
+  buttonKey: string;
+  href: string;
+  icon?: typeof Rocket;
 };
 
 type ViewportVariant = "mobile" | "tablet" | "desktop";
@@ -278,51 +304,159 @@ function OverviewBannerRail({ items }: { items: OverviewBannerItem[] }) {
   );
 }
 
-function MatchList({ submissions, isLoading = false }: { submissions: Entity[]; isLoading?: boolean }) {
-  const { t } = useLanguage();
-  const sorted = [...submissions].sort(
-    (a, b) =>
-      Number(b.match_score || b.skor_kecocokan || 0) -
-      Number(a.match_score || a.skor_kecocokan || 0),
+function MatchList({
+  submissions,
+  isLoading = false,
+  isFallback = false,
+}: {
+  submissions: Entity[];
+  isLoading?: boolean;
+  isFallback?: boolean;
+}) {
+  const { t, language } = useLanguage();
+  const items = useMemo(
+    () =>
+      submissions
+        .map((item) => {
+          const fallbackId = textValue(readPath(item, ["pengajuan_id", "id"], ""), "");
+          const rawName = textValue(
+            readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "bisnis_nama", "nama", "business_name"], ""),
+            "",
+          );
+          const businessName =
+            rawName ||
+            (fallbackId
+              ? `${language === "id" ? "Peluang UMKM" : "UMKM Opportunity"} #${fallbackId}`
+              : language === "id"
+                ? "Peluang UMKM"
+                : "UMKM Opportunity");
+          const sector = textValue(readPath(item, ["bisnis.tipe_usaha", "tipe_usaha", "sektor"], ""), "");
+          const city = textValue(readPath(item, ["bisnis.kota", "kota"], ""), "");
+          const subtitle = [sector, city].filter(Boolean).join(" - ");
+          const scoreValue = toNumber(readPath(item, ["match_score", "skor_kecocokan"], ""));
+          const score = scoreValue !== null && scoreValue > 0 ? clampPercent(scoreValue) : null;
+          const returnValue = toNumber(readPath(item, ["per_anual_return", "return", "return_investasi"], ""));
+          const riskValue = textValue(
+            readPath(item, ["risk_level", "matched_class", "class_label", "kelas.nama_kelas", "kelas"], ""),
+            "",
+          );
+          const riskProfile =
+            riskValue && riskValue !== "-"
+              ? riskValue
+              : language === "id"
+                ? "Belum tersedia"
+                : "Not available";
+          const targetValue = toNumber(readPath(item, ["target_pendanaan", "bisnis.target_pendanaan"], ""));
+          const fundedValue = toNumber(readPath(item, ["total_pendanaan", "terkumpul"], ""));
+          const hasFundingProgress =
+            targetValue !== null &&
+            targetValue > 0 &&
+            fundedValue !== null &&
+            fundedValue >= 0;
+          const progress = hasFundingProgress
+            ? clampPercent(Math.round((fundedValue / Math.max(targetValue, 1)) * 100))
+            : null;
+          return {
+            id: fallbackId || textValue(item.id),
+            businessName,
+            subtitle,
+            score,
+            returnValue,
+            riskProfile,
+            hasFundingProgress,
+            fundedValue: fundedValue ?? 0,
+            targetValue: targetValue ?? 0,
+            progress,
+          };
+        })
+        .sort((first, second) => {
+          const firstScore = first.score ?? -1;
+          const secondScore = second.score ?? -1;
+          return secondScore - firstScore;
+        }),
+    [language, submissions],
   );
 
   return (
     <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-xl font-black">{t("aiMatchScore")}</h3>
+          {isFallback ? (
+            <p className="mt-1 text-xs font-semibold text-neutral/55">
+              {language === "id"
+                ? "Rekomendasi AI belum lengkap. Menampilkan peluang umum terlebih dahulu."
+                : "AI recommendations are not fully available yet. Showing general opportunities first."}
+            </p>
+          ) : null}
         </div>
-        <Scale className="text-primary" size={24} />
+        <Link to="/dashboard/investor/peluang" className="btn btn-outline btn-sm rounded-md">
+          {t("investorNextOpportunityButton")}
+        </Link>
       </div>
-      <div className="mt-5 grid gap-3">
+      <div className="mt-5">
         {isLoading ? <ListSkeleton rows={3} /> : null}
-        {!isLoading && sorted.length === 0 ? (
+        {!isLoading && items.length === 0 ? (
           <EmptyState title="dataUnavailable" body="matchDataEmpty" compact icon={Scale} />
         ) : null}
-        {sorted.slice(0, 4).map((item) => {
-          const score = Number(item.match_score || item.skor_kecocokan || 0);
-          return (
-            <div key={item.id} className="rounded-md border border-base-300 p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="font-black">
-                    {textValue(readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "businessName"]))}
-                  </p>
-                  <p className="mt-1 text-sm text-neutral/55">
-                    {t("metricReturn")} {percent(item.per_anual_return)} - {t("metricRisk")} {textValue(item.risk_level)}
-                  </p>
-                </div>
-                <span className="badge badge-secondary badge-lg text-white">{score}%</span>
-              </div>
-              <div className="mt-4 h-2 rounded-full bg-base-200">
-                <div
-                  className="h-2 rounded-full bg-primary transition-[width] duration-[420ms] ease-out"
-                  style={{ width: `${Math.min(score, 100)}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
+        {!isLoading && items.length > 0 ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            {items.slice(0, 4).map((item) => {
+              return (
+                <article key={item.id} className="rounded-md border border-base-300 bg-base-100 p-4 transition-shadow duration-150 hover:shadow-sm">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="truncate text-base font-black text-neutral">{item.businessName}</p>
+                      <p className="mt-1 text-xs font-semibold text-neutral/50">
+                        {item.subtitle || (language === "id" ? "Data bisnis aktif" : "Active business data")}
+                      </p>
+                    </div>
+                    {item.score !== null ? (
+                      <span className="badge badge-primary badge-lg text-white">{item.score}%</span>
+                    ) : (
+                      <span className="badge badge-outline badge-lg">
+                        {language === "id" ? "Belum dinilai" : "Not scored"}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-md bg-base-200/70 px-3 py-2">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-neutral/45">
+                        {t("estimatedReturnMetric")}
+                      </p>
+                      <p className="mt-1 text-sm font-black text-neutral">
+                        {item.returnValue !== null ? percent(item.returnValue) : "-"}
+                      </p>
+                    </div>
+                    <div className="rounded-md bg-base-200/70 px-3 py-2">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-neutral/45">
+                        {t("riskProfileMetric")}
+                      </p>
+                      <p className="mt-1 text-sm font-black text-neutral">{item.riskProfile}</p>
+                    </div>
+                  </div>
+
+                  {item.hasFundingProgress && item.progress !== null ? (
+                    <div className="mt-3">
+                      <p className="mb-1 text-xs font-semibold text-neutral/55">
+                        {language === "id"
+                          ? `${currency(item.fundedValue)} dari ${currency(item.targetValue)} terdanai`
+                          : `${currency(item.fundedValue)} of ${currency(item.targetValue)} funded`}
+                      </p>
+                      <div className="h-2 rounded-full bg-base-200">
+                        <div
+                          className="h-2 rounded-full bg-primary transition-[width] duration-[420ms] ease-out"
+                          style={{ width: `${item.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -473,6 +607,33 @@ function OnboardingOverviewCard({
             </Link>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function NextActionCard({ action }: { action: NextAction }) {
+  const { t } = useLanguage();
+  const Icon = action.icon ?? Rocket;
+
+  return (
+    <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-start gap-4">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+            <Icon size={24} />
+          </div>
+          <div>
+            <p className="text-xs font-black uppercase tracking-wide text-primary">
+              {t("investorNextActionLabel")}
+            </p>
+            <h3 className="mt-1 text-2xl font-black text-neutral">{t(action.titleKey)}</h3>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">{t(action.bodyKey)}</p>
+          </div>
+        </div>
+        <Link to={action.href} className="btn btn-primary rounded-md text-white md:min-w-44">
+          {t(action.buttonKey)}
+        </Link>
       </div>
     </div>
   );
@@ -717,7 +878,20 @@ export function InvestorOverviewPage() {
     enabled: Boolean(scopeKey),
     retry: false,
   });
+  const recommendationsQuery = useQuery({
+    queryKey: ["overview", scopeKey ?? "anonymous", "investor-recommendations"],
+    queryFn: async () => {
+      try {
+        return asRecommendationArray(await directApi.get("/user/investor/recommendations", null));
+      } catch {
+        return [] as Entity[];
+      }
+    },
+    enabled: Boolean(scopeKey),
+    retry: false,
+  });
   const submissions = submissionsQuery.data ?? [];
+  const recommendations = recommendationsQuery.data ?? [];
   const investments = investmentsQuery.data ?? [];
   const invoices = invoicesQuery.data ?? [];
   const profits = profitsQuery.data ?? [];
@@ -731,72 +905,64 @@ export function InvestorOverviewPage() {
     profits.reduce((sum, item) => sum + Number(item.nominal_profit || 0), 0);
   const pendingProfit = Number(dashboardProfit.total_pending ?? 0);
   const investmentCount = Number(dashboardInvestment.jumlah_aktif ?? 0) || investments.length;
-  const accountReady = Boolean(user?.nama && user?.email);
   const hasPreferences = Boolean(preferencesQuery.data);
+  const hasRecommendationData = recommendations.length > 0;
+  const matchItems = hasRecommendationData ? recommendations : submissions;
   const hasNegotiation = negotiations.length > 0;
   const hasInvestment = investmentCount > 0;
-  const hasPendingInvoice = invoices.some((item) => {
+  const pendingInvoices = invoices.filter((item) => {
     const rawStatus = readPath(item, ["status", "invoice_status"], "");
     const status = String(rawStatus || "").toLowerCase();
     return ["pending", "unpaid", "waiting_payment", "belum_dibayar"].includes(status);
   });
-
-  const onboardingSteps: OverviewStep[] = [
-    {
-      key: "profile",
-      titleKey: "investorStepProfileTitle",
-      helperKey: accountReady ? "investorStepProfileDone" : "investorStepProfileTodo",
-      href: "/dashboard/investor/profile",
-      done: accountReady,
-    },
-    {
-      key: "preferences",
-      titleKey: "investorStepPreferenceTitle",
-      helperKey: hasPreferences ? "investorStepPreferenceDone" : "investorStepPreferenceTodo",
-      href: "/dashboard/investor/preferensi",
-      done: hasPreferences,
-    },
-    {
-      key: "survey",
-      titleKey: "investorStepSurveyTitle",
-      helperKey: "investorStepSurveyTodo",
-      href: "/dashboard/investor/survey",
-      done: hasPreferences,
-      locked: !hasPreferences,
-    },
-    {
-      key: "negotiation",
-      titleKey: "investorStepNegotiationTitle",
-      helperKey: hasNegotiation ? "investorStepNegotiationDone" : "investorStepNegotiationTodo",
-      helperParams: { count: negotiations.length },
-      href: "/dashboard/investor/negosiasi",
-      done: hasNegotiation,
-      locked: !hasPreferences,
-    },
-    {
-      key: "portfolio",
-      titleKey: "investorStepPortfolioTitle",
-      helperKey: hasInvestment ? "investorStepPortfolioDone" : "investorStepPortfolioTodo",
-      helperParams: { count: investmentCount },
-      href: "/dashboard/investor/portfolio",
-      done: hasInvestment,
-      locked: !hasNegotiation,
-    },
-  ];
-
-  const onboardingProgress = Math.round(
-    (onboardingSteps.filter((step) => step.done).length / onboardingSteps.length) * 100,
-  );
+  const hasPendingInvoice = pendingInvoices.length > 0;
+  const activeInvestmentItems = recentDistribution.length > 0 ? recentDistribution : investments;
+  const hasInvestmentActivity = activeInvestmentItems.length > 0;
+  const shouldShowFinancialSummary =
+    hasInvestment || invested > 0 || profitTotal > 0 || pendingProfit > 0;
+  const nextAction: NextAction | null = !hasPreferences
+    ? {
+        titleKey: "investorNextPreferenceTitle",
+        bodyKey: "investorNextPreferenceBody",
+        buttonKey: "investorNextPreferenceButton",
+        href: "/dashboard/investor/preferensi",
+        icon: SlidersHorizontal,
+      }
+    : hasPendingInvoice
+      ? {
+          titleKey: "investorNextInvoiceTitle",
+          bodyKey: "investorNextInvoiceBody",
+          buttonKey: "investorNextInvoiceButton",
+          href: "/dashboard/investor/invoice",
+          icon: Receipt,
+        }
+      : !hasNegotiation
+        ? {
+            titleKey: "investorNextOpportunityTitle",
+            bodyKey: "investorNextOpportunityBody",
+            buttonKey: "investorNextOpportunityButton",
+            href: "/dashboard/investor/peluang",
+            icon: Rocket,
+          }
+        : !hasInvestment
+          ? {
+              titleKey: "investorNextNegotiationTitle",
+              bodyKey: "investorNextNegotiationBody",
+              buttonKey: "investorNextNegotiationButton",
+              href: "/dashboard/investor/negosiasi",
+              icon: Handshake,
+            }
+          : null;
   const investorBannerItems: OverviewBannerItem[] = [
     ...(!hasPreferences
       ? [
           {
             key: "investor-survey",
-            to: "/dashboard/investor/survey",
+            to: "/dashboard/investor/preferensi",
             imageSrc: `${bannerBasePath}/investor-isi-survey-preferensi.webp`,
             imageMobileSrc: `${bannerBasePath}/investor-isi-survey-preferensi-mobile.webp`,
             imageDesktopSrc: `${bannerBasePath}/investor-isi-survey-preferensi-desktop.webp`,
-            title: t("dashboardSurvey"),
+            title: t("dashboardPreferences"),
             priority: 3,
           },
         ]
@@ -807,11 +973,7 @@ export function InvestorOverviewPage() {
             key: "investor-invoice-pending",
             to: "/dashboard/investor/invoice",
             title: t("dashboardInvoices"),
-            body: t("pendingCount", { count: invoices.filter((item) => {
-              const rawStatus = readPath(item, ["status", "invoice_status"], "");
-              const status = String(rawStatus || "").toLowerCase();
-              return ["pending", "unpaid", "waiting_payment", "belum_dibayar"].includes(status);
-            }).length }),
+            body: t("pendingCount", { count: pendingInvoices.length }),
             icon: Receipt,
             priority: 3,
           },
@@ -836,48 +998,45 @@ export function InvestorOverviewPage() {
       priority: 1,
     },
   ];
-  const isOnboardingLoading =
+  const isInvestorStateLoading =
     preferencesQuery.isLoading || negotiationsQuery.isLoading || investmentsQuery.isLoading;
 
   return (
     <div className="space-y-6">
-      <OverviewBannerRail items={investorBannerItems} />
       <PageHeader
         title="investorOverviewTitle"
       />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
-        <StatCard label={t("investments")} value={compactCurrency(invested)} helper={t("activePortfolio")} icon={TrendingUp} tone="green" loading={dashboardQuery.isLoading} />
-        <StatCard label={t("profit")} value={compactCurrency(profitTotal)} helper={t("pendingAmount", { amount: compactCurrency(pendingProfit) })} icon={CircleDollarSign} tone="amber" loading={dashboardQuery.isLoading} />
-      </div>
-      {isOnboardingLoading ? (
+      <OverviewBannerRail items={investorBannerItems} />
+
+      {isInvestorStateLoading ? (
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
-          <ListSkeleton rows={4} />
+          <ListSkeleton rows={2} />
         </div>
-      ) : (
-        <OnboardingOverviewCard
-          titleKey="investorOnboardingTitle"
-          bodyKey="investorOnboardingBody"
-          progress={onboardingProgress}
-          steps={onboardingSteps}
+      ) : nextAction ? (
+        <NextActionCard action={nextAction} />
+      ) : null}
+
+      {shouldShowFinancialSummary ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
+          <StatCard label={t("investments")} value={compactCurrency(invested)} helper={t("activePortfolio")} icon={TrendingUp} tone="green" loading={dashboardQuery.isLoading} />
+          <StatCard label={t("profit")} value={compactCurrency(profitTotal)} helper={t("pendingAmount", { amount: compactCurrency(pendingProfit) })} icon={CircleDollarSign} tone="amber" loading={dashboardQuery.isLoading} />
+        </div>
+      ) : null}
+
+      {hasPreferences ? (
+        <MatchList
+          submissions={matchItems}
+          isLoading={submissionsQuery.isLoading || recommendationsQuery.isLoading}
+          isFallback={!hasRecommendationData}
         />
-      )}
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <MatchList submissions={submissions} isLoading={submissionsQuery.isLoading} />
+      ) : null}
+
+      {hasInvestmentActivity ? (
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
           <h3 className="text-xl font-black">{t("activeInvestments")}</h3>
           <p className="mt-1 text-sm font-semibold text-neutral/55">{t("activeInvestmentCount", { count: investmentCount })}</p>
           <div className="mt-5 grid gap-3">
-            {!investmentsQuery.isLoading &&
-            recentDistribution.length === 0 &&
-            investments.length === 0 ? (
-              <EmptyState
-                title="noActiveInvestments"
-                body="noActiveInvestmentsBody"
-                compact
-                icon={TrendingUp}
-              />
-            ) : null}
-            {(recentDistribution.length > 0 ? recentDistribution : investments).map((item) => (
+            {activeInvestmentItems.map((item) => (
               <div key={item.id} className="rounded-md border border-base-300 p-4">
                 <div className="flex justify-between gap-4">
                   <p className="font-black">
@@ -894,7 +1053,7 @@ export function InvestorOverviewPage() {
             ))}
           </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

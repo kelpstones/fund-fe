@@ -127,7 +127,7 @@ export const salesConfig: ResourceConfig<Entity> = {
 export const salesByPengajuanConfig = (pengajuansId: string): ResourceConfig<Entity> => ({
   ...salesConfig,
   key: `sales-pengajuan-${pengajuansId}`,
-  listPath: `/businesses/proposals/sales/pengajuan?pengajuans_id=${encodeURIComponent(pengajuansId)}&page=1&limit=200`,
+  listPath: `/businesses/proposals/sales/sales-by-pengajuan/${encodeURIComponent(pengajuansId)}`,
   notFoundIsEmpty: true,
 });
 
@@ -246,8 +246,14 @@ export const adminConfig: ResourceConfig<Entity> = {
 export const userManagementConfig: ResourceConfig<Entity> = {
   key: "users",
   listPath: "/user/users?page=1&limit=50",
+  updatePath: "/user/:id",
   detailPath: "/user/:id",
   fallback: emptyFallback,
+  updateBody: (item) => ({
+    nama: item.nama,
+    email: item.email,
+    no_telp: item.no_telp,
+  }),
 };
 
 export const notificationConfig: ResourceConfig<Entity> = {

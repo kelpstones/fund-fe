@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Download,
   FileText,
+  Loader2,
   Trash2,
   UploadCloud,
 } from "lucide-react";
@@ -256,6 +257,10 @@ export function DocumentCenterPage() {
       );
     },
   });
+  const uploadingRequirementKey =
+    uploadBackendMutation.isPending && uploadBackendMutation.variables
+      ? uploadBackendMutation.variables.requirement.key
+      : null;
 
   const backendDocuments = backendQuery.data?.dokumen;
   const backendByDocName = useMemo(
@@ -342,6 +347,7 @@ export function DocumentCenterPage() {
           const isPending = backendDocument?.status === "pending";
           const isValid = backendDocument?.status === "valid";
           const isInvalid = backendDocument?.status === "invalid";
+          const isUploading = uploadingRequirementKey === requirement.key;
           const fileName = isUmkm ? backendDocument?.nama_dokumen : document?.name;
           const uploadDate = isUmkm
             ? backendDocument?.updated_at || backendDocument?.created_at
@@ -408,8 +414,12 @@ export function DocumentCenterPage() {
                 </div>
                 <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
                   <label className="btn btn-primary rounded-md text-white">
-                    <UploadCloud size={17} />
-                    {(isUmkm ? backendDocument : document) ? t("replace") : t("upload")}
+                    {isUploading ? <Loader2 className="animate-spin" size={17} /> : <UploadCloud size={17} />}
+                    {isUploading
+                      ? t("uploading")
+                      : (isUmkm ? backendDocument : document)
+                        ? t("replace")
+                        : t("upload")}
                     <input
                       type="file"
                       className="hidden"
@@ -417,6 +427,11 @@ export function DocumentCenterPage() {
                       disabled={uploadBackendMutation.isPending}
                     />
                   </label>
+                  {isUploading ? (
+                    <span className="self-center text-xs font-semibold text-info">
+                      {t("uploading")}
+                    </span>
+                  ) : null}
                   {isUmkm && backendDocument?.file_url ? (
                     <a
                       className="btn btn-outline rounded-md"

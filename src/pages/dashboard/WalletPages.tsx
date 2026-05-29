@@ -2,7 +2,6 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { ArrowDownCircle, ArrowUpCircle, Loader2, Wallet } from "lucide-react";
-import { Link } from "react-router-dom";
 import { DashboardBreadcrumb } from "../../components/DashboardBreadcrumb";
 import { ResourcePage } from "../../components/ResourcePage";
 import { useToast } from "../../components/ToastProvider";
@@ -64,6 +63,8 @@ const walletInvestorCopy: Record<
     transactionsRecorded: (count: number) => string;
     activeAccounts: string;
     activeAccountsBody: string;
+    withdrawalAccountsEyebrow: string;
+    withdrawalAccountsTitle: string;
     topupTitle: string;
     amountLabel: string;
     amountHint: (minAmount: number) => string;
@@ -102,7 +103,9 @@ const walletInvestorCopy: Record<
     walletBalance: "Saldo Dompet",
     transactionsRecorded: (count) => `${count} transaksi tercatat`,
     activeAccounts: "Rekening Aktif",
-    activeAccountsBody: "Kelola rekening di menu Rekening",
+    activeAccountsBody: "Dikelola di bagian Rekening Penarikan",
+    withdrawalAccountsEyebrow: "Rekening",
+    withdrawalAccountsTitle: "Rekening Penarikan",
     topupTitle: "Top Up Saldo",
     amountLabel: "Nominal",
     amountHint: (minAmount) => `Minimal ${currency(minAmount)}`,
@@ -140,7 +143,9 @@ const walletInvestorCopy: Record<
     walletBalance: "Wallet Balance",
     transactionsRecorded: (count) => `${count} transactions recorded`,
     activeAccounts: "Active Accounts",
-    activeAccountsBody: "Manage accounts in Bank Accounts menu",
+    activeAccountsBody: "Managed in Withdrawal Accounts section",
+    withdrawalAccountsEyebrow: "Accounts",
+    withdrawalAccountsTitle: "Withdrawal Accounts",
     topupTitle: "Top Up Balance",
     amountLabel: "Amount",
     amountHint: (minAmount) => `Minimum ${currency(minAmount)}`,
@@ -277,6 +282,21 @@ export function InvestorWalletPage() {
         </article>
       </div>
 
+      <div
+        id="rekening"
+        className="scroll-mt-24 rounded-md border border-base-300 bg-white p-5 shadow-sm"
+      >
+        <div className="mb-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-primary">
+            {copy.withdrawalAccountsEyebrow}
+          </p>
+          <h3 className="text-xl font-black tracking-normal text-neutral">
+            {copy.withdrawalAccountsTitle}
+          </h3>
+        </div>
+        <InvestorBankAccountsManager embedded />
+      </div>
+
       <div className="grid gap-5 xl:grid-cols-2">
         <form
           className="rounded-md border border-base-300 bg-white p-5 shadow-sm"
@@ -289,40 +309,40 @@ export function InvestorWalletPage() {
             topUpMutation.mutate();
           }}
         >
-          <div className="mb-4 flex items-center gap-2">
-            <ArrowUpCircle size={18} />
-            <h3 className="text-lg font-black">{copy.topupTitle}</h3>
-          </div>
-          <label className="form-control">
-            <span className="label-text mb-2 font-semibold">{copy.amountLabel}</span>
-            <input
-              className="input input-bordered rounded-md"
-              type="text"
-              inputMode="numeric"
-              placeholder="0"
-              value={displayAmountInput(topupForm.jumlah)}
-              onChange={(event) =>
-                setTopupForm((current) => ({ ...current, jumlah: keepDigits(event.target.value) }))
-              }
-              required
-            />
-            <span className="mt-2 text-xs font-semibold text-neutral/55">
-              {copy.amountHint(TOP_UP_MIN_AMOUNT)}
-            </span>
-            <span className="mt-1 text-xs font-semibold text-neutral/55">
-              {copy.amountPreview(topUpAmount)}
-            </span>
-          </label>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <button
-              className="btn btn-primary rounded-md text-white"
-              type="submit"
-              disabled={topUpMutation.isPending}
-            >
-              {topUpMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Wallet size={18} />}
-              {copy.createTopupInvoice}
-            </button>
-          </div>
+              <div className="mb-4 flex items-center gap-2">
+                <ArrowUpCircle size={18} />
+                <h3 className="text-lg font-black">{copy.topupTitle}</h3>
+              </div>
+              <label className="form-control">
+                <span className="label-text mb-2 font-semibold">{copy.amountLabel}</span>
+                <input
+                  className="input input-bordered rounded-md"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={displayAmountInput(topupForm.jumlah)}
+                  onChange={(event) =>
+                    setTopupForm((current) => ({ ...current, jumlah: keepDigits(event.target.value) }))
+                  }
+                  required
+                />
+                <span className="mt-2 text-xs font-semibold text-neutral/55">
+                  {copy.amountHint(TOP_UP_MIN_AMOUNT)}
+                </span>
+                <span className="mt-1 text-xs font-semibold text-neutral/55">
+                  {copy.amountPreview(topUpAmount)}
+                </span>
+              </label>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <button
+                  className="btn btn-primary rounded-md text-white"
+                  type="submit"
+                  disabled={topUpMutation.isPending}
+                >
+                  {topUpMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Wallet size={18} />}
+                  {copy.createTopupInvoice}
+                </button>
+              </div>
         </form>
 
         <form
@@ -336,72 +356,72 @@ export function InvestorWalletPage() {
             withdrawMutation.mutate();
           }}
         >
-          <div className="mb-4 flex items-center gap-2">
-            <ArrowDownCircle size={18} />
-            <h3 className="text-lg font-black">{copy.withdrawTitle}</h3>
-          </div>
-          <label className="form-control">
-            <span className="label-text mb-2 font-semibold">{copy.amountLabel}</span>
-            <input
-              className="input input-bordered rounded-md"
-              type="text"
-              inputMode="numeric"
-              placeholder="0"
-              value={displayAmountInput(withdrawForm.jumlah)}
-              onChange={(event) =>
-                setWithdrawForm((current) => ({ ...current, jumlah: keepDigits(event.target.value) }))
-              }
-              required
-            />
-            <span className="mt-2 text-xs font-semibold text-neutral/55">
-              {copy.amountHint(WITHDRAW_MIN_AMOUNT)}
-            </span>
-            <span className="mt-1 text-xs font-semibold text-neutral/55">
-              {copy.amountPreview(withdrawAmount)}
-            </span>
-          </label>
-          <label className="form-control mt-4">
-            <span className="label-text mb-2 font-semibold">{copy.destinationAccount}</span>
-            <select
-              className="select select-bordered rounded-md"
-              value={withdrawForm.user_bank_account_id}
-              onChange={(event) =>
-                setWithdrawForm((current) => ({
-                  ...current,
-                  user_bank_account_id: event.target.value,
-                }))
-              }
-            >
-              <option value="">{copy.selectAccountPlaceholder}</option>
-              {bankAccounts.map((account) => (
-                <option key={String(account.id)} value={String(account.id)}>
-                  {textValue(account.bank_name)} - {textValue(account.bank_account_number)}
-                  {account.is_primary ? ` (${copy.primaryAccountTag})` : ""}
-                </option>
-              ))}
-            </select>
-            <span className="mt-2 text-xs font-semibold text-neutral/55">
-              {copy.usePrimaryAccountHint}
-            </span>
-            {!hasBankAccounts ? (
-              <span className="mt-2 rounded-md border border-warning/20 bg-warning/10 px-3 py-2 text-xs font-semibold text-warning-content">
-                {copy.noAccountHint}{" "}
-                <Link className="underline" to="/dashboard/investor/rekening">
-                  {copy.addAccountCta}
-                </Link>
-              </span>
-            ) : null}
-          </label>
-          <div className="mt-5">
-            <button
-              className="btn btn-primary rounded-md text-white"
-              type="submit"
-              disabled={withdrawMutation.isPending}
-            >
-              {withdrawMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Wallet size={18} />}
-              {copy.submitWithdrawal}
-            </button>
-          </div>
+              <div className="mb-4 flex items-center gap-2">
+                <ArrowDownCircle size={18} />
+                <h3 className="text-lg font-black">{copy.withdrawTitle}</h3>
+              </div>
+              <label className="form-control">
+                <span className="label-text mb-2 font-semibold">{copy.amountLabel}</span>
+                <input
+                  className="input input-bordered rounded-md"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={displayAmountInput(withdrawForm.jumlah)}
+                  onChange={(event) =>
+                    setWithdrawForm((current) => ({ ...current, jumlah: keepDigits(event.target.value) }))
+                  }
+                  required
+                />
+                <span className="mt-2 text-xs font-semibold text-neutral/55">
+                  {copy.amountHint(WITHDRAW_MIN_AMOUNT)}
+                </span>
+                <span className="mt-1 text-xs font-semibold text-neutral/55">
+                  {copy.amountPreview(withdrawAmount)}
+                </span>
+              </label>
+              <label className="form-control mt-4">
+                <span className="label-text mb-2 font-semibold">{copy.destinationAccount}</span>
+                <select
+                  className="select select-bordered rounded-md"
+                  value={withdrawForm.user_bank_account_id}
+                  onChange={(event) =>
+                    setWithdrawForm((current) => ({
+                      ...current,
+                      user_bank_account_id: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">{copy.selectAccountPlaceholder}</option>
+                  {bankAccounts.map((account) => (
+                    <option key={String(account.id)} value={String(account.id)}>
+                      {textValue(account.bank_name)} - {textValue(account.bank_account_number)}
+                      {account.is_primary ? ` (${copy.primaryAccountTag})` : ""}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-2 text-xs font-semibold text-neutral/55">
+                  {copy.usePrimaryAccountHint}
+                </span>
+                {!hasBankAccounts ? (
+                  <span className="mt-2 rounded-md border border-warning/20 bg-warning/10 px-3 py-2 text-xs font-semibold text-warning-content">
+                    {copy.noAccountHint}{" "}
+                    <a className="underline" href="#rekening">
+                      {copy.addAccountCta}
+                    </a>
+                  </span>
+                ) : null}
+              </label>
+              <div className="mt-5">
+                <button
+                  className="btn btn-primary rounded-md text-white"
+                  type="submit"
+                  disabled={withdrawMutation.isPending}
+                >
+                  {withdrawMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Wallet size={18} />}
+                  {copy.submitWithdrawal}
+                </button>
+              </div>
         </form>
       </div>
 
@@ -450,13 +470,15 @@ export function InvestorWalletPage() {
                       <span className={`badge ${statusTone(item.status)}`}>{textValue(item.status)}</span>
                     </td>
                     <td>{dateShort(item.created_at)}</td>
-                    <td className="max-w-sm">{textValue(item.deskripsi)}</td>
+                    <td className="max-w-sm whitespace-normal break-words leading-6">
+                      {textValue(item.deskripsi)}
+                    </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
-        </div>
+          </div>
       </div>
     </section>
   );
@@ -494,7 +516,7 @@ const bankAccountColumns: ResourceColumn<Entity>[] = [
   },
 ];
 
-export function InvestorBankAccountsPage() {
+function InvestorBankAccountsManager({ embedded = false }: { embedded?: boolean }) {
   const banksQuery = useQuery({
     queryKey: ["supported-banks-public"],
     queryFn: () => resourceApi.list(supportedBankPublicConfig),
@@ -540,7 +562,7 @@ export function InvestorBankAccountsPage() {
 
   return (
     <ResourcePage
-      title="Rekening Investor"
+      title={embedded ? "Rekening Penarikan" : "Rekening Investor"}
       description="Kelola rekening bank atau e-wallet tujuan penarikan dana dompet."
       config={userBankAccountConfig}
       columns={bankAccountColumns}
@@ -553,6 +575,9 @@ export function InvestorBankAccountsPage() {
       emptyTitle="Belum ada rekening terdaftar"
       emptyDescription="Tambahkan minimal satu rekening untuk proses penarikan dana dompet."
       searchableFields={["bank_name", "bank_account_number", "bank_account_holder", "bank_code"]}
+      showTitle={!embedded}
+      showBreadcrumb={!embedded}
+      extraInvalidateKeys={[["wallet-bank-accounts"]]}
     />
   );
 }
