@@ -5,8 +5,35 @@ const asObject = (value: unknown) =>
 
 const emptyFallback: Entity[] = [];
 
+const normalizeFundingPlan = (value: unknown) => {
+  if (!Array.isArray(value)) {
+    throw new Error("Rencana penggunaan dana harus berupa array.");
+  }
+
+  const normalized = value
+    .map((item) => {
+      const objectItem = asObject(item);
+      const kategori = String(
+        objectItem.kategori ??
+          objectItem.category ??
+          objectItem.label ??
+          "",
+      ).trim();
+      const jumlahRaw = Number(objectItem.jumlah ?? objectItem.amount ?? 0);
+      if (!kategori || !Number.isFinite(jumlahRaw) || jumlahRaw <= 0) return null;
+      return { kategori, jumlah: Math.round(jumlahRaw) };
+    })
+    .filter((item): item is { kategori: string; jumlah: number } => Boolean(item));
+
+  if (normalized.length === 0) {
+    throw new Error("Rencana penggunaan dana minimal berisi satu item valid.");
+  }
+
+  return normalized;
+};
+
 const toFundingPlan = (value: unknown) => {
-  if (Array.isArray(value)) return value;
+  if (Array.isArray(value)) return normalizeFundingPlan(value);
   if (typeof value !== "string") return undefined;
 
   const trimmed = value.trim();
@@ -14,29 +41,7 @@ const toFundingPlan = (value: unknown) => {
 
   try {
     const parsed = JSON.parse(trimmed) as unknown;
-    if (!Array.isArray(parsed)) {
-      throw new Error("Rencana penggunaan dana harus berupa array JSON.");
-    }
-    const normalized = parsed
-      .map((item) => {
-        const objectItem = asObject(item);
-        const kategori = String(
-          objectItem.kategori ??
-            objectItem.category ??
-            objectItem.label ??
-            "",
-        ).trim();
-        const jumlahRaw = Number(objectItem.jumlah ?? objectItem.amount ?? 0);
-        if (!kategori || !Number.isFinite(jumlahRaw) || jumlahRaw <= 0) return null;
-        return { kategori, jumlah: Math.round(jumlahRaw) };
-      })
-      .filter((item): item is { kategori: string; jumlah: number } => Boolean(item));
-
-    if (normalized.length === 0) {
-      throw new Error("Rencana penggunaan dana minimal berisi satu item valid.");
-    }
-
-    return normalized;
+    return normalizeFundingPlan(parsed);
   } catch {
     throw new Error(
       "Format rencana penggunaan dana tidak valid. Gunakan JSON array, contoh: [{\"kategori\":\"Marketing\",\"jumlah\":10000000}]",

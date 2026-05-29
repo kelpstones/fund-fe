@@ -76,21 +76,74 @@ type LoadingAlert = {
 };
 
 const emptyForm = <T extends Entity>(fields: ResourceField<T>[] = []) =>
-  fields.reduce<Record<string, string | number>>((state, field) => {
-    state[field.name] = "";
+  fields.reduce<Record<string, unknown>>((state, field) => {
+    state[field.name] = field.type === "funding_plan" ? [{ kategori: "", jumlah: "" }] : "";
     return state;
   }, {});
 
 const coerceValues = <T extends Entity>(
   fields: ResourceField<T>[],
-  values: Record<string, string | number>,
+  values: Record<string, unknown>,
 ) => {
   return fields.reduce<Partial<T>>((payload, field) => {
     const value = values[field.name];
-    if (value === "") return payload;
+    if (value === "" || value === null || value === undefined) return payload;
+
+    if (field.type === "funding_plan") {
+      const rows = Array.isArray(value) ? value : [];
+      const normalized = rows
+        .map((item) => {
+          const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+          const kategori = String(row.kategori ?? "").trim();
+          const jumlahDigits = String(row.jumlah ?? "").replace(/\D/g, "");
+          const jumlah = jumlahDigits ? Number(jumlahDigits) : 0;
+          if (!kategori || !Number.isFinite(jumlah) || jumlah <= 0) return null;
+          return { kategori, jumlah };
+        })
+        .filter((item): item is { kategori: string; jumlah: number } => Boolean(item));
+
+      if (normalized.length === 0) return payload;
+      payload[field.name] = normalized as T[keyof T & string];
+      return payload;
+    }
+
     payload[field.name] = (field.type === "number" ? Number(value) : value) as T[keyof T & string];
     return payload;
   }, {});
+};
+
+const readFundingPlanRows = (value: unknown) => {
+  const toRows = (raw: unknown) => {
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((item) => {
+        const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+        const kategori = String(row.kategori ?? row.category ?? "").trim();
+        const jumlahValue = row.jumlah ?? row.amount ?? "";
+        const jumlahDigits = String(jumlahValue ?? "").replace(/\D/g, "");
+        return { kategori, jumlah: jumlahDigits };
+      })
+      .filter((item) => item.kategori || item.jumlah);
+  };
+
+  if (Array.isArray(value)) {
+    const rows = toRows(value);
+    return rows.length > 0 ? rows : [{ kategori: "", jumlah: "" }];
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [{ kategori: "", jumlah: "" }];
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      const rows = toRows(parsed);
+      return rows.length > 0 ? rows : [{ kategori: "", jumlah: "" }];
+    } catch {
+      return [{ kategori: "", jumlah: "" }];
+    }
+  }
+
+  return [{ kategori: "", jumlah: "" }];
 };
 
 const displayPreviewValue = (value: unknown): ReactNode => {
@@ -269,7 +322,7 @@ export function ResourcePage<T extends Entity>({
   const [resultModal, setResultModal] = useState<{ title: string; data: unknown } | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog | null>(null);
   const [loadingAlert, setLoadingAlert] = useState<LoadingAlert | null>(null);
-  const [formValues, setFormValues] = useState<Record<string, string | number>>(() =>
+  const [formValues, setFormValues] = useState<Record<string, unknown>>(() =>
     emptyForm(fields),
   );
 
@@ -392,6 +445,10 @@ export function ResourcePage<T extends Entity>({
     const next = emptyForm(fields);
     fields.forEach((field) => {
       const value = field.getEditValue ? field.getEditValue(item) : item[field.name];
+      if (field.type === "funding_plan") {
+        next[field.name] = readFundingPlanRows(value);
+        return;
+      }
       if (field.type === "textarea" && value && typeof value === "object") {
         next[field.name] = JSON.stringify(value, null, 2);
         return;
@@ -415,6 +472,21 @@ export function ResourcePage<T extends Entity>({
       ? fields.filter((field) => !field.hideOnEdit)
       : fields;
     const values = coerceValues(submitFields, formValues);
+
+    for (const field of submitFields) {
+      if (field.type !== "funding_plan" || !field.required) continue;
+      const plan = values[field.name];
+      if (!Array.isArray(plan) || plan.length === 0) {
+        toast.error(
+          language === "id"
+            ? `${t(field.label)} wajib diisi minimal 1 item.`
+            : `${t(field.label)} requires at least 1 item.`,
+          { title: t("saveFailed") },
+        );
+        return;
+      }
+    }
+
     const validationMessage = validateForm?.(values, { editing, fields: submitFields });
     if (validationMessage) {
       toast.error(t(validationMessage), { title: t("saveFailed") });
@@ -858,11 +930,16 @@ export function ResourcePage<T extends Entity>({
                   .filter((field) => !(editing && field.hideOnEdit))
                   .map((field) => {
                   const value = formValues[field.name] ?? "";
-                  const isFullWidth = field.type === "textarea" || field.colSpan === 2;
+                  const isFullWidth =
+                    field.type === "textarea" ||
+                    field.type === "funding_plan" ||
+                    field.colSpan === 2;
+                  const inputValue =
+                    typeof value === "number" || typeof value === "string" ? value : "";
                   const commonProps = {
                     id: field.name,
                     required: field.required,
-                    value,
+                    value: inputValue,
                     onChange: (
                       event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
                     ) =>
@@ -884,6 +961,90 @@ export function ResourcePage<T extends Entity>({
                             className="textarea textarea-bordered min-h-28 rounded-md"
                             placeholder={field.placeholder ? t(field.placeholder) : undefined}
                           />
+                        ) : field.type === "funding_plan" ? (
+                          <div className="space-y-3 rounded-md border border-base-300 bg-base-100 p-3">
+                            {readFundingPlanRows(value).map((row, index, rows) => (
+                              <div
+                                key={`${field.name}-${index}`}
+                                className="grid gap-2 rounded-md border border-base-300 bg-white p-3 sm:grid-cols-[1fr_220px_auto]"
+                              >
+                                <input
+                                  className="input input-bordered rounded-md"
+                                  value={row.kategori}
+                                  onChange={(event) =>
+                                    setFormValues((current) => {
+                                      const nextRows = [...readFundingPlanRows(current[field.name])];
+                                      nextRows[index] = {
+                                        ...nextRows[index],
+                                        kategori: event.target.value,
+                                      };
+                                      return { ...current, [field.name]: nextRows };
+                                    })
+                                  }
+                                  placeholder={
+                                    language === "id" ? "Kategori (contoh: Marketing)" : "Category (e.g. Marketing)"
+                                  }
+                                />
+                                <div className="input input-bordered flex items-center gap-2 rounded-md">
+                                  <span className="text-sm font-semibold text-neutral/60">IDR</span>
+                                  <input
+                                    className="w-full bg-transparent text-sm font-semibold outline-none"
+                                    value={
+                                      row.jumlah
+                                        ? new Intl.NumberFormat("id-ID").format(Number(row.jumlah))
+                                        : ""
+                                    }
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    onChange={(event) =>
+                                      setFormValues((current) => {
+                                        const nextRows = [...readFundingPlanRows(current[field.name])];
+                                        nextRows[index] = {
+                                          ...nextRows[index],
+                                          jumlah: event.target.value.replace(/\D/g, ""),
+                                        };
+                                        return { ...current, [field.name]: nextRows };
+                                      })
+                                    }
+                                    placeholder="0"
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  className="btn btn-outline rounded-md"
+                                  onClick={() =>
+                                    setFormValues((current) => {
+                                      const nextRows = [...readFundingPlanRows(current[field.name])];
+                                      if (nextRows.length <= 1) {
+                                        return {
+                                          ...current,
+                                          [field.name]: [{ kategori: "", jumlah: "" }],
+                                        };
+                                      }
+                                      nextRows.splice(index, 1);
+                                      return { ...current, [field.name]: nextRows };
+                                    })
+                                  }
+                                  disabled={rows.length <= 1}
+                                >
+                                  {language === "id" ? "Hapus" : "Remove"}
+                                </button>
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              className="btn btn-outline btn-sm rounded-md"
+                              onClick={() =>
+                                setFormValues((current) => {
+                                  const nextRows = [...readFundingPlanRows(current[field.name])];
+                                  nextRows.push({ kategori: "", jumlah: "" });
+                                  return { ...current, [field.name]: nextRows };
+                                })
+                              }
+                            >
+                              {language === "id" ? "Tambah item" : "Add item"}
+                            </button>
+                          </div>
                         ) : field.type === "select" ? (
                           <select {...commonProps} className="select select-bordered rounded-md">
                             <option value="">{copy.choose}</option>

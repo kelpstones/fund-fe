@@ -136,10 +136,8 @@ const submissionFields: ResourceField<Entity>[] = [
   { name: "deskripsi_peluang", label: "Deskripsi Peluang", type: "textarea", colSpan: 2 },
   {
     name: "rencana_penggunaan_dana",
-    label: "Rencana Penggunaan Dana (JSON)",
-    type: "textarea",
-    placeholder:
-      '[{"kategori":"Marketing","jumlah":10000000},{"kategori":"Operasional","jumlah":15000000}]',
+    label: "Rencana Penggunaan Dana",
+    type: "funding_plan",
     colSpan: 2,
   },
   {
@@ -787,10 +785,8 @@ export function SubmissionsPage({ admin = false }: { admin?: boolean }) {
       { name: "deskripsi_peluang", label: "Deskripsi Peluang", type: "textarea", colSpan: 2 },
       {
         name: "rencana_penggunaan_dana",
-        label: "Rencana Penggunaan Dana (JSON)",
-        type: "textarea",
-        placeholder:
-          '[{"kategori":"Marketing","jumlah":10000000},{"kategori":"Operasional","jumlah":15000000}]',
+        label: "Rencana Penggunaan Dana",
+        type: "funding_plan",
         colSpan: 2,
       },
     ];
@@ -872,6 +868,8 @@ function UmkmSalesPage() {
     laba_bersih: "",
     jumlah_transaksi: "",
   });
+  const [monthlySalesDoc, setMonthlySalesDoc] = useState<File | null>(null);
+  const [yearlySalesDoc, setYearlySalesDoc] = useState<File | null>(null);
   const myBusinessesQuery = useQuery({
     queryKey: ["sales-business-options", user?.id ?? "guest", user?.role ?? "guest"],
     queryFn: () => resourceApi.list(myBusinessConfig),
@@ -958,6 +956,53 @@ function UmkmSalesPage() {
               ? "Pilih pengajuan terlebih dahulu."
               : "Choose a submission first."
             : null;
+
+  const uploadSalesDocMutation = useMutation({
+    mutationFn: async (params: { type: "monthly" | "yearly"; file: File }) => {
+      const documentName =
+        params.type === "monthly" ? "Laporan Omset Bulanan" : "Laporan Omset Tahunan";
+      const formData = new FormData();
+      formData.append("jenis_dokumen", "laporan_penjualan");
+      formData.append("nama_list", JSON.stringify([documentName]));
+      formData.append("files", params.file);
+      const response = await apiClient.post("/businesses/documents", formData);
+      return unwrap<unknown>(response.data);
+    },
+    onSuccess: (_data, variables) => {
+      if (variables.type === "monthly") setMonthlySalesDoc(null);
+      if (variables.type === "yearly") setYearlySalesDoc(null);
+      toast.success(
+        language === "id"
+          ? "Dokumen penjualan berhasil diupload."
+          : "Sales document uploaded successfully.",
+        { title: t("dataAdded") },
+      );
+    },
+    onError: (error) => {
+      toast.error(
+        apiErrorMessage(
+          error,
+          language === "id"
+            ? "Upload dokumen penjualan gagal."
+            : "Failed to upload sales document.",
+        ),
+        { title: t("saveFailed") },
+      );
+    },
+  });
+
+  const uploadSalesDocument = (type: "monthly" | "yearly") => {
+    const file = type === "monthly" ? monthlySalesDoc : yearlySalesDoc;
+    if (!file) {
+      toast.warning(
+        language === "id"
+          ? "Pilih file dokumen terlebih dahulu."
+          : "Choose a document file first.",
+      );
+      return;
+    }
+    uploadSalesDocMutation.mutate({ type, file });
+  };
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -1123,6 +1168,64 @@ function UmkmSalesPage() {
           ) : null}
         </div>
       </form>
+      <section className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+        <div>
+          <h3 className="text-lg font-black text-neutral">
+            {language === "id" ? "Upload Dokumen Penjualan" : "Upload Sales Documents"}
+          </h3>
+          <p className="mt-1 text-sm text-neutral/60">
+            {language === "id"
+              ? "Upload dokumen omset bulanan dan tahunan untuk melengkapi data penjualan."
+              : "Upload monthly and yearly revenue documents to complete your sales data."}
+          </p>
+        </div>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div className="space-y-3 rounded-md border border-base-300 bg-base-100 p-4">
+            <p className="text-sm font-semibold text-neutral">
+              {language === "id" ? "Dokumen Omset Bulanan" : "Monthly Revenue Document"}
+            </p>
+            <input
+              type="file"
+              className="file-input file-input-bordered w-full rounded-md bg-white"
+              onChange={(event) => setMonthlySalesDoc(event.target.files?.[0] ?? null)}
+              disabled={uploadSalesDocMutation.isPending}
+            />
+            <button
+              type="button"
+              className="btn btn-outline btn-sm rounded-md"
+              onClick={() => uploadSalesDocument("monthly")}
+              disabled={uploadSalesDocMutation.isPending || !monthlySalesDoc}
+            >
+              {uploadSalesDocMutation.isPending ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : null}
+              {language === "id" ? "Upload Bulanan" : "Upload Monthly"}
+            </button>
+          </div>
+          <div className="space-y-3 rounded-md border border-base-300 bg-base-100 p-4">
+            <p className="text-sm font-semibold text-neutral">
+              {language === "id" ? "Dokumen Omset Tahunan" : "Yearly Revenue Document"}
+            </p>
+            <input
+              type="file"
+              className="file-input file-input-bordered w-full rounded-md bg-white"
+              onChange={(event) => setYearlySalesDoc(event.target.files?.[0] ?? null)}
+              disabled={uploadSalesDocMutation.isPending}
+            />
+            <button
+              type="button"
+              className="btn btn-outline btn-sm rounded-md"
+              onClick={() => uploadSalesDocument("yearly")}
+              disabled={uploadSalesDocMutation.isPending || !yearlySalesDoc}
+            >
+              {uploadSalesDocMutation.isPending ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : null}
+              {language === "id" ? "Upload Tahunan" : "Upload Yearly"}
+            </button>
+          </div>
+        </div>
+      </section>
       {activePengajuanId ? (
         <ResourcePage
           title="Riwayat Penjualan Pengajuan"
@@ -1675,75 +1778,12 @@ export function InvestmentsByProposalPage() {
     : language === "id"
     ? "Pilih pengajuan"
     : "Choose submission";
-  const activePengajuanId =
+  const selectedPengajuanId =
     !pengajuanId || submissionOptions.some((option) => String(option.value) === pengajuanId)
       ? pengajuanId
       : "";
-
-  if (!activePengajuanId.trim()) {
-    return (
-      <section className="space-y-5">
-        <div>
-          <h2 className="text-2xl font-black tracking-normal text-neutral">{t("Investasi Pengajuan")}</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">
-            {t("investmentBySubmissionPrompt")}
-          </p>
-        </div>
-        <label className="form-control max-w-sm">
-          <span className="label-text mb-2 font-semibold">{t("Pengajuan")}</span>
-          {submissionOptions.length > 0 ? (
-            <select
-              className="select select-bordered rounded-md bg-white"
-              value={activePengajuanId}
-              onChange={(event) => setPengajuanId(event.target.value)}
-              disabled={isOptionsLoading}
-            >
-              <option value="">{selectPlaceholder}</option>
-              {submissionOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <select
-              className="select select-bordered rounded-md bg-white"
-              value=""
-              disabled
-            >
-              <option value="">{selectPlaceholder}</option>
-            </select>
-          )}
-        </label>
-        {isOptionsError ? (
-          <div className="rounded-md border border-error/20 bg-error/5 px-3 py-2 text-sm font-semibold text-error">
-            {language === "id"
-              ? "Gagal memuat data pengajuan. Coba muat ulang halaman."
-              : "Failed to load submission data. Please refresh the page."}
-          </div>
-        ) : null}
-        {!isOptionsLoading && !isOptionsError && !hasBusiness ? (
-          <div className="rounded-md border border-base-300 bg-base-100 px-3 py-2 text-sm font-semibold text-neutral/65">
-            {language === "id"
-              ? "Belum ada bisnis aktif. Tambahkan bisnis terlebih dahulu sebelum melihat investasi per pengajuan."
-              : "No active business found. Add a business first before viewing investments by submission."}
-          </div>
-        ) : null}
-        {!isOptionsLoading && !isOptionsError && hasBusiness && !hasSubmissions ? (
-          <div className="space-y-3 rounded-md border border-base-300 bg-base-100 px-3 py-2">
-            <p className="text-sm font-semibold text-neutral/65">
-              {language === "id"
-                ? "Belum ada pengajuan untuk bisnis kamu."
-                : "No submission found for your business yet."}
-            </p>
-            <Link className="btn btn-sm btn-primary rounded-md text-white" to="/dashboard/umkm/pengajuan">
-              {language === "id" ? "Buka halaman pengajuan" : "Open submissions page"}
-            </Link>
-          </div>
-        ) : null}
-      </section>
-    );
-  }
+  const activePengajuanId =
+    selectedPengajuanId || (submissionOptions[0] ? String(submissionOptions[0].value) : "");
 
   return (
     <div className="space-y-5">
@@ -1778,15 +1818,46 @@ export function InvestmentsByProposalPage() {
           ? "Menampilkan maksimum 200 data investasi terbaru untuk pengajuan terpilih."
           : "Showing up to 200 latest investment records for the selected submission."}
       </p>
-      <ResourcePage
-        title="Investasi Pengajuan"
-        description="Investasi yang tercatat untuk pengajuan bisnis tertentu."
-        config={investmentByPengajuanConfig(activePengajuanId)}
-        columns={investmentColumns}
-        readonly
-        emptyTitle="Belum ada investasi untuk pengajuan ini"
-        emptyDescription="Investasi akan muncul setelah investor menyelesaikan pembayaran untuk pengajuan yang dipilih."
-      />
+      {!activePengajuanId.trim() ? (
+        <section className="space-y-3 rounded-md border border-base-300 bg-base-100 p-4">
+          {isOptionsError ? (
+            <div className="rounded-md border border-error/20 bg-error/5 px-3 py-2 text-sm font-semibold text-error">
+              {language === "id"
+                ? "Gagal memuat data pengajuan. Coba muat ulang halaman."
+                : "Failed to load submission data. Please refresh the page."}
+            </div>
+          ) : null}
+          {!isOptionsLoading && !isOptionsError && !hasBusiness ? (
+            <p className="text-sm font-semibold text-neutral/65">
+              {language === "id"
+                ? "Belum ada bisnis aktif. Tambahkan bisnis terlebih dahulu sebelum melihat investasi per pengajuan."
+                : "No active business found. Add a business first before viewing investments by submission."}
+            </p>
+          ) : null}
+          {!isOptionsLoading && !isOptionsError && hasBusiness && !hasSubmissions ? (
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-neutral/65">
+                {language === "id"
+                  ? "Belum ada pengajuan untuk bisnis kamu."
+                  : "No submission found for your business yet."}
+              </p>
+              <Link className="btn btn-sm btn-primary rounded-md text-white" to="/dashboard/umkm/pengajuan">
+                {language === "id" ? "Buka halaman pengajuan" : "Open submissions page"}
+              </Link>
+            </div>
+          ) : null}
+        </section>
+      ) : (
+        <ResourcePage
+          title="Investasi Pengajuan"
+          description="Investasi yang tercatat untuk pengajuan bisnis tertentu."
+          config={investmentByPengajuanConfig(activePengajuanId)}
+          columns={investmentColumns}
+          readonly
+          emptyTitle="Belum ada investasi untuk pengajuan ini"
+          emptyDescription="Investasi akan muncul setelah investor menyelesaikan pembayaran untuk pengajuan yang dipilih."
+        />
+      )}
     </div>
   );
 }

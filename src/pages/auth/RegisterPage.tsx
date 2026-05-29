@@ -12,7 +12,7 @@ import type { RegisterPayload } from "../../types";
 
 export function RegisterPage() {
   const { register } = useAuth();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const toast = useToast();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,21 +26,48 @@ export function RegisterPage() {
     role: "umkm",
   });
 
+  const onlyDigits = (value: string) => value.replace(/\D/g, "");
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (form.password !== form.password_confirmation) {
       toast.warning(t("passwordConfirmationMismatch"));
       return;
     }
+
+    const nikDigits = onlyDigits(form.nik);
+    if (nikDigits.length !== 16) {
+      toast.warning(
+        language === "id"
+          ? "NIK harus 16 digit angka."
+          : "NIK must be exactly 16 digits.",
+      );
+      return;
+    }
+
+    const phoneDigits = onlyDigits(form.no_telp);
+    if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+      toast.warning(
+        language === "id"
+          ? "No. telp harus 10 sampai 15 digit angka."
+          : "Phone number must be 10 to 15 digits.",
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await register(form);
+      await register({
+        ...form,
+        nik: nikDigits,
+        no_telp: phoneDigits,
+      });
       localStorage.setItem(
         "fundraise_register_hint",
         JSON.stringify({
           email: form.email,
           nama: form.nama,
-          no_telp: form.no_telp,
+          no_telp: phoneDigits,
           role: form.role,
           saved_at: Date.now(),
         }),
@@ -117,7 +144,9 @@ export function RegisterPage() {
               <input
                 className="input input-bordered rounded-md"
                 value={form.nik}
-                onChange={(event) => update("nik", event.target.value)}
+                onChange={(event) => update("nik", onlyDigits(event.target.value).slice(0, 16))}
+                inputMode="numeric"
+                pattern="[0-9]{16}"
                 minLength={16}
                 maxLength={16}
                 required
@@ -128,7 +157,11 @@ export function RegisterPage() {
               <input
                 className="input input-bordered rounded-md"
                 value={form.no_telp}
-                onChange={(event) => update("no_telp", event.target.value)}
+                onChange={(event) => update("no_telp", onlyDigits(event.target.value).slice(0, 15))}
+                inputMode="numeric"
+                pattern="[0-9]{10,15}"
+                minLength={10}
+                maxLength={15}
                 required
               />
             </label>
