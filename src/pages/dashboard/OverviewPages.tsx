@@ -967,18 +967,6 @@ export function InvestorOverviewPage() {
           },
         ]
       : []),
-    ...(hasPendingInvoice
-      ? [
-          {
-            key: "investor-invoice-pending",
-            to: "/dashboard/investor/invoice",
-            title: t("dashboardInvoices"),
-            body: t("pendingCount", { count: pendingInvoices.length }),
-            icon: Receipt,
-            priority: 3,
-          },
-        ]
-      : []),
     {
       key: "investor-opportunity",
       to: "/dashboard/investor/peluang",

@@ -186,11 +186,49 @@ const formatSize = (size: number) => {
   return `${Math.max(1, Math.round(size / 1024))} KB`;
 };
 
+const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+const allowedMimeTypes = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/csv",
+]);
+const allowedExtensions = [
+  ".pdf",
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".doc",
+  ".docx",
+  ".xls",
+  ".xlsx",
+  ".csv",
+];
+const acceptedFileInputValue = ".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.csv";
+
 const apiErrorMessage = (error: unknown, fallback: string) => {
   if (axios.isAxiosError(error) && error.response?.data?.message) {
     return String(error.response.data.message);
   }
   return fallback;
+};
+
+const normalizeDocName = (value: unknown) => String(value ?? "").trim().toLowerCase();
+
+const toTimestamp = (value: unknown) => {
+  const time = new Date(String(value ?? "")).getTime();
+  return Number.isFinite(time) ? time : 0;
+};
+
+const clampProgress = (value: number) => {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, value));
 };
 
 const localizedText = (
@@ -264,23 +302,68 @@ export function DocumentCenterPage() {
 
   const backendDocuments = backendQuery.data?.dokumen;
   const backendByDocName = useMemo(
-    () => new Map((backendDocuments ?? []).map((item) => [item.nama_dokumen, item])),
+    () => {
+      const docs = [...(backendDocuments ?? [])].sort(
+        (a, b) =>
+          toTimestamp(b.updated_at ?? b.created_at) -
+          toTimestamp(a.updated_at ?? a.created_at),
+      );
+      const map = new Map<string, BackendDocument>();
+      for (const item of docs) {
+        const key = normalizeDocName(item.nama_dokumen);
+        if (!key || map.has(key)) continue;
+        map.set(key, item);
+      }
+      return map;
+    },
     [backendDocuments],
   );
 
   const uploadedCount = isUmkm
-    ? requirements.filter((item) => item.backend && backendByDocName.has(item.backend.nama_dokumen)).length
+    ? requirements.filter((item) => {
+        if (!item.backend) return false;
+        const document = backendByDocName.get(normalizeDocName(item.backend.nama_dokumen));
+        return Boolean(document);
+      }).length
     : requirements.filter((item) => documents[item.key]).length;
+  const validCount = isUmkm
+    ? requirements.filter((item) => {
+        if (!item.backend) return false;
+        const document = backendByDocName.get(normalizeDocName(item.backend.nama_dokumen));
+        return document?.status === "valid";
+      }).length
+    : uploadedCount;
 
-  const progress = isUmkm
-    ? Number(
-        backendQuery.data?.kelengkapan?.persen ??
-          Math.round((uploadedCount / Math.max(requirements.length, 1)) * 100),
-      )
-    : Math.round((uploadedCount / Math.max(requirements.length, 1)) * 100);
+  const progress = clampProgress(
+    Math.round((validCount / Math.max(requirements.length, 1)) * 100),
+  );
+
+  const validateUploadFile = (file: File) => {
+    if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+      return language === "id"
+        ? "Ukuran file maksimal 10 MB."
+        : "Maximum file size is 10 MB.";
+    }
+    const lowerName = file.name.toLowerCase();
+    const hasAllowedExtension = allowedExtensions.some((extension) =>
+      lowerName.endsWith(extension),
+    );
+    const hasAllowedMime = !file.type || allowedMimeTypes.has(file.type);
+    if (!hasAllowedMime && !hasAllowedExtension) {
+      return language === "id"
+        ? "Format file tidak didukung. Gunakan PDF, JPG, PNG, WEBP, DOC, DOCX, XLS, XLSX, atau CSV."
+        : "Unsupported file format. Use PDF, JPG, PNG, WEBP, DOC, DOCX, XLS, XLSX, or CSV.";
+    }
+    return null;
+  };
 
   const upload = (requirement: Requirement, file: File | null) => {
     if (!file) return;
+    const validationMessage = validateUploadFile(file);
+    if (validationMessage) {
+      toast.warning(validationMessage);
+      return;
+    }
     if (isUmkm) {
       uploadBackendMutation.mutate({ requirement, file });
       return;
@@ -337,10 +420,20 @@ export function DocumentCenterPage() {
       </div>
 
       <div className="grid gap-4">
+        {isUmkm && backendQuery.isError ? (
+          <div className="rounded-md border border-error/20 bg-error/5 px-4 py-3 text-sm font-semibold text-error">
+            {apiErrorMessage(
+              backendQuery.error,
+              language === "id"
+                ? "Gagal memuat data dokumen backend. Coba muat ulang halaman."
+                : "Failed to load backend documents. Please refresh the page.",
+            )}
+          </div>
+        ) : null}
         {requirements.map((requirement) => {
           const document = documents[requirement.key];
           const backendDocument = requirement.backend
-            ? backendByDocName.get(requirement.backend.nama_dokumen)
+            ? backendByDocName.get(normalizeDocName(requirement.backend.nama_dokumen))
             : undefined;
           const status = requirement.status;
           const canRemove = !isUmkm && Boolean(document);
@@ -389,13 +482,28 @@ export function DocumentCenterPage() {
                                 : "badge-warning"
                           }`}
                         >
-                          {backendDocument.status}
+                          {backendDocument.status === "pending"
+                            ? language === "id"
+                              ? "Menunggu"
+                              : "Pending"
+                            : backendDocument.status === "valid"
+                              ? language === "id"
+                                ? "Valid"
+                                : "Valid"
+                              : language === "id"
+                                ? "Perlu perbaikan"
+                                : "Needs revision"}
                         </span>
                       ) : null}
                     </div>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">
                       {localizedText(requirement.body, language)}
                     </p>
+                    {isUmkm && isPending ? (
+                      <p className="mt-2 text-xs font-semibold text-warning">
+                        {language === "id" ? "Menunggu review admin" : "Waiting for admin review"}
+                      </p>
+                    ) : null}
                     {fileName ? (
                       <div className="mt-4 rounded-md bg-base-200 p-3 text-sm">
                         <p className="font-black">{fileName}</p>
@@ -423,7 +531,11 @@ export function DocumentCenterPage() {
                     <input
                       type="file"
                       className="hidden"
-                      onChange={(event) => upload(requirement, event.target.files?.[0] ?? null)}
+                      accept={acceptedFileInputValue}
+                      onChange={(event) => {
+                        upload(requirement, event.target.files?.[0] ?? null);
+                        event.currentTarget.value = "";
+                      }}
                       disabled={uploadBackendMutation.isPending}
                     />
                   </label>
@@ -451,11 +563,6 @@ export function DocumentCenterPage() {
                       <Trash2 size={17} />
                       {t("delete")}
                     </button>
-                  ) : null}
-                  {isUmkm && isPending ? (
-                    <span className="self-center text-xs font-semibold text-warning">
-                      {language === "id" ? "Menunggu review admin" : "Waiting for admin review"}
-                    </span>
                   ) : null}
                 </div>
               </div>
