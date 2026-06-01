@@ -63,9 +63,10 @@ export function LoginPage() {
           </div>
         ) : null}
         <form className="mt-8 grid gap-4" onSubmit={submit}>
-          <label className="form-control">
+          <label className="form-control" htmlFor="login-email">
             <span className="label-text mb-2 font-semibold">{t("email")}</span>
             <input
+              id="login-email"
               type="email"
               className="input input-bordered rounded-md"
               value={email}
@@ -73,9 +74,10 @@ export function LoginPage() {
               required
             />
           </label>
-          <label className="form-control">
+          <label className="form-control" htmlFor="login-password">
             <span className="label-text mb-2 font-semibold">{t("password")}</span>
             <input
+              id="login-password"
               type="password"
               className="input input-bordered rounded-md"
               value={password}

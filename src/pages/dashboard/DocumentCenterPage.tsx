@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
 import {
   CheckCircle2,
-  Download,
+  Eye,
   FileText,
   Loader2,
   Trash2,
@@ -11,7 +10,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../lib/auth/AuthProvider";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
-import { dateShort } from "../../lib/format";
+import { apiErrorMessage, dateShort } from "../../lib/format";
 import { apiClient, unwrap } from "../../lib/api/client";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { useToast } from "../../components/ToastProvider";
@@ -212,13 +211,6 @@ const allowedExtensions = [
 ];
 const acceptedFileInputValue = ".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.csv";
 
-const apiErrorMessage = (error: unknown, fallback: string) => {
-  if (axios.isAxiosError(error) && error.response?.data?.message) {
-    return String(error.response.data.message);
-  }
-  return fallback;
-};
-
 const normalizeDocName = (value: unknown) => String(value ?? "").trim().toLowerCase();
 
 const toTimestamp = (value: unknown) => {
@@ -330,23 +322,18 @@ export function DocumentCenterPage() {
     [backendDocuments],
   );
 
-  const uploadedCount = isUmkm
+  const progressEligibleStatuses = new Set(["valid", "pending"]);
+  const completedCount = isUmkm
     ? requirements.filter((item) => {
         if (!item.backend) return false;
         const document = backendByDocName.get(normalizeDocName(item.backend.nama_dokumen));
-        return Boolean(document);
+        if (!document) return false;
+        return progressEligibleStatuses.has(String(document.status ?? "").toLowerCase());
       }).length
     : requirements.filter((item) => documents[item.key]).length;
-  const validCount = isUmkm
-    ? requirements.filter((item) => {
-        if (!item.backend) return false;
-        const document = backendByDocName.get(normalizeDocName(item.backend.nama_dokumen));
-        return document?.status === "valid";
-      }).length
-    : uploadedCount;
 
   const progress = clampProgress(
-    Math.round((validCount / Math.max(requirements.length, 1)) * 100),
+    Math.round((completedCount / Math.max(requirements.length, 1)) * 100),
   );
 
   const validateUploadFile = (file: File) => {
@@ -557,7 +544,7 @@ export function DocumentCenterPage() {
                       target="_blank"
                       rel="noreferrer"
                     >
-                      <Download size={17} />
+                      <Eye size={17} />
                       {language === "id" ? "Buka" : "Open"}
                     </a>
                   ) : null}

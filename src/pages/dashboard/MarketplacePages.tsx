@@ -1,13 +1,13 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
   type KeyboardEvent,
   type ReactNode,
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   Bookmark,
@@ -37,7 +37,7 @@ import {
   myNegotiationConfig,
   submissionConfig,
 } from "../../lib/resourceConfigs";
-import { compactCurrency, currency, dateShort, percent, readPath, textValue } from "../../lib/format";
+import { apiErrorMessage, compactCurrency, currency, dateShort, percent, readPath, textValue } from "../../lib/format";
 import type { Entity } from "../../types";
 
 type SavedOpportunity = Entity & {
@@ -56,15 +56,6 @@ type ParsedCompareIds = {
   duplicateCount: number;
   overflowCount: number;
 };
-
-const apiErrorMessage = (error: unknown, fallback: string) => {
-  if (axios.isAxiosError(error) && error.response?.data?.message) {
-    return String(error.response.data.message);
-  }
-  return fallback;
-};
-const isBusinessDetailAccessFallback = (error: unknown) =>
-  axios.isAxiosError(error) && [401, 403, 404].includes(error.response?.status ?? 0);
 
 const asEntity = (value: unknown): Entity =>
   value && typeof value === "object" ? (value as Entity) : { id: "" };
@@ -346,6 +337,27 @@ function OpportunityCard({
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-md border border-base-300 bg-white shadow-sm transition-[transform,box-shadow] duration-200 ease-out md:hover:-translate-y-0.5 md:hover:shadow-md">
       <div className="relative aspect-[16/9] overflow-hidden bg-base-200">
+        <button
+          className={[
+            "btn btn-circle btn-sm absolute right-3 top-3 z-20 shadow-sm backdrop-blur",
+            isSaved
+              ? "border-primary bg-primary text-white hover:bg-primary"
+              : "border-white/70 bg-white/90 text-neutral hover:bg-white",
+          ].join(" ")}
+          onClick={() => onToggleSave(item)}
+          disabled={!canSave || isSavingThis}
+          aria-label={isSaved ? t("removeBookmark") : t("saveOpportunity")}
+          title={!canSave ? t("saveUnavailable") : isSaved ? t("removeBookmark") : t("saveOpportunity")}
+          type="button"
+        >
+          {isSavingThis ? (
+            <Loader2 className="animate-spin" size={16} />
+          ) : isSaved ? (
+            <BookmarkCheck size={16} />
+          ) : (
+            <Bookmark size={16} />
+          )}
+        </button>
         <div className="absolute inset-0 grid place-items-center px-6 text-center">
           <div>
             <img
@@ -397,48 +409,45 @@ function OpportunityCard({
           </div>
         </div>
 
-        {hasFundingProgress ? (
+        {hasFundingProgress && fundedValue > 0 ? (
           <div className="mt-3">
-          <div className="mb-2 flex justify-between text-sm font-semibold text-neutral/60">
-            <span>{currency(fundedValue)}</span>
-            <span>{progressValue}%</span>
+            <div className="mb-2 flex justify-between text-sm font-semibold text-neutral/60">
+              <span>{currency(fundedValue)}</span>
+              <span>{progressValue}%</span>
+            </div>
+            <div className="h-2 rounded-full bg-base-200">
+              <div className="h-2 rounded-full bg-primary" style={{ width: `${progressValue}%` }} />
+            </div>
           </div>
-          <div className="h-2 rounded-full bg-base-200">
-            <div className="h-2 rounded-full bg-primary" style={{ width: `${progressValue}%` }} />
-          </div>
+        ) : hasFundingProgress ? (
+          <div className="mt-3 rounded-md bg-base-200 px-3 py-2 text-sm font-semibold text-neutral/55">
+            {t("noFundingProgressYet")}
           </div>
         ) : null}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button
-            className={`btn btn-xs rounded-md ${isSaved ? "btn-primary text-white" : "btn-outline"} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2`}
-            onClick={() => onToggleSave(item)}
-            disabled={!canSave || isSavingThis}
-            aria-label={isSaved ? t("removeBookmark") : t("saveOpportunity")}
-            title={!canSave ? t("saveUnavailable") : isSaved ? t("removeBookmark") : t("saveOpportunity")}
-          >
-            {isSavingThis ? <Loader2 className="animate-spin" size={14} /> : isSaved ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
-            {isSaved ? t("saved") : t("save")}
-          </button>
+        <div className="mt-auto flex flex-col gap-3 pt-4">
           {onToggleCompare && canOpenDetail ? (
             <button
-              className={`btn btn-xs rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${compareSelected ? "btn-secondary text-white" : "btn-outline"}`}
+              className={[
+                "btn btn-sm min-h-0 h-9 w-fit rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                compareSelected ? "btn-secondary text-white" : "btn-outline bg-white",
+              ].join(" ")}
               onClick={() => onToggleCompare(item)}
+              type="button"
             >
-              {t("compare")}
+              {compareSelected ? <CheckCircle2 size={16} /> : null}
+              {compareSelected ? t("selectedForCompare") : t("addToCompare")}
             </button>
           ) : null}
-        </div>
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           {canOpenDetail ? (
             <Link
               to={`/dashboard/investor/peluang/${id}`}
-              className="btn btn-primary btn-sm flex-1 rounded-md text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              className="btn btn-primary h-12 w-full rounded-md text-base font-black text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
-              {t("detail")}
+              {t("viewOpportunityDetail")}
             </Link>
           ) : (
-            <button className="btn btn-disabled btn-sm flex-1 rounded-md">
-              {t("detail")}
+            <button className="btn btn-disabled h-12 w-full rounded-md text-base font-black">
+              {t("viewOpportunityDetail")}
             </button>
           )}
         </div>
@@ -652,6 +661,8 @@ export function OpportunitiesPage() {
       : t("allOpportunitiesTabHint");
   const recommendationCount = recommendations.length;
   const allOpportunityCount = data.length;
+  const recommendationTabRef = useRef<HTMLButtonElement | null>(null);
+  const allTabRef = useRef<HTMLButtonElement | null>(null);
   const setTab = (tab: "all" | "recommendations") => {
     const next = new URLSearchParams(searchParams);
     if (tab === "recommendations") {
@@ -665,25 +676,32 @@ export function OpportunitiesPage() {
     setMinReturnInput("0");
     setMinScore(0);
   };
+  const setTabAndFocus = (tab: "all" | "recommendations") => {
+    setTab(tab);
+    requestAnimationFrame(() => {
+      const targetTab = tab === "recommendations" ? recommendationTabRef.current : allTabRef.current;
+      targetTab?.focus();
+    });
+  };
   const handleTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
       event.preventDefault();
-      setTab(activeTab === "recommendations" ? "all" : "recommendations");
+      setTabAndFocus(activeTab === "recommendations" ? "all" : "recommendations");
       return;
     }
     if (event.key === "ArrowRight" || event.key === "ArrowDown") {
       event.preventDefault();
-      setTab(activeTab === "recommendations" ? "all" : "recommendations");
+      setTabAndFocus(activeTab === "recommendations" ? "all" : "recommendations");
       return;
     }
     if (event.key === "Home") {
       event.preventDefault();
-      setTab("recommendations");
+      setTabAndFocus("recommendations");
       return;
     }
     if (event.key === "End") {
       event.preventDefault();
-      setTab("all");
+      setTabAndFocus("all");
     }
   };
   const clearFilters = () => {
@@ -721,16 +739,18 @@ export function OpportunitiesPage() {
           <div className="min-w-0 flex-1">
             <div
               role="tablist"
+              aria-orientation="horizontal"
               aria-label={t("marketplaceTablistLabel")}
               className="grid w-full gap-2 sm:grid-cols-2"
               onKeyDown={handleTabKeyDown}
             >
               <button
+                ref={recommendationTabRef}
                 id="marketplace-tab-recommendations"
                 role="tab"
                 type="button"
                 aria-selected={activeTab === "recommendations"}
-                aria-controls="marketplace-panel-recommendations"
+                aria-controls="marketplace-panel"
                 tabIndex={activeTab === "recommendations" ? 0 : -1}
                 className={[
                   "btn h-auto min-h-[3rem] justify-between rounded-md px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
@@ -756,11 +776,12 @@ export function OpportunitiesPage() {
                 </span>
               </button>
               <button
+                ref={allTabRef}
                 id="marketplace-tab-all"
                 role="tab"
                 type="button"
                 aria-selected={activeTab === "all"}
-                aria-controls="marketplace-panel-all"
+                aria-controls="marketplace-panel"
                 tabIndex={activeTab === "all" ? 0 : -1}
                 className={[
                   "btn h-auto min-h-[3rem] justify-between rounded-md px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
@@ -814,8 +835,9 @@ export function OpportunitiesPage() {
       </div>
 
       <div
-        id={activeTab === "recommendations" ? "marketplace-panel-recommendations" : "marketplace-panel-all"}
+        id="marketplace-panel"
         role="tabpanel"
+        tabIndex={0}
         aria-labelledby={activeTab === "recommendations" ? "marketplace-tab-recommendations" : "marketplace-tab-all"}
         className="space-y-5"
       >
@@ -1285,8 +1307,8 @@ export function OpportunityDetailPage() {
       try {
         const businessResponse = await apiClient.get(`/businesses/${encodeURIComponent(detailBusinessId)}`);
         fullBusiness = asEntity(unwrap<unknown>(businessResponse.data));
-      } catch (error) {
-        if (!isBusinessDetailAccessFallback(error)) throw error;
+      } catch {
+        fullBusiness = null;
       }
 
       if (!fullBusiness) {
@@ -1300,7 +1322,7 @@ export function OpportunityDetailPage() {
         const businesses = await resourceApi
           .list({
             ...businessConfig,
-            listPath: `/businesses?page=1&limit=50${searchQuery}`,
+            listPath: `/businesses?page=1&limit=${businessLookupLimit}${searchQuery}`,
           })
           .catch(() => [] as Entity[]);
         fullBusiness =
@@ -1317,8 +1339,9 @@ export function OpportunityDetailPage() {
     enabled: Boolean(id),
     retry: false,
   });
-  const opportunity = data.find((item) => opportunityId(item) === id) ?? detailQuery.data;
-  const isLoading = opportunitiesQuery.isLoading || detailQuery.isLoading;
+  const listOpportunity = data.find((item) => opportunityId(item) === id);
+  const opportunity = detailQuery.data ?? listOpportunity;
+  const isLoading = !opportunity && (detailQuery.isLoading || opportunitiesQuery.isLoading);
   const opportunityBusinessId = opportunity ? bookmarkKey(opportunity) : "";
   const [form, setForm] = useState({
     penawaran_nominal: "",
@@ -1405,6 +1428,11 @@ export function OpportunityDetailPage() {
   const detailImageSrc = businessImage(opportunity);
   const opportunityDescription = textValue(
     readPath(opportunity, ["deskripsi_peluang", "proposal.deskripsi_peluang", "deskripsi", "description"], ""),
+    "",
+  );
+  const addressValue = textValue(readPath(opportunity, ["bisnis.alamat", "alamat"], ""), "");
+  const classValue = textValue(
+    readPath(opportunity, ["bisnis.kelas.nama_kelas", "bisnis.kelas", "kelas.nama_kelas", "kelas", "class_label"], ""),
     "",
   );
   const fundingPlanRaw = readPath(
@@ -1511,6 +1539,22 @@ export function OpportunityDetailPage() {
               </div>
             ))}
           </div>
+          {(addressValue || classValue) ? (
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              {addressValue ? (
+                <div className="rounded-md border border-base-300 p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-neutral/45">Alamat</p>
+                  <p className="mt-2 text-sm font-semibold text-neutral/80">{addressValue}</p>
+                </div>
+              ) : null}
+              {classValue ? (
+                <div className="rounded-md border border-base-300 p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-neutral/45">Kelas</p>
+                  <p className="mt-2 text-sm font-semibold text-neutral/80">{classValue}</p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {opportunityDescription ? (
             <div className="mt-6 rounded-md border border-base-300 p-5">
               <h3 className="font-black">{language === "id" ? "Deskripsi peluang" : "Opportunity description"}</h3>
@@ -1646,6 +1690,8 @@ export function OpportunityDetailPage() {
 export function AdminReviewQueuePage() {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
+  const [documentRejectTarget, setDocumentRejectTarget] = useState<Entity | null>(null);
+  const [documentRejectNote, setDocumentRejectNote] = useState("");
   const { data = [], isLoading, isError, error } = useQuery({
     queryKey: ["admin-review-queue"],
     queryFn: () => resourceApi.list(submissionConfig),
@@ -1807,9 +1853,8 @@ export function AdminReviewQueuePage() {
                     className="btn btn-error rounded-md text-white"
                     disabled={documentReviewMutation.isPending}
                     onClick={() => {
-                      const note = window.prompt("Catatan penolakan dokumen:");
-                      if (!note?.trim()) return;
-                      documentReviewMutation.mutate({ item, status: "invalid", note: note.trim() });
+                      setDocumentRejectTarget(item);
+                      setDocumentRejectNote("");
                     }}
                   >
                     <XCircle size={17} />
@@ -1828,6 +1873,72 @@ export function AdminReviewQueuePage() {
           ))}
         </div>
       </div>
+      {documentRejectTarget ? (
+        <div className="modal modal-open">
+          <div className="modal-box fr-modal-panel max-w-lg rounded-md">
+            <h3 className="text-xl font-black text-neutral">Catatan penolakan dokumen</h3>
+            <p className="mt-2 text-sm leading-6 text-neutral/60">
+              {textValue(documentRejectTarget.nama_bisnis)} - {textValue(documentRejectTarget.nama_dokumen)}
+            </p>
+            <label className="form-control mt-5">
+              <span className="label-text mb-2 font-semibold">Alasan penolakan</span>
+              <textarea
+                className="textarea textarea-bordered min-h-32 rounded-md bg-white"
+                value={documentRejectNote}
+                onChange={(event) => setDocumentRejectNote(event.target.value)}
+                placeholder="Contoh: dokumen kurang jelas atau data tidak sesuai."
+                autoFocus
+              />
+            </label>
+            <div className="modal-action">
+              <button
+                type="button"
+                className="btn btn-outline rounded-md"
+                disabled={documentReviewMutation.isPending}
+                onClick={() => {
+                  setDocumentRejectTarget(null);
+                  setDocumentRejectNote("");
+                }}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                className="btn btn-error rounded-md text-white"
+                disabled={documentReviewMutation.isPending || !documentRejectNote.trim()}
+                onClick={() => {
+                  if (!documentRejectTarget || !documentRejectNote.trim()) return;
+                  documentReviewMutation.mutate(
+                    {
+                      item: documentRejectTarget,
+                      status: "invalid",
+                      note: documentRejectNote.trim(),
+                    },
+                    {
+                      onSuccess: () => {
+                        setDocumentRejectTarget(null);
+                        setDocumentRejectNote("");
+                      },
+                    },
+                  );
+                }}
+              >
+                {documentReviewMutation.isPending ? <Loader2 className="animate-spin" size={17} /> : <XCircle size={17} />}
+                Tolak Dokumen
+              </button>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="modal-backdrop fr-modal-backdrop"
+            onClick={() => {
+              setDocumentRejectTarget(null);
+              setDocumentRejectNote("");
+            }}
+            aria-label="Tutup modal"
+          />
+        </div>
+      ) : null}
     </section>
   );
 }

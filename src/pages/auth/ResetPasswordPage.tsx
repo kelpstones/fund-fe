@@ -68,9 +68,10 @@ export function ResetPasswordPage() {
         </div>
         <form className="mt-8 grid gap-4" onSubmit={submit}>
           {!tokenFromUrl ? (
-            <label className="form-control">
+            <label className="form-control" htmlFor="reset-password-token">
               <span className="label-text mb-2 font-semibold">{t("resetToken")}</span>
               <input
+                id="reset-password-token"
                 className="input input-bordered rounded-md"
                 value={form.token}
                 onChange={update("token")}
@@ -79,9 +80,10 @@ export function ResetPasswordPage() {
               />
             </label>
           ) : null}
-          <label className="form-control">
+          <label className="form-control" htmlFor="reset-password-new">
             <span className="label-text mb-2 font-semibold">{t("newPassword")}</span>
             <input
+              id="reset-password-new"
               type="password"
               className="input input-bordered rounded-md"
               value={form.new_password}
@@ -89,9 +91,10 @@ export function ResetPasswordPage() {
               required
             />
           </label>
-          <label className="form-control">
+          <label className="form-control" htmlFor="reset-password-confirm">
             <span className="label-text mb-2 font-semibold">{t("confirmPassword")}</span>
             <input
+              id="reset-password-confirm"
               type="password"
               className="input input-bordered rounded-md"
               value={form.password_confirmation}

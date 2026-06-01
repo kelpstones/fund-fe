@@ -181,7 +181,6 @@ export default function App() {
             <Route path="/portfolio/:slug" element={<PortfolioDetailPage />} />
             <Route path="/bantuan" element={<HelpCenterPage />} />
             <Route path="/keamanan" element={<TrustSafetyPage />} />
-            <Route path="/trust" element={<TrustSafetyPage />} />
             <Route path="/syarat" element={<TermsPage />} />
             <Route path="/privasi" element={<PrivacyPage />} />
             <Route path="/kontak" element={<ContactPage />} />
@@ -221,7 +220,6 @@ export default function App() {
               <Route path="profile" element={<ProfilePage />} />
               <Route path="rekening" element={<Navigate to="/dashboard/investor/wallet#rekening" replace />} />
               <Route path="preferensi" element={<InvestorPreferencesPage />} />
-              <Route path="survey" element={<Navigate to="/dashboard/investor/preferensi" replace />} />
               <Route path="peluang" element={<OpportunitiesPage />} />
               <Route path="peluang/:id" element={<OpportunityDetailPage />} />
               <Route path="saved" element={<SavedOpportunitiesPage />} />

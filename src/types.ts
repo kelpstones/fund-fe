@@ -51,8 +51,17 @@ export type ApiEnvelope<T> = {
 export type ResourceField<T extends Entity> = {
   name: keyof T & string;
   label: string;
-  type?: "text" | "email" | "number" | "textarea" | "select" | "funding_plan";
+  type?:
+    | "text"
+    | "email"
+    | "number"
+    | "textarea"
+    | "select"
+    | "funding_plan"
+    | "currency"
+    | "percent";
   placeholder?: string;
+  helperText?: string;
   required?: boolean;
   hideOnEdit?: boolean;
   min?: number;
@@ -74,6 +83,10 @@ export type ResourceColumn<T extends Entity> = {
   className?: string;
 };
 
+export type ResourceSearchField<T extends Entity> =
+  | (keyof T & string)
+  | ((item: T) => unknown);
+
 export type ResourceConfig<T extends Entity> = {
   key: string;
   listPath: string;
@@ -84,6 +97,7 @@ export type ResourceConfig<T extends Entity> = {
   detailPath?: string | ((item: T) => string);
   fallback: T[];
   notFoundIsEmpty?: boolean;
+  searchableFields?: ResourceSearchField<T>[];
   createBody?: (values: Partial<T>) => Partial<T>;
   updateBody?: (item: T) => Partial<T>;
 };

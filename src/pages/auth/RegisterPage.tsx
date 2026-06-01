@@ -12,7 +12,7 @@ import type { RegisterPayload } from "../../types";
 
 export function RegisterPage() {
   const { register } = useAuth();
-  const { language, t } = useLanguage();
+  const { t } = useLanguage();
   const toast = useToast();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,21 +37,13 @@ export function RegisterPage() {
 
     const nikDigits = onlyDigits(form.nik);
     if (nikDigits.length !== 16) {
-      toast.warning(
-        language === "id"
-          ? "NIK harus 16 digit angka."
-          : "NIK must be exactly 16 digits.",
-      );
+      toast.warning(t("nikInvalid"));
       return;
     }
 
     const phoneDigits = onlyDigits(form.no_telp);
     if (phoneDigits.length < 10 || phoneDigits.length > 15) {
-      toast.warning(
-        language === "id"
-          ? "No. telp harus 10 sampai 15 digit angka."
-          : "Phone number must be 10 to 15 digits.",
-      );
+      toast.warning(t("phoneInvalid"));
       return;
     }
 
@@ -120,18 +112,20 @@ export function RegisterPage() {
             ))}
           </div>
           <div className="grid gap-4">
-            <label className="form-control">
+            <label className="form-control" htmlFor="register-name">
               <span className="label-text mb-2 font-semibold">{t("name")}</span>
               <input
+                id="register-name"
                 className="input input-bordered rounded-md"
                 value={form.nama}
                 onChange={(event) => update("nama", event.target.value)}
                 required
               />
             </label>
-            <label className="form-control">
+            <label className="form-control" htmlFor="register-email">
               <span className="label-text mb-2 font-semibold">{t("email")}</span>
               <input
+                id="register-email"
                 type="email"
                 className="input input-bordered rounded-md"
                 value={form.email}
@@ -139,9 +133,10 @@ export function RegisterPage() {
                 required
               />
             </label>
-            <label className="form-control">
+            <label className="form-control" htmlFor="register-nik">
               <span className="label-text mb-2 font-semibold">{t("nik")}</span>
               <input
+                id="register-nik"
                 className="input input-bordered rounded-md"
                 value={form.nik}
                 onChange={(event) => update("nik", onlyDigits(event.target.value).slice(0, 16))}
@@ -152,9 +147,10 @@ export function RegisterPage() {
                 required
               />
             </label>
-            <label className="form-control">
+            <label className="form-control" htmlFor="register-phone">
               <span className="label-text mb-2 font-semibold">{t("phone")}</span>
               <input
+                id="register-phone"
                 className="input input-bordered rounded-md"
                 value={form.no_telp}
                 onChange={(event) => update("no_telp", onlyDigits(event.target.value).slice(0, 15))}
@@ -165,9 +161,10 @@ export function RegisterPage() {
                 required
               />
             </label>
-            <label className="form-control">
+            <label className="form-control" htmlFor="register-password">
               <span className="label-text mb-2 font-semibold">{t("password")}</span>
               <input
+                id="register-password"
                 type="password"
                 className="input input-bordered rounded-md"
                 value={form.password}
@@ -176,9 +173,10 @@ export function RegisterPage() {
                 required
               />
             </label>
-            <label className="form-control">
+            <label className="form-control" htmlFor="register-confirm-password">
               <span className="label-text mb-2 font-semibold">{t("confirmPassword")}</span>
               <input
+                id="register-confirm-password"
                 type="password"
                 className="input input-bordered rounded-md"
                 value={form.password_confirmation}

@@ -254,7 +254,7 @@ function SubmissionSnapshot({ submissions }: { submissions: Entity[] }) {
 }
 
 export function UmkmOnboardingPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
   const businessesQuery = useQuery({
     queryKey: ["umkm-onboarding", "businesses"],
@@ -286,6 +286,25 @@ export function UmkmOnboardingPage() {
     },
     enabled: Boolean(primaryBusinessId),
   });
+  const documentsQuery = useQuery({
+    queryKey: ["umkm-onboarding", "documents", primaryBusinessId],
+    queryFn: async () => {
+      try {
+        const payload = await directApi.get("/businesses/documents", null);
+        if (Array.isArray(payload)) return payload as Entity[];
+        if (payload && typeof payload === "object") {
+          const objectPayload = payload as Record<string, unknown>;
+          if (Array.isArray(objectPayload.dokumen)) return objectPayload.dokumen as Entity[];
+          if (Array.isArray(objectPayload.items)) return objectPayload.items as Entity[];
+        }
+      } catch {
+        return [] as Entity[];
+      }
+      return [] as Entity[];
+    },
+    enabled: Boolean(primaryBusinessId),
+    retry: false,
+  });
 
   const modelProfile = modelProfileQuery.data;
   const modelProfileRecord =
@@ -303,6 +322,24 @@ export function UmkmOnboardingPage() {
   const hasReviewedSubmission = submissions.some(isApprovedSubmission);
   const hasPendingSubmission = submissions.some(isPendingSubmission);
   const hasNegotiation = negotiations.length > 0;
+  const businessVerified =
+    primaryBusiness?.is_verified === true ||
+    String(readPath(primaryBusiness ?? { id: "" }, ["is_verified"], "")).toLowerCase() === "true";
+  const backendDocuments = documentsQuery.data ?? [];
+  const validDocumentCount = backendDocuments.filter(
+    (item) => String(readPath(item, ["status"], "")).toLowerCase() === "valid",
+  ).length;
+  const pendingDocumentCount = backendDocuments.filter(
+    (item) => String(readPath(item, ["status"], "")).toLowerCase() === "pending",
+  ).length;
+  const invalidDocumentCount = backendDocuments.filter(
+    (item) => String(readPath(item, ["status"], "")).toLowerCase() === "invalid",
+  ).length;
+  const verificationTone = businessVerified
+    ? "border-success/25 bg-success/5 text-success"
+    : invalidDocumentCount > 0
+      ? "border-error/25 bg-error/5 text-error"
+      : "border-warning/25 bg-warning/5 text-warning";
 
   const steps = useMemo<OnboardingStep[]>(
     () => [
@@ -352,7 +389,7 @@ export function UmkmOnboardingPage() {
         action: hasSubmission ? "manageSubmission" : "createSubmission",
         icon: FileCheck2,
         done: hasSubmission,
-        locked: !hasBusiness,
+        locked: !hasBusiness || !businessVerified,
         helper: hasSubmission
           ? "onboardingSubmissionDone"
           : "onboardingSubmissionTodo",
@@ -403,6 +440,7 @@ export function UmkmOnboardingPage() {
       accountReady,
       businesses.length,
       hasBusiness,
+      businessVerified,
       hasModelProfile,
       hasNegotiation,
       hasPendingSubmission,
@@ -477,6 +515,56 @@ export function UmkmOnboardingPage() {
           <p className="mt-1 text-sm text-neutral/55">{t("investorInteractions")}</p>
         </div>
       </div>
+
+      {hasBusiness ? (
+        <div className={`rounded-md border p-5 shadow-sm ${verificationTone}`}>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-4">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-white/70">
+                <ClipboardCheck size={22} />
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide opacity-75">
+                  {language === "id" ? "Status verifikasi bisnis" : "Business verification status"}
+                </p>
+                <h3 className="mt-1 text-xl font-black">
+                  {businessVerified
+                    ? language === "id"
+                      ? "Bisnis sudah diverifikasi"
+                      : "Business is verified"
+                    : language === "id"
+                      ? "Menunggu verifikasi admin"
+                      : "Waiting for admin verification"}
+                </h3>
+                <p className="mt-2 text-sm font-semibold leading-6 opacity-75">
+                  {language === "id"
+                    ? "Pengajuan dana baru bisa dibuat setelah admin memverifikasi bisnis dan dokumen pendukung."
+                    : "Funding submissions can be created after admin verifies the business and supporting documents."}
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[360px]">
+              <div className="rounded-md bg-white/75 p-3">
+                <p className="text-xs font-bold opacity-60">{language === "id" ? "Valid" : "Valid"}</p>
+                <p className="mt-1 text-2xl font-black">{documentsQuery.isLoading ? "-" : validDocumentCount}</p>
+              </div>
+              <div className="rounded-md bg-white/75 p-3">
+                <p className="text-xs font-bold opacity-60">{language === "id" ? "Menunggu" : "Pending"}</p>
+                <p className="mt-1 text-2xl font-black">{documentsQuery.isLoading ? "-" : pendingDocumentCount}</p>
+              </div>
+              <div className="rounded-md bg-white/75 p-3">
+                <p className="text-xs font-bold opacity-60">{language === "id" ? "Perlu perbaikan" : "Needs revision"}</p>
+                <p className="mt-1 text-2xl font-black">{documentsQuery.isLoading ? "-" : invalidDocumentCount}</p>
+              </div>
+            </div>
+            {!businessVerified ? (
+              <Link to="/dashboard/umkm/dokumen" className="btn btn-outline rounded-md bg-white">
+                {language === "id" ? "Cek dokumen" : "Check documents"}
+              </Link>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
         <div className="grid gap-4 lg:grid-cols-2">
