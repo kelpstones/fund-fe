@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
-  Download,
+  Eye,
   FileText,
   Loader2,
   Trash2,
@@ -544,7 +544,7 @@ export function DocumentCenterPage() {
                       target="_blank"
                       rel="noreferrer"
                     >
-                      <Download size={17} />
+                      <Eye size={17} />
                       {language === "id" ? "Buka" : "Open"}
                     </a>
                   ) : null}

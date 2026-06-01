@@ -337,6 +337,27 @@ function OpportunityCard({
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-md border border-base-300 bg-white shadow-sm transition-[transform,box-shadow] duration-200 ease-out md:hover:-translate-y-0.5 md:hover:shadow-md">
       <div className="relative aspect-[16/9] overflow-hidden bg-base-200">
+        <button
+          className={[
+            "btn btn-circle btn-sm absolute right-3 top-3 z-20 shadow-sm backdrop-blur",
+            isSaved
+              ? "border-primary bg-primary text-white hover:bg-primary"
+              : "border-white/70 bg-white/90 text-neutral hover:bg-white",
+          ].join(" ")}
+          onClick={() => onToggleSave(item)}
+          disabled={!canSave || isSavingThis}
+          aria-label={isSaved ? t("removeBookmark") : t("saveOpportunity")}
+          title={!canSave ? t("saveUnavailable") : isSaved ? t("removeBookmark") : t("saveOpportunity")}
+          type="button"
+        >
+          {isSavingThis ? (
+            <Loader2 className="animate-spin" size={16} />
+          ) : isSaved ? (
+            <BookmarkCheck size={16} />
+          ) : (
+            <Bookmark size={16} />
+          )}
+        </button>
         <div className="absolute inset-0 grid place-items-center px-6 text-center">
           <div>
             <img
@@ -388,48 +409,45 @@ function OpportunityCard({
           </div>
         </div>
 
-        {hasFundingProgress ? (
+        {hasFundingProgress && fundedValue > 0 ? (
           <div className="mt-3">
-          <div className="mb-2 flex justify-between text-sm font-semibold text-neutral/60">
-            <span>{currency(fundedValue)}</span>
-            <span>{progressValue}%</span>
+            <div className="mb-2 flex justify-between text-sm font-semibold text-neutral/60">
+              <span>{currency(fundedValue)}</span>
+              <span>{progressValue}%</span>
+            </div>
+            <div className="h-2 rounded-full bg-base-200">
+              <div className="h-2 rounded-full bg-primary" style={{ width: `${progressValue}%` }} />
+            </div>
           </div>
-          <div className="h-2 rounded-full bg-base-200">
-            <div className="h-2 rounded-full bg-primary" style={{ width: `${progressValue}%` }} />
-          </div>
+        ) : hasFundingProgress ? (
+          <div className="mt-3 rounded-md bg-base-200 px-3 py-2 text-sm font-semibold text-neutral/55">
+            {t("noFundingProgressYet")}
           </div>
         ) : null}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button
-            className={`btn btn-xs rounded-md ${isSaved ? "btn-primary text-white" : "btn-outline"} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2`}
-            onClick={() => onToggleSave(item)}
-            disabled={!canSave || isSavingThis}
-            aria-label={isSaved ? t("removeBookmark") : t("saveOpportunity")}
-            title={!canSave ? t("saveUnavailable") : isSaved ? t("removeBookmark") : t("saveOpportunity")}
-          >
-            {isSavingThis ? <Loader2 className="animate-spin" size={14} /> : isSaved ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
-            {isSaved ? t("saved") : t("save")}
-          </button>
+        <div className="mt-auto flex flex-col gap-3 pt-4">
           {onToggleCompare && canOpenDetail ? (
             <button
-              className={`btn btn-xs rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${compareSelected ? "btn-secondary text-white" : "btn-outline"}`}
+              className={[
+                "btn btn-sm min-h-0 h-9 w-fit rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                compareSelected ? "btn-secondary text-white" : "btn-outline bg-white",
+              ].join(" ")}
               onClick={() => onToggleCompare(item)}
+              type="button"
             >
-              {t("compare")}
+              {compareSelected ? <CheckCircle2 size={16} /> : null}
+              {compareSelected ? t("selectedForCompare") : t("addToCompare")}
             </button>
           ) : null}
-        </div>
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           {canOpenDetail ? (
             <Link
               to={`/dashboard/investor/peluang/${id}`}
-              className="btn btn-primary btn-sm flex-1 rounded-md text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              className="btn btn-primary h-12 w-full rounded-md text-base font-black text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
-              {t("detail")}
+              {t("viewOpportunityDetail")}
             </Link>
           ) : (
-            <button className="btn btn-disabled btn-sm flex-1 rounded-md">
-              {t("detail")}
+            <button className="btn btn-disabled h-12 w-full rounded-md text-base font-black">
+              {t("viewOpportunityDetail")}
             </button>
           )}
         </div>

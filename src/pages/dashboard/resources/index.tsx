@@ -578,6 +578,165 @@ const nextNegotiationStep = (item: Entity, userRole?: string, userId?: string | 
   };
 };
 
+function NegotiationCard({
+  item,
+  userRole,
+  currentUserId,
+  language,
+  context,
+}: {
+  item: Entity;
+  userRole?: string;
+  currentUserId?: string | number;
+  language: "id" | "en";
+  context: {
+    canDetail: boolean;
+    canEdit: boolean;
+    visibleActions: ResourceAction<Entity>[];
+    isProcessing: boolean;
+    onDetail: () => void;
+    onEdit: () => void;
+    onAction: (action: ResourceAction<Entity>) => void;
+  };
+}) {
+  const step = nextNegotiationStep(item, userRole, currentUserId, language);
+  const target = fundingTarget(item);
+  const status = negotiationStatus(item);
+  const acceptAction = context.visibleActions.find((action) =>
+    ["setujui", "accept"].includes(String(action.label).toLowerCase()),
+  );
+  const rejectAction = context.visibleActions.find((action) =>
+    ["tolak", "reject"].includes(String(action.label).toLowerCase()),
+  );
+  const canAct = context.canEdit || Boolean(acceptAction || rejectAction);
+
+  return (
+    <article className="rounded-md border border-base-300 bg-white p-4 shadow-sm">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(220px,0.7fr)_minmax(220px,0.8fr)] xl:items-center">
+        <div className="min-w-0">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            {negotiationStatusBadge(item, language)}
+            <span className="text-xs font-bold uppercase tracking-wide text-neutral/45">
+              #{negotiationProposalId(item)}
+            </span>
+          </div>
+          <h3 className="truncate text-lg font-black text-neutral">{negotiationBusinessName(item)}</h3>
+          <p className="mt-1 text-sm font-semibold text-neutral/55">
+            {target > 0
+              ? `${language === "id" ? "Target" : "Target"} ${currency(target)}`
+              : language === "id"
+                ? "Target belum tersedia"
+                : "Target unavailable"}
+          </p>
+        </div>
+
+        <div className="rounded-md bg-base-200/70 p-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-neutral/45">
+            {language === "id" ? "Penawaran terakhir" : "Latest offer"}
+          </p>
+          <p className="mt-2 text-xl font-black text-neutral">{currency(latestOfferNominal(item))}</p>
+          <p className="mt-1 text-sm font-semibold text-neutral/55">
+            Return {percent(latestOfferReturn(item))}
+          </p>
+          {latestOfferNote(item) !== "-" ? (
+            <p className="mt-2 line-clamp-2 text-sm font-semibold text-neutral/55">
+              {latestOfferNote(item)}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="min-w-0">
+          <p className="text-sm font-black text-neutral">
+            {negotiationTurnLabel(item, userRole, currentUserId, language)}
+          </p>
+          <p className="mt-1 text-sm font-semibold text-neutral/55">
+            {latestOfferSenderLabel(item, currentUserId, language)}
+          </p>
+          <div
+            className={[
+              "mt-3 rounded-md border px-3 py-2 text-sm",
+              step.tone === "success"
+                ? "border-success/20 bg-success/5 text-success"
+                : step.tone === "primary"
+                  ? "border-primary/20 bg-primary/5 text-primary"
+                  : step.tone === "warning"
+                    ? "border-warning/30 bg-warning/10 text-warning-content"
+                    : "border-base-300 bg-base-100 text-neutral/65",
+            ].join(" ")}
+          >
+            <p className="font-black">{step.title}</p>
+            <p className="mt-1 text-xs font-semibold leading-5 opacity-75">{step.body}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-3 border-t border-base-200 pt-4 lg:flex-row lg:items-center lg:justify-between">
+        <p className="text-xs font-bold uppercase tracking-wide text-neutral/40">
+          {language === "id" ? "Update" : "Updated"} {dateShort(item.updated_at || item.created_at)}
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+          {context.canDetail ? (
+            <button
+              type="button"
+              className="btn btn-outline h-11 rounded-md"
+              onClick={context.onDetail}
+              disabled={context.isProcessing}
+            >
+              {language === "id" ? "Lihat detail" : "View detail"}
+            </button>
+          ) : null}
+          {status === "active" ? (
+            <button
+              type="button"
+              className="btn btn-primary h-11 rounded-md text-white"
+              onClick={context.onEdit}
+              disabled={context.isProcessing || !context.canEdit}
+              title={
+                !context.canEdit
+                  ? negotiationTurnLabel(item, userRole, currentUserId, language)
+                  : undefined
+              }
+            >
+              {context.canEdit
+                ? language === "id"
+                  ? "Balas Penawaran"
+                  : "Reply Offer"
+                : language === "id"
+                  ? "Menunggu Balasan"
+                  : "Waiting Reply"}
+            </button>
+          ) : null}
+          {canAct && acceptAction ? (
+            <button
+              type="button"
+              className="btn btn-outline h-11 rounded-md border-success text-success hover:bg-success hover:text-white"
+              onClick={() => context.onAction(acceptAction)}
+              disabled={context.isProcessing}
+            >
+              {acceptAction.label}
+            </button>
+          ) : null}
+          {canAct && rejectAction ? (
+            <button
+              type="button"
+              className="btn btn-outline h-11 rounded-md border-error text-error hover:bg-error hover:text-white"
+              onClick={() => context.onAction(rejectAction)}
+              disabled={context.isProcessing}
+            >
+              {rejectAction.label}
+            </button>
+          ) : null}
+          {userRole === "investor" && ["deal", "accepted"].includes(status) ? (
+            <Link className="btn btn-outline h-11 rounded-md" to="/dashboard/investor/invoice">
+              {language === "id" ? "Lihat invoice" : "View invoice"}
+            </Link>
+          ) : null}
+        </div>
+      </div>
+    </article>
+  );
+}
+
 const isNegotiationOpen = (item: Entity) => negotiationStatus(item) === "active";
 
 const canRespondToNegotiation = (item: Entity, userId?: string | number) =>
@@ -1910,6 +2069,19 @@ export function NegotiationsPage({ mine = false }: { mine?: boolean }) {
       validateForm={validateNegotiationForm}
       extraInvalidateKeys={extraInvalidateKeys}
       detailRenderer={(data) => <NegotiationDetailPreview data={data} />}
+      rowCardRenderer={
+        canNegotiate
+          ? (item, context) => (
+              <NegotiationCard
+                item={item}
+                userRole={user?.role}
+                currentUserId={currentUserId}
+                language={language}
+                context={context}
+              />
+            )
+          : undefined
+      }
       statusFilterVariant="tabs"
       emptyTitle="Belum ada negosiasi"
       emptyDescription={

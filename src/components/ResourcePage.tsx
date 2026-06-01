@@ -55,6 +55,22 @@ type ResourcePageProps<T extends Entity> = {
   validateForm?: (values: Partial<T>, context: ResourceFormContext<T>) => string | undefined;
   extraInvalidateKeys?: Array<readonly unknown[]>;
   detailRenderer?: (data: unknown) => ReactNode;
+  rowCardRenderer?: (
+    item: T,
+    context: {
+      canDetail: boolean;
+      canEdit: boolean;
+      canDelete: boolean;
+      editReason?: string;
+      visibleActions: ResourceAction<T>[];
+      isProcessing: boolean;
+      onDetail: () => void;
+      onEdit: () => void;
+      onDelete: () => void;
+      onAction: (action: ResourceAction<T>) => void;
+      defaultActions: ReactNode;
+    },
+  ) => ReactNode;
   emptyAction?: ReactNode;
   statusFilterVariant?: "select" | "tabs";
   showTitle?: boolean;
@@ -155,21 +171,20 @@ const coerceValues = <T extends Entity>(
 };
 
 const readFundingPlanRows = (value: unknown) => {
-  const toRows = (raw: unknown) => {
+  const toRows = (raw: unknown, keepEmpty = false) => {
     if (!Array.isArray(raw)) return [];
-    return raw
-      .map((item) => {
-        const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
-        const kategori = String(row.kategori ?? row.category ?? "").trim();
-        const jumlahValue = row.jumlah ?? row.amount ?? "";
-        const jumlahDigits = String(jumlahValue ?? "").replace(/\D/g, "");
-        return { kategori, jumlah: jumlahDigits };
-      })
-      .filter((item) => item.kategori || item.jumlah);
+    const rows = raw.map((item) => {
+      const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+      const kategori = String(row.kategori ?? row.category ?? "").trim();
+      const jumlahValue = row.jumlah ?? row.amount ?? "";
+      const jumlahDigits = String(jumlahValue ?? "").replace(/\D/g, "");
+      return { kategori, jumlah: jumlahDigits };
+    });
+    return keepEmpty ? rows : rows.filter((item) => item.kategori || item.jumlah);
   };
 
   if (Array.isArray(value)) {
-    const rows = toRows(value);
+    const rows = toRows(value, true);
     return rows.length > 0 ? rows : [{ kategori: "", jumlah: "" }];
   }
 
@@ -205,74 +220,79 @@ function FundingPlanInput({
   };
 
   return (
-    <div className="space-y-3 rounded-md border border-base-300 bg-base-100 p-3">
+    <div className="space-y-3 rounded-md bg-base-200/50 p-3">
       {rows.map((row, index) => (
-        <div
-          key={`${fieldName}-${index}`}
-          className="grid gap-2 rounded-md border border-base-300 bg-white p-3 sm:grid-cols-[1fr_220px_auto]"
-        >
-          <input
-            className="input input-bordered rounded-md"
-            value={row.kategori}
-            onChange={(event) => {
-              const nextRows = [...rows];
-              nextRows[index] = {
-                ...nextRows[index],
-                kategori: event.target.value,
-              };
-              updateRows(nextRows);
-            }}
-            placeholder={
-              language === "id" ? "Kategori (contoh: Marketing)" : "Category (e.g. Marketing)"
-            }
-          />
-          <div className="input input-bordered flex items-center gap-2 rounded-md">
-            <span className="text-sm font-semibold text-neutral/60">IDR</span>
+        <div key={`${fieldName}-${index}`} className="rounded-md bg-white p-3 shadow-sm">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wide text-neutral/45">
+              {language === "id" ? `Item ${index + 1}` : `Item ${index + 1}`}
+            </span>
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs rounded-md text-error"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (rows.length <= 1) {
+                  updateRows([{ kategori: "", jumlah: "" }]);
+                  return;
+                }
+                const nextRows = [...rows];
+                nextRows.splice(index, 1);
+                updateRows(nextRows);
+              }}
+              disabled={rows.length <= 1}
+            >
+              <Trash2 size={14} />
+              {language === "id" ? "Hapus" : "Remove"}
+            </button>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-[1fr_220px]">
             <input
-              className="w-full bg-transparent text-sm font-semibold outline-none"
-              value={row.jumlah ? new Intl.NumberFormat("id-ID").format(Number(row.jumlah)) : ""}
-              inputMode="numeric"
-              pattern="[0-9]*"
+              className="input input-bordered rounded-md bg-base-100"
+              value={row.kategori}
               onChange={(event) => {
                 const nextRows = [...rows];
                 nextRows[index] = {
                   ...nextRows[index],
-                  jumlah: event.target.value.replace(/\D/g, ""),
+                  kategori: event.target.value,
                 };
                 updateRows(nextRows);
               }}
-              placeholder="0"
-            />
-          </div>
-          <button
-            type="button"
-            className="btn btn-outline relative z-[1] rounded-md"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              if (rows.length <= 1) {
-                updateRows([{ kategori: "", jumlah: "" }]);
-                return;
+              placeholder={
+                language === "id" ? "Kategori, misalnya Marketing" : "Category, e.g. Marketing"
               }
-              const nextRows = [...rows];
-              nextRows.splice(index, 1);
-              updateRows(nextRows);
-            }}
-            disabled={rows.length <= 1}
-          >
-            {language === "id" ? "Hapus" : "Remove"}
-          </button>
+            />
+            <div className="input input-bordered flex items-center gap-2 rounded-md bg-base-100">
+              <span className="text-sm font-semibold text-neutral/60">IDR</span>
+              <input
+                className="w-full bg-transparent text-sm font-semibold outline-none"
+                value={row.jumlah ? new Intl.NumberFormat("id-ID").format(Number(row.jumlah)) : ""}
+                inputMode="numeric"
+                onChange={(event) => {
+                  const nextRows = [...rows];
+                  nextRows[index] = {
+                    ...nextRows[index],
+                    jumlah: event.target.value.replace(/\D/g, ""),
+                  };
+                  updateRows(nextRows);
+                }}
+                placeholder="0"
+              />
+            </div>
+          </div>
         </div>
       ))}
       <button
         type="button"
-        className="btn btn-outline btn-sm relative z-[1] rounded-md"
+        className="btn btn-outline btn-sm relative z-[1] rounded-md bg-white"
         onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
           updateRows([...rows, { kategori: "", jumlah: "" }]);
         }}
       >
+        <Plus size={15} />
         {language === "id" ? "Tambah item" : "Add item"}
       </button>
     </div>
@@ -386,6 +406,7 @@ export function ResourcePage<T extends Entity>({
   validateForm,
   extraInvalidateKeys = [],
   detailRenderer,
+  rowCardRenderer,
   emptyAction,
   statusFilterVariant = "select",
   showTitle = true,
@@ -837,6 +858,28 @@ export function ResourcePage<T extends Entity>({
     </div>
   );
 
+  const renderRowCard = (item: T) => {
+    if (!rowCardRenderer) return null;
+    const isEditable = canEditRow ? canEditRow(item) : true;
+    const editReason =
+      typeof editDisabledReason === "function"
+        ? editDisabledReason(item)
+        : editDisabledReason;
+    return rowCardRenderer(item, {
+      canDetail: Boolean(config.detailPath),
+      canEdit: canEdit && isEditable,
+      canDelete,
+      editReason,
+      visibleActions: visibleActionsFor(item),
+      isProcessing,
+      onDetail: () => showDetail(item),
+      onEdit: () => openEdit(item),
+      onDelete: () => remove(item),
+      onAction: (action) => runAction(action, item),
+      defaultActions: renderActionButtons(item),
+    });
+  };
+
   return (
     <section className="space-y-5" data-page-description={t(description)}>
       {showTopBar ? (
@@ -929,6 +972,23 @@ export function ResourcePage<T extends Entity>({
         </p>
       ) : null}
 
+      {rowCardRenderer ? (
+        <div className="grid gap-3">
+          {query.isLoading && !staticData ? (
+            <ListSkeleton rows={4} />
+          ) : query.isError && !staticData ? (
+            <div className="flex min-h-28 items-center justify-center rounded-md border border-error/20 bg-error/10 p-4 text-center text-sm font-semibold text-error">
+              {apiErrorMessage(query.error, copy.loadError)}
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="rounded-md border border-base-300 bg-white p-6 shadow-sm">
+              {renderEmptyContent()}
+            </div>
+          ) : (
+            visibleRows.map((item) => renderRowCard(item))
+          )}
+        </div>
+      ) : (
       <div className="overflow-hidden rounded-md border border-base-300 bg-white shadow-sm">
         <div className="hidden overflow-x-auto md:block">
           <table className="table">
@@ -1018,6 +1078,7 @@ export function ResourcePage<T extends Entity>({
           )}
         </div>
       </div>
+      )}
 
       {!(query.isLoading && !staticData) && !(query.isError && !staticData) && rows.length > pageSize ? (
         <div className="flex flex-col gap-3 rounded-md border border-base-300 bg-white p-3 text-sm font-semibold text-neutral/60 sm:flex-row sm:items-center sm:justify-between">
@@ -1111,7 +1172,6 @@ export function ResourcePage<T extends Entity>({
                               required={field.required}
                               className="w-full bg-transparent text-sm font-semibold outline-none"
                               inputMode="numeric"
-                              pattern="[0-9]*"
                               value={formatCurrencyInput(inputValue)}
                               onChange={(event) =>
                                 setFormValues((current) => ({

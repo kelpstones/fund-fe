@@ -371,6 +371,10 @@ Object.assign(enTranslations, {
 
   removeBookmark: "Remove bookmark",
   saveOpportunity: "Save opportunity",
+  viewOpportunityDetail: "View Detail",
+  addToCompare: "Compare",
+  selectedForCompare: "Selected",
+  noFundingProgressYet: "No funding received yet",
   noBusinessImage: "No business photo yet",
   opportunityDefaultReason:
     "UMKM funding opportunity with comparable business data, risk, capital target, and return.",

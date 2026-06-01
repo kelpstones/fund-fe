@@ -370,6 +370,10 @@ Object.assign(idTranslations, {
 
   removeBookmark: "Hapus bookmark",
   saveOpportunity: "Simpan peluang",
+  viewOpportunityDetail: "Lihat Detail",
+  addToCompare: "Bandingkan",
+  selectedForCompare: "Dipilih",
+  noFundingProgressYet: "Belum ada pendanaan masuk",
   noBusinessImage: "Belum ada foto bisnis",
   opportunityDefaultReason:
     "Peluang pendanaan UMKM dengan data bisnis, risiko, target modal, dan return yang bisa dibandingkan.",
