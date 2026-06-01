@@ -54,6 +54,11 @@ export function PortfolioPage() {
 
   const activePortfolios = previewPortfolios.length > 0 ? previewPortfolios : portfolios;
   const showPreviewFallbackWarning = previewQuery.isError && previewPortfolios.length === 0;
+  const previewInfoMessage = showPreviewFallbackWarning
+    ? t("portfolioPreviewFallbackWarning")
+    : previewPortfolios.length === 0
+      ? t("portfolioDemoMode")
+      : null;
   const startNowTarget = isAuthenticated
     ? dashboardPathFor(user?.role ?? "umkm")
     : "/register";
@@ -118,20 +123,18 @@ export function PortfolioPage() {
           </select>
         </div>
 
-        <div
-          className={[
-            "mt-4 rounded-md px-4 py-3 text-sm font-semibold",
-            showPreviewFallbackWarning
-              ? "border border-warning/20 bg-warning/10 text-warning"
-              : "border border-info/20 bg-info/10 text-info",
-          ].join(" ")}
-        >
-          {showPreviewFallbackWarning
-            ? t("portfolioPreviewFallbackWarning")
-            : previewPortfolios.length > 0
-              ? t("portfolioLiveMode")
-              : t("portfolioDemoMode")}
-        </div>
+        {previewInfoMessage ? (
+          <div
+            className={[
+              "mt-4 rounded-md px-4 py-3 text-sm font-semibold",
+              showPreviewFallbackWarning
+                ? "border border-warning/20 bg-warning/10 text-warning"
+                : "border border-info/20 bg-info/10 text-info",
+            ].join(" ")}
+          >
+            {previewInfoMessage}
+          </div>
+        ) : null}
 
         <div className="mt-12 grid gap-5 lg:grid-cols-3">
           {filtered.map((item) => {

@@ -16,6 +16,7 @@ import {
   Receipt,
   Rocket,
   Scale,
+  SlidersHorizontal,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -63,6 +64,78 @@ const asRecord = (value: unknown): Record<string, unknown> =>
     : {};
 
 const asEntityArray = (value: unknown): Entity[] => (Array.isArray(value) ? (value as Entity[]) : []);
+const asEntity = (value: unknown): Entity =>
+  value && typeof value === "object" ? (value as Entity) : { id: "" };
+const asRecommendationArray = (value: unknown): Entity[] => {
+  if (Array.isArray(value)) return value as Entity[];
+  if (value && typeof value === "object") {
+    const objectValue = value as Record<string, unknown>;
+    if (Array.isArray(objectValue.rekomendasi)) return objectValue.rekomendasi as Entity[];
+    if (Array.isArray(objectValue.items)) return objectValue.items as Entity[];
+    if (Array.isArray(objectValue.results)) return objectValue.results as Entity[];
+    if (Array.isArray(objectValue.data)) return objectValue.data as Entity[];
+    if ("id" in objectValue || "pengajuan_id" in objectValue) return [objectValue as Entity];
+  }
+  return [];
+};
+const toNumber = (value: unknown) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+const readNumberPath = (item: Entity, paths: string[]) =>
+  toNumber(readPath(item, paths, "__missing__"));
+const clampPercent = (value: number) => Math.max(0, Math.min(100, value));
+const toTitleWords = (value: string) =>
+  value
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .map((chunk) => chunk.charAt(0).toUpperCase() + chunk.slice(1))
+    .join(" ");
+const mergeBusinessForImage = (item: Entity, businessById: Map<string, Entity>) => {
+  const currentBusiness = asEntity(item.bisnis);
+  const businessId = textValue(readPath(item, ["bisnis.id", "bisnis_id"], ""), "");
+  const fullBusiness = businessById.get(businessId);
+  if (!fullBusiness) return item;
+
+  const fullBusinessCovers = readPath(fullBusiness, ["covers"], "");
+  const currentBusinessCovers = readPath(currentBusiness, ["covers"], "");
+  const covers = Array.isArray(fullBusinessCovers) ? fullBusinessCovers : currentBusinessCovers;
+
+  return {
+    ...item,
+    bisnis: {
+      ...fullBusiness,
+      ...currentBusiness,
+      covers,
+    },
+    covers,
+  };
+};
+const businessImage = (item: Entity) => {
+  const directImage = textValue(
+    readPath(item, [
+      "image_url",
+      "cover_image_url",
+      "cover.url",
+      "cover.image_url",
+      "bisnis.image_url",
+      "bisnis.cover_image_url",
+    ], ""),
+    "",
+  );
+  if (directImage) return directImage;
+
+  const covers = readPath(item, ["covers", "bisnis.covers"], "");
+  if (Array.isArray(covers)) {
+    const firstCover = covers
+      .map((cover) => (cover && typeof cover === "object" ? (cover as Entity) : ({ id: "" } as Entity)))
+      .sort((first, second) => Number(first.urutan || 0) - Number(second.urutan || 0))[0];
+    const coverUrl = textValue(readPath(firstCover ?? { id: "" }, ["image_url", "url"], ""), "");
+    if (coverUrl) return coverUrl;
+  }
+  return "";
+};
 
 type OverviewStep = {
   key: string;
@@ -86,7 +159,18 @@ type OverviewBannerItem = {
   icon?: typeof Bell;
 };
 
+type NextAction = {
+  titleKey: string;
+  bodyKey: string;
+  buttonKey: string;
+  href: string;
+  icon?: typeof Rocket;
+};
+
 type ViewportVariant = "mobile" | "tablet" | "desktop";
+
+const overviewBannerBasePath = (language: "id" | "en") =>
+  language === "en" ? "/images/overview-banners/en" : "/images/overview-banners";
 
 const resolveViewportVariant = (width: number): ViewportVariant => {
   if (width < 768) return "mobile";
@@ -275,51 +359,239 @@ function OverviewBannerRail({ items }: { items: OverviewBannerItem[] }) {
   );
 }
 
-function MatchList({ submissions, isLoading = false }: { submissions: Entity[]; isLoading?: boolean }) {
-  const { t } = useLanguage();
-  const sorted = [...submissions].sort(
-    (a, b) =>
-      Number(b.match_score || b.skor_kecocokan || 0) -
-      Number(a.match_score || a.skor_kecocokan || 0),
+function MatchList({
+  submissions,
+  isLoading = false,
+  isFallback = false,
+}: {
+  submissions: Entity[];
+  isLoading?: boolean;
+  isFallback?: boolean;
+}) {
+  const { t, language } = useLanguage();
+  const items = useMemo(
+    () =>
+      submissions
+        .map((item) => {
+          const proposalId = textValue(
+            readPath(item, ["pengajuan_id", "proposal_id", "pengajuan.id", "pengajuans_id"], ""),
+            "",
+          );
+          const rawName = textValue(
+            readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "bisnis_nama", "nama", "business_name"], ""),
+            "",
+          );
+          const businessName =
+            rawName ||
+            (proposalId
+              ? `${language === "id" ? "Peluang UMKM" : "UMKM Opportunity"} #${proposalId}`
+              : language === "id"
+                ? "Peluang UMKM"
+                : "UMKM Opportunity");
+          const sector = textValue(readPath(item, ["bisnis.tipe_usaha", "tipe_usaha", "sektor"], ""), "");
+          const city = textValue(readPath(item, ["bisnis.kota", "kota"], ""), "");
+          const subtitle = [sector ? toTitleWords(sector) : "", city].filter(Boolean).join(" - ");
+          const scoreValue = readNumberPath(item, ["match_score", "skor_kecocokan"]);
+          const score = scoreValue !== null && scoreValue > 0 ? clampPercent(scoreValue) : null;
+          const returnValue = readNumberPath(item, [
+            "per_anual_return",
+            "return",
+            "return_investasi",
+            "pengajuan.per_anual_return",
+            "proposal.per_anual_return",
+          ]);
+          const targetValue = readNumberPath(item, [
+            "target_pendanaan",
+            "bisnis.target_pendanaan",
+            "pengajuan.target_pendanaan",
+            "proposal.target_pendanaan",
+          ]);
+          const fundedValue = readNumberPath(item, [
+            "total_pendanaan",
+            "terkumpul",
+            "pengajuan.total_pendanaan",
+            "proposal.total_pendanaan",
+          ]);
+          const hasFundingProgress =
+            targetValue !== null &&
+            targetValue > 0 &&
+            fundedValue !== null &&
+            fundedValue >= 0;
+          const progress = hasFundingProgress
+            ? clampPercent(Math.round((fundedValue / Math.max(targetValue, 1)) * 100))
+            : null;
+          const cardKey =
+            proposalId ||
+            textValue(readPath(item, ["id", "bisnis.id"], ""), "");
+          return {
+            id: cardKey,
+            businessName,
+            subtitle,
+            score,
+            returnValue,
+            hasFundingProgress,
+            fundedValue: fundedValue ?? 0,
+            targetValue: targetValue ?? 0,
+            progress,
+            detailHref: proposalId ? `/dashboard/investor/peluang/${proposalId}` : "/dashboard/investor/peluang",
+            imageSrc: businessImage(item),
+          };
+        })
+        .sort((first, second) => {
+          const firstScore = first.score ?? -1;
+          const secondScore = second.score ?? -1;
+          return secondScore - firstScore;
+        }),
+    [language, submissions],
   );
 
   return (
     <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-xl font-black">{t("aiMatchScore")}</h3>
+          {isFallback ? (
+            <p className="mt-1 text-xs font-semibold text-neutral/55">
+              {language === "id"
+                ? "Rekomendasi AI belum lengkap. Menampilkan peluang umum terlebih dahulu."
+                : "AI recommendations are not fully available yet. Showing general opportunities first."}
+            </p>
+          ) : null}
         </div>
-        <Scale className="text-primary" size={24} />
+        <Link to="/dashboard/investor/peluang" className="btn btn-outline btn-sm rounded-md">
+          {t("investorNextOpportunityButton")}
+        </Link>
       </div>
-      <div className="mt-5 grid gap-3">
-        {isLoading ? <ListSkeleton rows={3} /> : null}
-        {!isLoading && sorted.length === 0 ? (
+      <div className="mt-5">
+        {isLoading ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <article
+                key={`match-loading-${index}`}
+                className="overflow-hidden rounded-md border border-base-300 bg-white shadow-sm"
+              >
+                <div className="skeleton h-52 w-full" />
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="skeleton h-5 w-4/5 rounded-md" />
+                      <div className="skeleton h-4 w-3/5 rounded-md" />
+                    </div>
+                    <div className="skeleton h-8 w-16 rounded-md" />
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <div className="skeleton h-16 rounded-md" />
+                    <div className="skeleton h-16 rounded-md" />
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <div className="skeleton h-3 w-full rounded-full" />
+                    <div className="skeleton h-10 w-full rounded-md" />
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : null}
+        {!isLoading && items.length === 0 ? (
           <EmptyState title="dataUnavailable" body="matchDataEmpty" compact icon={Scale} />
         ) : null}
-        {sorted.slice(0, 4).map((item) => {
-          const score = Number(item.match_score || item.skor_kecocokan || 0);
-          return (
-            <div key={item.id} className="rounded-md border border-base-300 p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="font-black">
-                    {textValue(readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "businessName"]))}
-                  </p>
-                  <p className="mt-1 text-sm text-neutral/55">
-                    {t("metricReturn")} {percent(item.per_anual_return)} - {t("metricRisk")} {textValue(item.risk_level)}
-                  </p>
-                </div>
-                <span className="badge badge-secondary badge-lg text-white">{score}%</span>
-              </div>
-              <div className="mt-4 h-2 rounded-full bg-base-200">
-                <div
-                  className="h-2 rounded-full bg-primary transition-[width] duration-[420ms] ease-out"
-                  style={{ width: `${Math.min(score, 100)}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
+        {!isLoading && items.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {items.slice(0, 3).map((item) => {
+              const returnLabel =
+                item.returnValue !== null && item.returnValue > 0
+                  ? percent(item.returnValue)
+                  : "-";
+              const targetLabel =
+                item.targetValue > 0
+                  ? currency(item.targetValue)
+                  : "-";
+              return (
+                <article
+                  key={item.id}
+                  className="flex h-full flex-col overflow-hidden rounded-md border border-base-300 bg-white shadow-sm transition-[transform,box-shadow] duration-200 ease-out md:hover:-translate-y-0.5 md:hover:shadow-md"
+                >
+                  <div className="aspect-[16/9] w-full overflow-hidden bg-base-200">
+                    {item.imageSrc ? (
+                      <img
+                        src={item.imageSrc}
+                        alt={item.businessName}
+                        className="h-full w-full object-cover object-center"
+                        loading="lazy"
+                        onError={(event) => {
+                          event.currentTarget.src = "/brand/logo-horizontal-transparent.png";
+                          event.currentTarget.className = "h-full w-full object-contain p-8 opacity-70";
+                        }}
+                      />
+                    ) : (
+                      <div className="grid h-full place-items-center px-6 text-center">
+                        <div>
+                          <img
+                            src="/brand/logo-icon-transparent.png"
+                            alt=""
+                            className="mx-auto h-12 w-12 object-contain opacity-70"
+                          />
+                          <p className="mt-3 text-sm font-bold text-neutral/50">{t("noBusinessImage")}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-1 flex-col p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <h3 className="truncate text-lg font-black">{item.businessName}</h3>
+                        <p className="mt-1 text-xs font-semibold text-neutral/55">
+                          {item.subtitle || (language === "id" ? "Data bisnis aktif" : "Active business data")}
+                        </p>
+                      </div>
+                      {item.score !== null && item.score > 0 ? (
+                        <span className="badge badge-success border-transparent text-sm font-black text-white">
+                          {percent(item.score)}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                      <div className="min-w-0 rounded-md bg-base-200 p-2.5">
+                        <p className="text-xs font-semibold text-neutral/55">{t("metricTarget")}</p>
+                        <p className="mt-1 break-words text-sm font-black leading-tight">{targetLabel}</p>
+                      </div>
+                      <div className="min-w-0 rounded-md bg-base-200 p-2.5">
+                        <p className="text-xs font-semibold text-neutral/55">{t("metricReturn")}</p>
+                        <p className="mt-1 break-words text-sm font-black leading-tight">{returnLabel}</p>
+                      </div>
+                    </div>
+
+                    {item.hasFundingProgress && item.progress !== null ? (
+                      <div className="mt-3">
+                        <div className="mb-2 flex justify-between text-sm font-semibold text-neutral/60">
+                          <span>{currency(item.fundedValue)}</span>
+                          <span>{item.progress}%</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-base-200">
+                          <div
+                            className="h-2 rounded-full bg-primary transition-[width] duration-[420ms] ease-out"
+                            style={{ width: `${item.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                      <Link to={item.detailHref} className="btn btn-primary btn-sm flex-1 rounded-md text-white">
+                        {t("detail")}
+                      </Link>
+                      <Link to="/dashboard/investor/peluang" className="btn btn-outline btn-sm rounded-md">
+                        {t("viewAllOpportunities")}
+                      </Link>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -475,9 +747,37 @@ function OnboardingOverviewCard({
   );
 }
 
-export function UmkmOverviewPage() {
+function NextActionCard({ action }: { action: NextAction }) {
   const { t } = useLanguage();
+  const Icon = action.icon ?? Rocket;
+
+  return (
+    <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-start gap-4">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+            <Icon size={24} />
+          </div>
+          <div>
+            <p className="text-xs font-black uppercase tracking-wide text-primary">
+              {t("investorNextActionLabel")}
+            </p>
+            <h3 className="mt-1 text-2xl font-black text-neutral">{t(action.titleKey)}</h3>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">{t(action.bodyKey)}</p>
+          </div>
+        </div>
+        <Link to={action.href} className="btn btn-primary rounded-md text-white md:min-w-44">
+          {t(action.buttonKey)}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+export function UmkmOverviewPage() {
+  const { t, language } = useLanguage();
   const { user } = useAuth();
+  const bannerBasePath = overviewBannerBasePath(language);
   const scopeKey = user?.id ? String(user.id) : undefined;
   const dashboardQuery = useDashboard("umkm", scopeKey);
   const dashboard = dashboardQuery.data;
@@ -609,9 +909,9 @@ export function UmkmOverviewPage() {
           {
             key: "umkm-model",
             to: "/dashboard/umkm/bisnis-profile",
-            imageSrc: "/images/overview-banners/umkm-lengkapi-profil-bisnis.webp",
-            imageMobileSrc: "/images/overview-banners/umkm-lengkapi-profil-bisnis-mobile.webp",
-            imageDesktopSrc: "/images/overview-banners/umkm-lengkapi-profil-bisnis-desktop.webp",
+            imageSrc: `${bannerBasePath}/umkm-lengkapi-profil-bisnis.webp`,
+            imageMobileSrc: `${bannerBasePath}/umkm-lengkapi-profil-bisnis-mobile.webp`,
+            imageDesktopSrc: `${bannerBasePath}/umkm-lengkapi-profil-bisnis-desktop.webp`,
             title: t("onboardingModelTitle"),
             priority: 3,
           },
@@ -622,9 +922,9 @@ export function UmkmOverviewPage() {
           {
             key: "umkm-submission",
             to: "/dashboard/umkm/pengajuan",
-            imageSrc: "/images/overview-banners/umkm-buat-pengajuan-pendanaan.webp",
-            imageMobileSrc: "/images/overview-banners/umkm-buat-pengajuan-pendanaan-mobile.webp",
-            imageDesktopSrc: "/images/overview-banners/umkm-buat-pengajuan-pendanaan-desktop.webp",
+            imageSrc: `${bannerBasePath}/umkm-buat-pengajuan-pendanaan.webp`,
+            imageMobileSrc: `${bannerBasePath}/umkm-buat-pengajuan-pendanaan-mobile.webp`,
+            imageDesktopSrc: `${bannerBasePath}/umkm-buat-pengajuan-pendanaan-desktop.webp`,
             title: t("onboardingSubmissionTitle"),
             priority: 3,
           },
@@ -633,18 +933,18 @@ export function UmkmOverviewPage() {
     {
       key: "umkm-sales",
       to: "/dashboard/umkm/penjualan",
-      imageSrc: "/images/overview-banners/umkm-update-laporan-penjualan.webp",
-      imageMobileSrc: "/images/overview-banners/umkm-update-laporan-penjualan-mobile.webp",
-      imageDesktopSrc: "/images/overview-banners/umkm-update-laporan-penjualan-desktop.webp",
+      imageSrc: `${bannerBasePath}/umkm-update-laporan-penjualan.webp`,
+      imageMobileSrc: `${bannerBasePath}/umkm-update-laporan-penjualan-mobile.webp`,
+      imageDesktopSrc: `${bannerBasePath}/umkm-update-laporan-penjualan-desktop.webp`,
       title: t("sales"),
       priority: 1,
     },
     {
       key: "umkm-notification",
       to: "/dashboard/umkm/notifikasi",
-      imageSrc: "/images/overview-banners/umkm-cek-notifikasi-aktivitas.webp",
-      imageMobileSrc: "/images/overview-banners/umkm-cek-notifikasi-aktivitas-mobile.webp",
-      imageDesktopSrc: "/images/overview-banners/umkm-cek-notifikasi-aktivitas-desktop.webp",
+      imageSrc: `${bannerBasePath}/umkm-cek-notifikasi-aktivitas.webp`,
+      imageMobileSrc: `${bannerBasePath}/umkm-cek-notifikasi-aktivitas-mobile.webp`,
+      imageDesktopSrc: `${bannerBasePath}/umkm-cek-notifikasi-aktivitas-desktop.webp`,
       title: t("notifications"),
       priority: 1,
     },
@@ -685,8 +985,9 @@ export function UmkmOverviewPage() {
 }
 
 export function InvestorOverviewPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
+  const bannerBasePath = overviewBannerBasePath(language);
   const scopeKey = user?.id ? String(user.id) : undefined;
   const dashboardQuery = useDashboard("investor", scopeKey);
   const dashboard = dashboardQuery.data;
@@ -712,7 +1013,135 @@ export function InvestorOverviewPage() {
     enabled: Boolean(scopeKey),
     retry: false,
   });
-  const submissions = submissionsQuery.data ?? [];
+  const recommendationsQuery = useQuery({
+    queryKey: ["overview", scopeKey ?? "anonymous", "investor-recommendations"],
+    queryFn: async () => {
+      try {
+        return asRecommendationArray(await directApi.get("/user/investor/recommendations", null));
+      } catch {
+        return [] as Entity[];
+      }
+    },
+    enabled: Boolean(scopeKey),
+    retry: false,
+  });
+  const businessCoverQuery = useQuery({
+    queryKey: ["overview", scopeKey ?? "anonymous", "investor-business-covers"],
+    queryFn: async () => {
+      try {
+        return await resourceApi.list({
+          ...businessConfig,
+          listPath: "/businesses?page=1&limit=200",
+        });
+      } catch {
+        return [] as Entity[];
+      }
+    },
+    enabled: Boolean(scopeKey),
+    retry: false,
+  });
+  const submissions = useMemo(
+    () => submissionsQuery.data ?? [],
+    [submissionsQuery.data],
+  );
+  const recommendations = useMemo(
+    () => recommendationsQuery.data ?? [],
+    [recommendationsQuery.data],
+  );
+  const businessById = useMemo(
+    () => new Map((businessCoverQuery.data ?? []).map((item) => [String(item.id), item])),
+    [businessCoverQuery.data],
+  );
+  const submissionsWithBusinessCover = useMemo(
+    () => submissions.map((item) => mergeBusinessForImage(item, businessById)),
+    [submissions, businessById],
+  );
+  const recommendationsWithBusinessCover = useMemo(
+    () => recommendations.map((item) => mergeBusinessForImage(item, businessById)),
+    [recommendations, businessById],
+  );
+  const submissionsByBusinessId = useMemo(
+    () =>
+      submissionsWithBusinessCover.reduce((map, item) => {
+        const businessId = textValue(readPath(item, ["bisnis.id", "bisnis_id"], ""), "");
+        if (!businessId) return map;
+        const current = map.get(businessId);
+        if (!current) {
+          map.set(businessId, item);
+          return map;
+        }
+
+        const currentTimestamp = new Date(
+          String(readPath(current, ["updated_at", "created_at"], "")),
+        ).getTime();
+        const nextTimestamp = new Date(
+          String(readPath(item, ["updated_at", "created_at"], "")),
+        ).getTime();
+
+        if (!Number.isFinite(currentTimestamp) || nextTimestamp >= currentTimestamp) {
+          map.set(businessId, item);
+        }
+        return map;
+      }, new Map<string, Entity>()),
+    [submissionsWithBusinessCover],
+  );
+  const recommendationsWithProposalData = useMemo(
+    () =>
+      recommendationsWithBusinessCover.map((item) => {
+        const businessId = textValue(readPath(item, ["bisnis.id", "bisnis_id"], ""), "");
+        if (!businessId) return item;
+
+        const matchedSubmission = submissionsByBusinessId.get(businessId);
+        if (!matchedSubmission) return item;
+
+        const recommendationProposalId = textValue(
+          readPath(item, ["pengajuan_id", "proposal_id", "pengajuan.id", "pengajuans_id"], ""),
+          "",
+        );
+        const submissionProposalId = textValue(
+          readPath(matchedSubmission, ["id", "pengajuan_id"], ""),
+          "",
+        );
+        const targetValue = readNumberPath(item, [
+          "target_pendanaan",
+          "bisnis.target_pendanaan",
+          "pengajuan.target_pendanaan",
+          "proposal.target_pendanaan",
+        ]);
+        const returnValue = readNumberPath(item, [
+          "per_anual_return",
+          "return",
+          "return_investasi",
+          "pengajuan.per_anual_return",
+          "proposal.per_anual_return",
+        ]);
+        const fundedValue = readNumberPath(item, [
+          "total_pendanaan",
+          "terkumpul",
+          "pengajuan.total_pendanaan",
+          "proposal.total_pendanaan",
+        ]);
+
+        return {
+          ...item,
+          pengajuan_id: recommendationProposalId || submissionProposalId || item.pengajuan_id,
+          proposal_id: recommendationProposalId || submissionProposalId || item.proposal_id,
+          target_pendanaan:
+            targetValue !== null && targetValue > 0
+              ? targetValue
+              : readPath(matchedSubmission, ["target_pendanaan"], ""),
+          per_anual_return:
+            returnValue !== null && returnValue > 0
+              ? returnValue
+              : readPath(matchedSubmission, ["per_anual_return"], ""),
+          total_pendanaan:
+            fundedValue !== null && fundedValue >= 0
+              ? fundedValue
+              : readPath(matchedSubmission, ["total_pendanaan"], ""),
+        };
+      }),
+    [recommendationsWithBusinessCover, submissionsByBusinessId],
+  );
   const investments = investmentsQuery.data ?? [];
   const invoices = invoicesQuery.data ?? [];
   const profits = profitsQuery.data ?? [];
@@ -726,88 +1155,64 @@ export function InvestorOverviewPage() {
     profits.reduce((sum, item) => sum + Number(item.nominal_profit || 0), 0);
   const pendingProfit = Number(dashboardProfit.total_pending ?? 0);
   const investmentCount = Number(dashboardInvestment.jumlah_aktif ?? 0) || investments.length;
-  const accountReady = Boolean(user?.nama && user?.email);
   const hasPreferences = Boolean(preferencesQuery.data);
+  const hasRecommendationData = recommendationsWithProposalData.length > 0;
+  const matchItems = hasRecommendationData ? recommendationsWithProposalData : submissionsWithBusinessCover;
   const hasNegotiation = negotiations.length > 0;
   const hasInvestment = investmentCount > 0;
-  const hasPendingInvoice = invoices.some((item) => {
+  const pendingInvoices = invoices.filter((item) => {
     const rawStatus = readPath(item, ["status", "invoice_status"], "");
     const status = String(rawStatus || "").toLowerCase();
     return ["pending", "unpaid", "waiting_payment", "belum_dibayar"].includes(status);
   });
-
-  const onboardingSteps: OverviewStep[] = [
-    {
-      key: "profile",
-      titleKey: "investorStepProfileTitle",
-      helperKey: accountReady ? "investorStepProfileDone" : "investorStepProfileTodo",
-      href: "/dashboard/investor/profile",
-      done: accountReady,
-    },
-    {
-      key: "preferences",
-      titleKey: "investorStepPreferenceTitle",
-      helperKey: hasPreferences ? "investorStepPreferenceDone" : "investorStepPreferenceTodo",
-      href: "/dashboard/investor/preferensi",
-      done: hasPreferences,
-    },
-    {
-      key: "survey",
-      titleKey: "investorStepSurveyTitle",
-      helperKey: "investorStepSurveyTodo",
-      href: "/dashboard/investor/survey",
-      done: hasPreferences,
-      locked: !hasPreferences,
-    },
-    {
-      key: "negotiation",
-      titleKey: "investorStepNegotiationTitle",
-      helperKey: hasNegotiation ? "investorStepNegotiationDone" : "investorStepNegotiationTodo",
-      helperParams: { count: negotiations.length },
-      href: "/dashboard/investor/negosiasi",
-      done: hasNegotiation,
-      locked: !hasPreferences,
-    },
-    {
-      key: "portfolio",
-      titleKey: "investorStepPortfolioTitle",
-      helperKey: hasInvestment ? "investorStepPortfolioDone" : "investorStepPortfolioTodo",
-      helperParams: { count: investmentCount },
-      href: "/dashboard/investor/portfolio",
-      done: hasInvestment,
-      locked: !hasNegotiation,
-    },
-  ];
-
-  const onboardingProgress = Math.round(
-    (onboardingSteps.filter((step) => step.done).length / onboardingSteps.length) * 100,
-  );
+  const hasPendingInvoice = pendingInvoices.length > 0;
+  const activeInvestmentItems = recentDistribution.length > 0 ? recentDistribution : investments;
+  const hasInvestmentActivity = activeInvestmentItems.length > 0;
+  const shouldShowFinancialSummary =
+    hasInvestment || invested > 0 || profitTotal > 0 || pendingProfit > 0;
+  const nextAction: NextAction | null = !hasPreferences
+    ? {
+        titleKey: "investorNextPreferenceTitle",
+        bodyKey: "investorNextPreferenceBody",
+        buttonKey: "investorNextPreferenceButton",
+        href: "/dashboard/investor/preferensi",
+        icon: SlidersHorizontal,
+      }
+    : hasPendingInvoice
+      ? {
+          titleKey: "investorNextInvoiceTitle",
+          bodyKey: "investorNextInvoiceBody",
+          buttonKey: "investorNextInvoiceButton",
+          href: "/dashboard/investor/invoice",
+          icon: Receipt,
+        }
+      : !hasNegotiation
+        ? {
+            titleKey: "investorNextOpportunityTitle",
+            bodyKey: "investorNextOpportunityBody",
+            buttonKey: "investorNextOpportunityButton",
+            href: "/dashboard/investor/peluang",
+            icon: Rocket,
+          }
+        : !hasInvestment
+          ? {
+              titleKey: "investorNextNegotiationTitle",
+              bodyKey: "investorNextNegotiationBody",
+              buttonKey: "investorNextNegotiationButton",
+              href: "/dashboard/investor/negosiasi",
+              icon: Handshake,
+            }
+          : null;
   const investorBannerItems: OverviewBannerItem[] = [
     ...(!hasPreferences
       ? [
           {
             key: "investor-survey",
-            to: "/dashboard/investor/survey",
-            imageSrc: "/images/overview-banners/investor-isi-survey-preferensi.webp",
-            imageMobileSrc: "/images/overview-banners/investor-isi-survey-preferensi-mobile.webp",
-            imageDesktopSrc: "/images/overview-banners/investor-isi-survey-preferensi-desktop.webp",
-            title: t("dashboardSurvey"),
-            priority: 3,
-          },
-        ]
-      : []),
-    ...(hasPendingInvoice
-      ? [
-          {
-            key: "investor-invoice-pending",
-            to: "/dashboard/investor/invoice",
-            title: t("dashboardInvoices"),
-            body: t("pendingCount", { count: invoices.filter((item) => {
-              const rawStatus = readPath(item, ["status", "invoice_status"], "");
-              const status = String(rawStatus || "").toLowerCase();
-              return ["pending", "unpaid", "waiting_payment", "belum_dibayar"].includes(status);
-            }).length }),
-            icon: Receipt,
+            to: "/dashboard/investor/preferensi",
+            imageSrc: `${bannerBasePath}/investor-isi-survey-preferensi.webp`,
+            imageMobileSrc: `${bannerBasePath}/investor-isi-survey-preferensi-mobile.webp`,
+            imageDesktopSrc: `${bannerBasePath}/investor-isi-survey-preferensi-desktop.webp`,
+            title: t("dashboardPreferences"),
             priority: 3,
           },
         ]
@@ -815,64 +1220,61 @@ export function InvestorOverviewPage() {
     {
       key: "investor-opportunity",
       to: "/dashboard/investor/peluang",
-      imageSrc: "/images/overview-banners/investor-jelajahi-peluang-umkm.webp",
-      imageMobileSrc: "/images/overview-banners/investor-jelajahi-peluang-umkm-mobile.webp",
-      imageDesktopSrc: "/images/overview-banners/investor-jelajahi-peluang-umkm-desktop.webp",
+      imageSrc: `${bannerBasePath}/investor-jelajahi-peluang-umkm.webp`,
+      imageMobileSrc: `${bannerBasePath}/investor-jelajahi-peluang-umkm-mobile.webp`,
+      imageDesktopSrc: `${bannerBasePath}/investor-jelajahi-peluang-umkm-desktop.webp`,
       title: t("opportunities"),
       priority: 1,
     },
     {
       key: "investor-portfolio",
       to: "/dashboard/investor/portfolio",
-      imageSrc: "/images/overview-banners/investor-pantau-portfolio-aktif.webp",
-      imageMobileSrc: "/images/overview-banners/investor-pantau-portfolio-aktif-mobile.webp",
-      imageDesktopSrc: "/images/overview-banners/investor-pantau-portfolio-aktif-desktop.webp",
+      imageSrc: `${bannerBasePath}/investor-pantau-portfolio-aktif.webp`,
+      imageMobileSrc: `${bannerBasePath}/investor-pantau-portfolio-aktif-mobile.webp`,
+      imageDesktopSrc: `${bannerBasePath}/investor-pantau-portfolio-aktif-desktop.webp`,
       title: t("dashboardPortfolio"),
       priority: 1,
     },
   ];
-  const isOnboardingLoading =
+  const isInvestorStateLoading =
     preferencesQuery.isLoading || negotiationsQuery.isLoading || investmentsQuery.isLoading;
 
   return (
     <div className="space-y-6">
-      <OverviewBannerRail items={investorBannerItems} />
       <PageHeader
         title="investorOverviewTitle"
       />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
-        <StatCard label={t("investments")} value={compactCurrency(invested)} helper={t("activePortfolio")} icon={TrendingUp} tone="green" loading={dashboardQuery.isLoading} />
-        <StatCard label={t("profit")} value={compactCurrency(profitTotal)} helper={t("pendingAmount", { amount: compactCurrency(pendingProfit) })} icon={CircleDollarSign} tone="amber" loading={dashboardQuery.isLoading} />
-      </div>
-      {isOnboardingLoading ? (
+      <OverviewBannerRail items={investorBannerItems} />
+
+      {isInvestorStateLoading ? (
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
-          <ListSkeleton rows={4} />
+          <ListSkeleton rows={2} />
         </div>
-      ) : (
-        <OnboardingOverviewCard
-          titleKey="investorOnboardingTitle"
-          bodyKey="investorOnboardingBody"
-          progress={onboardingProgress}
-          steps={onboardingSteps}
+      ) : nextAction ? (
+        <NextActionCard action={nextAction} />
+      ) : null}
+
+      {shouldShowFinancialSummary ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
+          <StatCard label={t("investments")} value={compactCurrency(invested)} helper={t("activePortfolio")} icon={TrendingUp} tone="green" loading={dashboardQuery.isLoading} />
+          <StatCard label={t("profit")} value={compactCurrency(profitTotal)} helper={t("pendingAmount", { amount: compactCurrency(pendingProfit) })} icon={CircleDollarSign} tone="amber" loading={dashboardQuery.isLoading} />
+        </div>
+      ) : null}
+
+      {hasPreferences ? (
+        <MatchList
+          submissions={matchItems}
+          isLoading={submissionsQuery.isLoading || recommendationsQuery.isLoading || businessCoverQuery.isLoading}
+          isFallback={!hasRecommendationData}
         />
-      )}
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <MatchList submissions={submissions} isLoading={submissionsQuery.isLoading} />
+      ) : null}
+
+      {hasInvestmentActivity ? (
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
           <h3 className="text-xl font-black">{t("activeInvestments")}</h3>
           <p className="mt-1 text-sm font-semibold text-neutral/55">{t("activeInvestmentCount", { count: investmentCount })}</p>
           <div className="mt-5 grid gap-3">
-            {!investmentsQuery.isLoading &&
-            recentDistribution.length === 0 &&
-            investments.length === 0 ? (
-              <EmptyState
-                title="noActiveInvestments"
-                body="noActiveInvestmentsBody"
-                compact
-                icon={TrendingUp}
-              />
-            ) : null}
-            {(recentDistribution.length > 0 ? recentDistribution : investments).map((item) => (
+            {activeInvestmentItems.map((item) => (
               <div key={item.id} className="rounded-md border border-base-300 p-4">
                 <div className="flex justify-between gap-4">
                   <p className="font-black">
@@ -889,7 +1291,7 @@ export function InvestorOverviewPage() {
             ))}
           </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

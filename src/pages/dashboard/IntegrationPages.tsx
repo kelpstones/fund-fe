@@ -1,11 +1,12 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { ArrowDown, ArrowUp, ImagePlus, Loader2, RefreshCw, Save, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ClipboardList, ImagePlus, Loader2, RefreshCw, Save, Trash2 } from "lucide-react";
 import { useAuth } from "../../lib/auth/AuthProvider";
 import { directApi } from "../../lib/api/direct";
 import { apiClient, unwrap } from "../../lib/api/client";
 import { resourceApi } from "../../lib/api/resources";
+import { openInvestorQuickSetupPrompt } from "../../lib/investorQuickSetup";
 import { businessConfig, myBusinessConfig } from "../../lib/resourceConfigs";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import { DashboardBreadcrumb } from "../../components/DashboardBreadcrumb";
@@ -507,6 +508,28 @@ export function InvestorPreferencesPage() {
               {apiErrorMessage(preferenceQuery.error, t("preferencesSaveError"))}
             </div>
           ) : null}
+          <div className="rounded-md border border-base-300 bg-base-100 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-sm font-black text-neutral">
+                  {language === "id" ? "Survey preferensi cepat" : "Quick preference survey"}
+                </p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-neutral/55">
+                  {language === "id"
+                    ? "Ingin ubah jawaban 5 pertanyaan? Buka ulang survey cepat."
+                    : "Want to update your 5 survey answers? Reopen the quick survey."}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-outline rounded-md"
+                onClick={openInvestorQuickSetupPrompt}
+              >
+                <ClipboardList size={17} />
+                {language === "id" ? "Isi/Ubah Survey" : "Open Survey"}
+              </button>
+            </div>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             {investorPreferenceFields.map((field) => (
               <label

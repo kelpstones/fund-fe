@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Download,
   FileText,
+  Loader2,
   Trash2,
   UploadCloud,
 } from "lucide-react";
@@ -185,6 +186,32 @@ const formatSize = (size: number) => {
   return `${Math.max(1, Math.round(size / 1024))} KB`;
 };
 
+const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+const allowedMimeTypes = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/csv",
+]);
+const allowedExtensions = [
+  ".pdf",
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".doc",
+  ".docx",
+  ".xls",
+  ".xlsx",
+  ".csv",
+];
+const acceptedFileInputValue = ".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.csv";
+
 const apiErrorMessage = (error: unknown, fallback: string) => {
   if (axios.isAxiosError(error) && error.response?.data?.message) {
     return String(error.response.data.message);
@@ -192,10 +219,33 @@ const apiErrorMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
+const normalizeDocName = (value: unknown) => String(value ?? "").trim().toLowerCase();
+
+const toTimestamp = (value: unknown) => {
+  const time = new Date(String(value ?? "")).getTime();
+  return Number.isFinite(time) ? time : 0;
+};
+
+const clampProgress = (value: number) => {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, value));
+};
+
 const localizedText = (
   item: Requirement["title"] | Requirement["body"],
   language: "id" | "en",
 ) => item[language];
+
+const backendStatusLabel = (
+  status: BackendDocument["status"] | string,
+  language: "id" | "en",
+) => {
+  const normalized = String(status ?? "").toLowerCase();
+  if (normalized === "pending") return language === "id" ? "Menunggu" : "Pending";
+  if (normalized === "valid") return language === "id" ? "Valid" : "Valid";
+  if (normalized === "invalid") return language === "id" ? "Perlu perbaikan" : "Needs revision";
+  return language === "id" ? "Diproses" : "Processing";
+};
 
 export function DocumentCenterPage() {
   const { t, language } = useLanguage();
@@ -256,26 +306,75 @@ export function DocumentCenterPage() {
       );
     },
   });
+  const uploadingRequirementKey =
+    uploadBackendMutation.isPending && uploadBackendMutation.variables
+      ? uploadBackendMutation.variables.requirement.key
+      : null;
 
   const backendDocuments = backendQuery.data?.dokumen;
   const backendByDocName = useMemo(
-    () => new Map((backendDocuments ?? []).map((item) => [item.nama_dokumen, item])),
+    () => {
+      const docs = [...(backendDocuments ?? [])].sort(
+        (a, b) =>
+          toTimestamp(b.updated_at ?? b.created_at) -
+          toTimestamp(a.updated_at ?? a.created_at),
+      );
+      const map = new Map<string, BackendDocument>();
+      for (const item of docs) {
+        const key = normalizeDocName(item.nama_dokumen);
+        if (!key || map.has(key)) continue;
+        map.set(key, item);
+      }
+      return map;
+    },
     [backendDocuments],
   );
 
   const uploadedCount = isUmkm
-    ? requirements.filter((item) => item.backend && backendByDocName.has(item.backend.nama_dokumen)).length
+    ? requirements.filter((item) => {
+        if (!item.backend) return false;
+        const document = backendByDocName.get(normalizeDocName(item.backend.nama_dokumen));
+        return Boolean(document);
+      }).length
     : requirements.filter((item) => documents[item.key]).length;
+  const validCount = isUmkm
+    ? requirements.filter((item) => {
+        if (!item.backend) return false;
+        const document = backendByDocName.get(normalizeDocName(item.backend.nama_dokumen));
+        return document?.status === "valid";
+      }).length
+    : uploadedCount;
 
-  const progress = isUmkm
-    ? Number(
-        backendQuery.data?.kelengkapan?.persen ??
-          Math.round((uploadedCount / Math.max(requirements.length, 1)) * 100),
-      )
-    : Math.round((uploadedCount / Math.max(requirements.length, 1)) * 100);
+  const progress = clampProgress(
+    Math.round((validCount / Math.max(requirements.length, 1)) * 100),
+  );
+
+  const validateUploadFile = (file: File) => {
+    if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+      return language === "id"
+        ? "Ukuran file maksimal 10 MB."
+        : "Maximum file size is 10 MB.";
+    }
+    const lowerName = file.name.toLowerCase();
+    const hasAllowedExtension = allowedExtensions.some((extension) =>
+      lowerName.endsWith(extension),
+    );
+    const hasAllowedMime = !file.type || allowedMimeTypes.has(file.type);
+    if (!hasAllowedMime && !hasAllowedExtension) {
+      return language === "id"
+        ? "Format file tidak didukung. Gunakan PDF, JPG, PNG, WEBP, DOC, DOCX, XLS, XLSX, atau CSV."
+        : "Unsupported file format. Use PDF, JPG, PNG, WEBP, DOC, DOCX, XLS, XLSX, or CSV.";
+    }
+    return null;
+  };
 
   const upload = (requirement: Requirement, file: File | null) => {
     if (!file) return;
+    const validationMessage = validateUploadFile(file);
+    if (validationMessage) {
+      toast.warning(validationMessage);
+      return;
+    }
     if (isUmkm) {
       uploadBackendMutation.mutate({ requirement, file });
       return;
@@ -332,16 +431,27 @@ export function DocumentCenterPage() {
       </div>
 
       <div className="grid gap-4">
+        {isUmkm && backendQuery.isError ? (
+          <div className="rounded-md border border-error/20 bg-error/5 px-4 py-3 text-sm font-semibold text-error">
+            {apiErrorMessage(
+              backendQuery.error,
+              language === "id"
+                ? "Gagal memuat data dokumen backend. Coba muat ulang halaman."
+                : "Failed to load backend documents. Please refresh the page.",
+            )}
+          </div>
+        ) : null}
         {requirements.map((requirement) => {
           const document = documents[requirement.key];
           const backendDocument = requirement.backend
-            ? backendByDocName.get(requirement.backend.nama_dokumen)
+            ? backendByDocName.get(normalizeDocName(requirement.backend.nama_dokumen))
             : undefined;
           const status = requirement.status;
           const canRemove = !isUmkm && Boolean(document);
           const isPending = backendDocument?.status === "pending";
           const isValid = backendDocument?.status === "valid";
           const isInvalid = backendDocument?.status === "invalid";
+          const isUploading = uploadingRequirementKey === requirement.key;
           const fileName = isUmkm ? backendDocument?.nama_dokumen : document?.name;
           const uploadDate = isUmkm
             ? backendDocument?.updated_at || backendDocument?.created_at
@@ -349,7 +459,12 @@ export function DocumentCenterPage() {
           const fileSize = isUmkm ? null : document?.size;
 
           return (
-            <article key={requirement.key} className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+            <article
+              key={requirement.key}
+              className={`rounded-md border bg-white p-5 shadow-sm transition-colors ${
+                isUploading ? "border-primary/40" : "border-base-300"
+              }`}
+            >
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="flex gap-4">
                   <div
@@ -383,13 +498,18 @@ export function DocumentCenterPage() {
                                 : "badge-warning"
                           }`}
                         >
-                          {backendDocument.status}
+                          {backendStatusLabel(backendDocument.status, language)}
                         </span>
                       ) : null}
                     </div>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral/60">
                       {localizedText(requirement.body, language)}
                     </p>
+                    {isUmkm && isPending ? (
+                      <p className="mt-2 text-xs font-semibold text-warning">
+                        {language === "id" ? "Menunggu review admin" : "Waiting for admin review"}
+                      </p>
+                    ) : null}
                     {fileName ? (
                       <div className="mt-4 rounded-md bg-base-200 p-3 text-sm">
                         <p className="font-black">{fileName}</p>
@@ -408,15 +528,28 @@ export function DocumentCenterPage() {
                 </div>
                 <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
                   <label className="btn btn-primary rounded-md text-white">
-                    <UploadCloud size={17} />
-                    {(isUmkm ? backendDocument : document) ? t("replace") : t("upload")}
+                    {isUploading ? <Loader2 className="animate-spin" size={17} /> : <UploadCloud size={17} />}
+                    {isUploading
+                      ? t("uploading")
+                      : (isUmkm ? backendDocument : document)
+                        ? t("replace")
+                        : t("upload")}
                     <input
                       type="file"
                       className="hidden"
-                      onChange={(event) => upload(requirement, event.target.files?.[0] ?? null)}
+                      accept={acceptedFileInputValue}
+                      onChange={(event) => {
+                        upload(requirement, event.target.files?.[0] ?? null);
+                        event.currentTarget.value = "";
+                      }}
                       disabled={uploadBackendMutation.isPending}
                     />
                   </label>
+                  {isUploading ? (
+                    <span className="self-center text-xs font-semibold text-info">
+                      {t("uploading")}
+                    </span>
+                  ) : null}
                   {isUmkm && backendDocument?.file_url ? (
                     <a
                       className="btn btn-outline rounded-md"
@@ -436,11 +569,6 @@ export function DocumentCenterPage() {
                       <Trash2 size={17} />
                       {t("delete")}
                     </button>
-                  ) : null}
-                  {isUmkm && isPending ? (
-                    <span className="self-center text-xs font-semibold text-warning">
-                      {language === "id" ? "Menunggu review admin" : "Waiting for admin review"}
-                    </span>
                   ) : null}
                 </div>
               </div>

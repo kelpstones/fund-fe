@@ -51,7 +51,7 @@ export type ApiEnvelope<T> = {
 export type ResourceField<T extends Entity> = {
   name: keyof T & string;
   label: string;
-  type?: "text" | "email" | "number" | "textarea" | "select";
+  type?: "text" | "email" | "number" | "textarea" | "select" | "funding_plan";
   placeholder?: string;
   required?: boolean;
   hideOnEdit?: boolean;
@@ -61,6 +61,11 @@ export type ResourceField<T extends Entity> = {
   getEditValue?: (item: T) => string | number | undefined;
   colSpan?: 1 | 2;
   options?: Array<{ value: string | number; label: string }>;
+};
+
+export type ResourceFormContext<T extends Entity> = {
+  editing: T | null;
+  fields: ResourceField<T>[];
 };
 
 export type ResourceColumn<T extends Entity> = {

@@ -28,6 +28,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     password: "Password",
     loginButton: "Login",
     loginError: "Login gagal. Periksa email dan password.",
+    sessionExpiredTitle: "Sesi berakhir",
+    sessionExpiredMessage: "Sesi Anda sudah berakhir. Silakan login kembali.",
     noAccount: "Belum punya akun?",
     registerLink: "Register",
     registerTitle: "Register",
@@ -60,16 +62,16 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     dashboardNegotiations: "Negosiasi",
     dashboardNotifications: "Notifikasi",
     dashboardOpportunities: "Peluang",
-    dashboardRecommendations: "AI Match",
-    dashboardPreferences: "Preferensi",
-    dashboardSurvey: "Survey",
+    dashboardRecommendations: "Rekomendasi",
+    dashboardPreferences: "Preferensi investasi",
+    dashboardSurvey: "Profil Risiko",
     dashboardSaved: "Tersimpan",
-    dashboardCompare: "Compare",
-    dashboardDealRoom: "Deal Room",
+    dashboardCompare: "Bandingkan",
+    dashboardDealRoom: "Ruang Deal",
     dashboardReviewQueue: "Review Queue",
     dashboardInvoices: "Invoice",
     dashboardPortfolio: "Portfolio",
-    dashboardProfit: "Profit",
+    dashboardProfit: "Bagi Hasil",
     dashboardSystemStatus: "Status Sistem",
     dashboardUsers: "Users",
     dashboardClasses: "Kelas",
@@ -79,11 +81,15 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     dashboardBankAccounts: "Rekening",
     dashboardWithdrawals: "Withdrawal",
     dashboardSupportedBanks: "Bank & E-Wallet",
+    openSurvey: "Buka Survey",
     dashboardGroupMain: "Utama",
     dashboardGroupAccount: "Akun",
     dashboardGroupBusiness: "Bisnis",
     dashboardGroupFunding: "Pendanaan",
     dashboardGroupTransactions: "Transaksi",
+    dashboardGroupOpportunities: "Peluang",
+    dashboardGroupProcess: "Proses",
+    dashboardGroupPortfolio: "Portfolio",
     dashboardGroupSystem: "Sistem",
   },
   en: {
@@ -96,6 +102,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     password: "Password",
     loginButton: "Login",
     loginError: "Login failed. Check your email and password.",
+    sessionExpiredTitle: "Session expired",
+    sessionExpiredMessage: "Your session has expired. Please log in again.",
     noAccount: "Don't have an account?",
     registerLink: "Register",
     registerTitle: "Register",
@@ -128,16 +136,16 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     dashboardNegotiations: "Negotiations",
     dashboardNotifications: "Notifications",
     dashboardOpportunities: "Opportunities",
-    dashboardRecommendations: "AI Match",
-    dashboardPreferences: "Preferences",
-    dashboardSurvey: "Survey",
+    dashboardRecommendations: "Recommendations",
+    dashboardPreferences: "Investment Preferences",
+    dashboardSurvey: "Risk Profile",
     dashboardSaved: "Saved",
     dashboardCompare: "Compare",
     dashboardDealRoom: "Deal Room",
     dashboardReviewQueue: "Review Queue",
     dashboardInvoices: "Invoices",
     dashboardPortfolio: "Portfolio",
-    dashboardProfit: "Profit",
+    dashboardProfit: "Profit Sharing",
     dashboardSystemStatus: "System Status",
     dashboardUsers: "Users",
     dashboardClasses: "Classes",
@@ -147,11 +155,15 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     dashboardBankAccounts: "Bank Accounts",
     dashboardWithdrawals: "Withdrawals",
     dashboardSupportedBanks: "Banks & E-Wallets",
+    openSurvey: "Open Survey",
     dashboardGroupMain: "Main",
     dashboardGroupAccount: "Account",
     dashboardGroupBusiness: "Business",
     dashboardGroupFunding: "Funding",
     dashboardGroupTransactions: "Transactions",
+    dashboardGroupOpportunities: "Opportunities",
+    dashboardGroupProcess: "Process",
+    dashboardGroupPortfolio: "Portfolio",
     dashboardGroupSystem: "System",
   },
 };
@@ -570,9 +582,9 @@ Object.assign(translations.en, {
 });
 
 Object.assign(translations.id, {
-  aiMatchScore: "AI Match Score",
+  aiMatchScore: "Peluang yang cocok untukmu",
   matchDataEmpty:
-    "Belum ada data match. Lengkapi data bisnis atau preferensi investor terlebih dahulu.",
+    "Peluang yang cocok akan muncul setelah preferensi tersimpan atau ada pengajuan UMKM baru.",
   latestUpdates: "Update terakhir",
   latestUpdatesEmpty: "Belum ada update terbaru.",
   umkmOverviewTitle: "Pantau bisnis, pengajuan, dan investor yang cocok",
@@ -610,7 +622,25 @@ Object.assign(translations.id, {
   activeInvestmentCount: "{count} investasi aktif",
   noActiveInvestments: "Belum ada investasi aktif",
   noActiveInvestmentsBody:
-    "Investasi aktif akan muncul setelah ada invoice yang dibayar dan deal berjalan.",
+    "Mulai dari melihat peluang UMKM yang sesuai dengan preferensimu.",
+  estimatedReturnMetric: "Estimasi imbal hasil",
+  investorNextActionLabel: "Langkah berikutnya",
+  investorNextPreferenceTitle: "Lengkapi preferensi investasi",
+  investorNextPreferenceBody:
+    "Jawab beberapa pertanyaan sederhana supaya FundRaise bisa menampilkan peluang UMKM yang lebih relevan.",
+  investorNextPreferenceButton: "Mulai sekarang",
+  investorNextOpportunityTitle: "Jelajahi peluang UMKM",
+  investorNextOpportunityBody:
+    "Preferensimu sudah tersimpan. Sekarang kamu bisa melihat peluang yang paling sesuai sebelum mulai negosiasi.",
+  investorNextOpportunityButton: "Lihat peluang",
+  investorNextNegotiationTitle: "Pantau negosiasi berjalan",
+  investorNextNegotiationBody:
+    "Lanjutkan proses negosiasi sampai deal siap dibuatkan invoice dan masuk ke portfolio.",
+  investorNextNegotiationButton: "Lihat negosiasi",
+  investorNextInvoiceTitle: "Selesaikan invoice",
+  investorNextInvoiceBody:
+    "Ada invoice yang perlu dibayar agar investasi bisa berjalan dan tercatat di portfolio.",
+  investorNextInvoiceButton: "Lihat invoice",
   registered: "Terdaftar",
   submissions: "Pengajuan",
   pendingCount: "{count} pending",
@@ -622,9 +652,9 @@ Object.assign(translations.id, {
 });
 
 Object.assign(translations.en, {
-  aiMatchScore: "AI Match Score",
+  aiMatchScore: "Opportunities matched for you",
   matchDataEmpty:
-    "No match data yet. Complete business data or investor preferences first.",
+    "Matched opportunities will appear after your preferences are saved or new UMKM submissions are available.",
   latestUpdates: "Latest updates",
   latestUpdatesEmpty: "No recent updates yet.",
   umkmOverviewTitle: "Monitor business, submissions, and matching investors",
@@ -662,7 +692,25 @@ Object.assign(translations.en, {
   activeInvestmentCount: "{count} active investments",
   noActiveInvestments: "No active investments yet",
   noActiveInvestmentsBody:
-    "Active investments will appear after invoices are paid and deals are running.",
+    "Start by browsing UMKM opportunities that match your preferences.",
+  estimatedReturnMetric: "Estimated return",
+  investorNextActionLabel: "Next step",
+  investorNextPreferenceTitle: "Complete investment preferences",
+  investorNextPreferenceBody:
+    "Answer a few simple questions so FundRaise can show more relevant UMKM opportunities.",
+  investorNextPreferenceButton: "Start now",
+  investorNextOpportunityTitle: "Browse UMKM opportunities",
+  investorNextOpportunityBody:
+    "Your preferences are saved. You can now review matched opportunities before starting a negotiation.",
+  investorNextOpportunityButton: "View opportunities",
+  investorNextNegotiationTitle: "Monitor active negotiations",
+  investorNextNegotiationBody:
+    "Continue the negotiation flow until the deal is ready for invoice and portfolio tracking.",
+  investorNextNegotiationButton: "View negotiations",
+  investorNextInvoiceTitle: "Complete invoice payment",
+  investorNextInvoiceBody:
+    "An invoice needs payment before the investment can start and appear in your portfolio.",
+  investorNextInvoiceButton: "View invoices",
   registered: "Registered",
   submissions: "Submissions",
   pendingCount: "{count} pending",
@@ -676,19 +724,42 @@ Object.assign(translations.en, {
 Object.assign(translations.id, {
   removeBookmark: "Hapus bookmark",
   saveOpportunity: "Simpan peluang",
+  noBusinessImage: "Belum ada foto bisnis",
   opportunityDefaultReason:
     "Peluang pendanaan UMKM dengan data bisnis, risiko, target modal, dan return yang bisa dibandingkan.",
   matchScoreValue: "Match score {score}",
+  riskProfileMetric: "Profil Risiko",
+  allRiskProfiles: "Semua profil risiko",
+  minReturnFilter: "Minimum return",
+  clearFilters: "Reset filter",
+  tryAgain: "Coba lagi",
+  compareLimitTitle: "Batas compare tercapai",
+  compareLimitMessage: "Maksimal 4 peluang bisa dibandingkan sekaligus.",
   noOpportunities: "Belum ada peluang",
   noOpportunitiesBody:
     "Peluang UMKM akan tampil setelah pengajuan dipublikasikan atau rekomendasi investor tersedia.",
+  noFilteredOpportunities: "Tidak ada hasil sesuai filter",
+  noFilteredOpportunitiesBody:
+    "Coba ubah kata kunci, sektor, atau minimum return.",
+  opportunityFetchLimitWarning:
+    "Sebagian data mungkin belum tampil karena jumlah peluang sangat banyak. Persempit pencarian atau muat ulang halaman.",
   marketplaceOpportunitiesTitle: "Peluang Pendanaan UMKM",
   marketplaceOpportunitiesBody:
     "Telusuri peluang pendanaan seperti katalog investasi: simpan peluang, bandingkan UMKM, lalu buka detail sebelum memulai negosiasi.",
+  recommendedForYou: "Cocok untukmu",
+  allOpportunities: "Semua peluang",
+  marketplaceTablistLabel: "Mode daftar peluang",
+  recommendedForYouTabHint:
+    "Daftar peluang yang dipersonalisasi dari preferensi investasi kamu.",
+  allOpportunitiesTabHint:
+    "Daftar seluruh peluang pendanaan UMKM yang tersedia saat ini.",
+  marketplaceResultsCount: "{count} peluang ditampilkan untuk mode {mode}.",
+  improveRecommendations: "Atur preferensi",
   savedCount: "Tersimpan ({count})",
   compareCount: "Compare ({count})",
   searchUmkmSectorCity: "Cari UMKM, sektor, kota",
   loadingOpportunities: "Memuat peluang",
+  loadMore: "Muat lagi",
   loadOpportunitiesError: "Gagal memuat peluang dari backend.",
   aiMatchMarketplaceTitle: "AI Match Peluang",
   aiMatchMarketplaceBody:
@@ -699,6 +770,9 @@ Object.assign(translations.id, {
   loadingRecommendations: "Memuat rekomendasi",
   recommendationsUnavailable:
     "Rekomendasi belum tersedia. Isi survey atau preferensi investor terlebih dahulu.",
+  recommendationsFallbackBody:
+    "Rekomendasi belum tersedia, jadi semua peluang ditampilkan sementara.",
+  viewAllOpportunities: "Lihat semua peluang",
   noRecommendations: "Belum ada rekomendasi",
   noRecommendationsBody:
     "Isi survey investor untuk menyiapkan preferensi matching.",
@@ -709,9 +783,10 @@ Object.assign(translations.id, {
   savedOpportunitiesBody:
     "Bookmark peluang UMKM yang ingin kamu review lagi sebelum masuk ke negosiasi.",
   compareAll: "Compare Semua",
+  removeFromCompare: "Hapus dari Compare",
   compareUmkmTitle: "Compare UMKM",
   compareUmkmBody:
-    "Bandingkan peluang berdasarkan target pendanaan, return, risiko, progress, dan skor match sebelum mengambil keputusan.",
+    "Bandingkan peluang berdasarkan target pendanaan, return, progress, dan skor match sebelum mengambil keputusan.",
   addOpportunity: "Tambah Peluang",
   noCompareItems: "Belum ada peluang untuk dibandingkan",
   noCompareItemsBody: "Simpan atau pilih minimal dua peluang dari katalog peluang.",
@@ -735,14 +810,22 @@ Object.assign(translations.id, {
   riskMemo: "Risk Memo",
   startNegotiation: "Mulai Negosiasi",
   startNegotiationBody:
-    "Ajukan nominal dan return yang kamu tawarkan ke UMKM. Setelah dibuat, lanjutkan proses di Deal Room.",
+    "Ajukan nominal (IDR) dan return (%) yang kamu tawarkan ke UMKM. Setelah dibuat, lanjutkan proses di halaman Negosiasi.",
   offerNominal: "Nominal Penawaran",
+  offerNominalPlaceholder: "Mis. 50.000.000",
+  offerNominalHint:
+    "Jumlah dana yang kamu tawarkan.",
   offerReturn: "Return Penawaran",
+  offerReturnPlaceholder: "Mis. 12",
+  offerReturnHint:
+    "Masukkan persentase return per tahun. Contoh 12.5 berarti 12,5% per tahun.",
   notes: "Catatan",
+  notesPlaceholder:
+    "Contoh: skema pembayaran fleksibel, siap negosiasi tenor 12 bulan.",
   sendOffer: "Kirim Penawaran",
   viewNegotiations: "Lihat Negosiasi",
   negotiationStartedMessage:
-    "Negosiasi berhasil dimulai. Buka Deal Room untuk memantau prosesnya.",
+    "Negosiasi berhasil dimulai. Buka halaman Negosiasi untuk memantau prosesnya.",
   negotiationStartError: "Negosiasi belum berhasil dibuat.",
   loadingOpportunityDetail: "Memuat detail peluang",
   dealRoomTitle: "Deal Room",
@@ -777,19 +860,42 @@ Object.assign(translations.id, {
 Object.assign(translations.en, {
   removeBookmark: "Remove bookmark",
   saveOpportunity: "Save opportunity",
+  noBusinessImage: "No business photo yet",
   opportunityDefaultReason:
     "UMKM funding opportunity with comparable business data, risk, capital target, and return.",
   matchScoreValue: "Match score {score}",
+  riskProfileMetric: "Risk Profile",
+  allRiskProfiles: "All risk profiles",
+  minReturnFilter: "Minimum return",
+  clearFilters: "Clear filters",
+  tryAgain: "Try again",
+  compareLimitTitle: "Compare limit reached",
+  compareLimitMessage: "You can compare up to 4 opportunities at once.",
   noOpportunities: "No opportunities yet",
   noOpportunitiesBody:
     "UMKM opportunities will appear after submissions are published or investor recommendations are available.",
+  noFilteredOpportunities: "No results match the filters",
+  noFilteredOpportunitiesBody:
+    "Try changing the keyword, sector, or minimum return.",
+  opportunityFetchLimitWarning:
+    "Some data may not be visible because there are many opportunities. Narrow the search or reload the page.",
   marketplaceOpportunitiesTitle: "UMKM Funding Opportunities",
   marketplaceOpportunitiesBody:
     "Browse funding opportunities like an investment catalog: save opportunities, compare UMKM, then open details before starting negotiations.",
+  recommendedForYou: "Recommended for you",
+  allOpportunities: "All opportunities",
+  marketplaceTablistLabel: "Opportunity list mode",
+  recommendedForYouTabHint:
+    "Personalized opportunities based on your saved investment preferences.",
+  allOpportunitiesTabHint:
+    "All currently available UMKM funding opportunities.",
+  marketplaceResultsCount: "{count} opportunities are shown for {mode} mode.",
+  improveRecommendations: "Set preferences",
   savedCount: "Saved ({count})",
   compareCount: "Compare ({count})",
   searchUmkmSectorCity: "Search UMKM, sector, city",
   loadingOpportunities: "Loading opportunities",
+  loadMore: "Load more",
   loadOpportunitiesError: "Failed to load opportunities from backend.",
   aiMatchMarketplaceTitle: "AI Match Opportunities",
   aiMatchMarketplaceBody:
@@ -800,6 +906,9 @@ Object.assign(translations.en, {
   loadingRecommendations: "Loading recommendations",
   recommendationsUnavailable:
     "Recommendations are not available yet. Fill in the investor survey or preferences first.",
+  recommendationsFallbackBody:
+    "Recommendations are not available yet, so all opportunities are shown for now.",
+  viewAllOpportunities: "View all opportunities",
   noRecommendations: "No recommendations yet",
   noRecommendationsBody:
     "Fill in the investor survey to prepare matching preferences.",
@@ -810,9 +919,10 @@ Object.assign(translations.en, {
   savedOpportunitiesBody:
     "Bookmarked UMKM opportunities you want to review again before negotiation.",
   compareAll: "Compare All",
+  removeFromCompare: "Remove from Compare",
   compareUmkmTitle: "Compare UMKM",
   compareUmkmBody:
-    "Compare opportunities by funding target, return, risk, progress, and match score before deciding.",
+    "Compare opportunities by funding target, return, progress, and match score before deciding.",
   addOpportunity: "Add Opportunity",
   noCompareItems: "No opportunities to compare",
   noCompareItemsBody:
@@ -837,14 +947,22 @@ Object.assign(translations.en, {
   riskMemo: "Risk Memo",
   startNegotiation: "Start Negotiation",
   startNegotiationBody:
-    "Submit the nominal amount and return you offer to the UMKM. After it is created, continue the process in Deal Room.",
+    "Submit the offered nominal amount (IDR) and return (%). After it is created, continue the process in the Negotiations page.",
   offerNominal: "Offer Nominal",
+  offerNominalPlaceholder: "Ex: 50,000,000",
+  offerNominalHint:
+    "Total funding amount you want to offer.",
   offerReturn: "Offer Return",
+  offerReturnPlaceholder: "Ex: 12",
+  offerReturnHint:
+    "Enter the annual return percentage. Example: 12.5 means 12.5% per year.",
   notes: "Notes",
+  notesPlaceholder:
+    "Example: flexible payment scheme, open to 12-month tenor negotiation.",
   sendOffer: "Send Offer",
   viewNegotiations: "View Negotiations",
   negotiationStartedMessage:
-    "Negotiation started successfully. Open Deal Room to monitor the process.",
+    "Negotiation started successfully. Open the Negotiations page to monitor the process.",
   negotiationStartError: "Negotiation could not be created.",
   loadingOpportunityDetail: "Loading opportunity detail",
   dealRoomTitle: "Deal Room",
@@ -880,6 +998,7 @@ Object.assign(translations.id, {
   done: "Selesai",
   locked: "Terkunci",
   next: "Berikutnya",
+  back: "Kembali",
   step: "Step",
   umkmOnboarding: "UMKM Onboarding",
   umkmOnboardingTitle: "Siapkan bisnis sampai layak tampil ke investor",
@@ -962,6 +1081,7 @@ Object.assign(translations.en, {
   done: "Done",
   locked: "Locked",
   next: "Next",
+  back: "Back",
   step: "Step",
   umkmOnboarding: "UMKM Onboarding",
   umkmOnboardingTitle: "Prepare your business until it is investor-ready",
@@ -1723,6 +1843,72 @@ Object.assign(translations.id, {
     "Isi preferensi investor yang sudah sesuai dengan kontrak backend. Setelah disimpan, sistem akan meminta rekomendasi UMKM dari endpoint AI matchmaking.",
   investorSurveyBackendMode:
     "Isi preferensi berdasarkan target investasimu. Sistem akan memakai data ini untuk menampilkan rekomendasi UMKM yang lebih relevan.",
+  investorQuickSetupTitle: "Siapkan preferensi investasi",
+  investorQuickSetupBody:
+    "Jawab beberapa pertanyaan singkat agar FundRaise bisa menampilkan peluang UMKM yang lebih relevan.",
+  investorQuickSetupStep: "Pertanyaan {current} dari {total}",
+  investorQuickSetupSkip: "Lewati dulu",
+  investorQuickSetupSave: "Simpan preferensi",
+  investorQuickSetupSuccess: "Preferensi investor berhasil disimpan.",
+  investorQuickSetupRefreshWarning:
+    "Preferensi tersimpan. Rekomendasi bisa di-refresh lagi dari halaman rekomendasi.",
+  investorQuickSetupError: "Preferensi belum berhasil disimpan.",
+  investorQuickSetupEditHint:
+    "Preferensi ini bisa kamu ubah lagi kapan saja dari halaman Preferensi atau Survey.",
+  investorQuickSetupRange: "Nilai harus berada di rentang {min} - {max}.",
+  investorQuickGoalTitle: "Apa tujuan utama investasimu?",
+  investorQuickGoalHelp:
+    "Pilih tujuan yang paling mendekati alasan kamu ingin mendanai UMKM.",
+  investorQuickGoalStable: "Pendapatan stabil",
+  investorQuickGoalStableBody: "Saya lebih nyaman dengan bisnis yang sudah matang dan hasilnya cenderung stabil.",
+  investorQuickGoalGrowth: "Pertumbuhan nilai",
+  investorQuickGoalGrowthBody: "Saya mencari bisnis yang masih bisa berkembang lebih besar.",
+  investorQuickGoalImpact: "Dampak ke UMKM lokal",
+  investorQuickGoalImpactBody: "Saya ingin modal saya membantu bisnis kecil bertumbuh.",
+  investorQuickGoalMixed: "Campuran",
+  investorQuickGoalMixedBody: "Saya ingin keseimbangan antara potensi hasil, stabilitas, dan dampak.",
+  investorQuickRiskTitle: "Seberapa nyaman kamu dengan risiko?",
+  investorQuickRiskHelp:
+    "Jawaban ini membantu sistem menyeimbangkan peluang yang aman dan peluang yang lebih agresif.",
+  investorQuickRiskSafe: "Aman dan stabil",
+  investorQuickRiskSafeBody: "Saya lebih memilih bisnis yang datanya kuat dan risikonya lebih rendah.",
+  investorQuickRiskBalanced: "Seimbang",
+  investorQuickRiskBalancedBody: "Saya bisa menerima risiko wajar selama peluangnya masuk akal.",
+  investorQuickRiskAggressive: "Agresif asal peluang bagus",
+  investorQuickRiskAggressiveBody: "Saya terbuka pada peluang berisiko lebih tinggi jika potensi hasilnya menarik.",
+  investorQuickUmkmTitle: "Tipe UMKM seperti apa yang kamu suka?",
+  investorQuickUmkmHelp:
+    "Pilih tahap bisnis yang paling nyaman untuk kamu pertimbangkan.",
+  investorQuickUmkmEstablished: "Sudah berjalan stabil",
+  investorQuickUmkmEstablishedBody: "Bisnis sudah lama berjalan dan punya pola penjualan yang lebih jelas.",
+  investorQuickUmkmGrowing: "Sedang bertumbuh",
+  investorQuickUmkmGrowingBody: "Bisnis sudah terbukti dan sedang mencari modal untuk naik kelas.",
+  investorQuickUmkmPotential: "Baru berkembang tapi potensial",
+  investorQuickUmkmPotentialBody: "Bisnis masih awal, tetapi punya peluang pertumbuhan yang menarik.",
+  investorQuickSectorTitle: "Sektor apa yang menarik untukmu?",
+  investorQuickSectorHelp:
+    "Sektor ini dipakai saat sistem me-refresh rekomendasi awal.",
+  investorQuickSectorCulinary: "Kuliner",
+  investorQuickSectorCulinaryBody: "Makanan, minuman, kedai, katering, dan usaha konsumsi.",
+  investorQuickSectorFashion: "Fashion",
+  investorQuickSectorFashionBody: "Busana, aksesori, tekstil, dan produk gaya hidup.",
+  investorQuickSectorAgribusiness: "Agribisnis",
+  investorQuickSectorAgribusinessBody: "Pertanian, peternakan, komoditas, dan produk pangan.",
+  investorQuickSectorServiceTech: "Jasa atau teknologi",
+  investorQuickSectorServiceTechBody: "Layanan profesional, digital, teknologi, dan operasional.",
+  investorQuickSectorAny: "Bebas",
+  investorQuickSectorAnyBody: "Tampilkan peluang dari semua sektor yang tersedia.",
+  investorQuickPickTitle: "Biasanya kamu memilih peluang dari apa?",
+  investorQuickPickHelp:
+    "Ini membantu sistem mengurutkan peluang yang paling cocok dengan cara kamu mengambil keputusan.",
+  investorQuickPickReturn: "Estimasi hasil paling menarik",
+  investorQuickPickReturnBody: "Saya ingin melihat peluang dengan potensi imbal hasil yang kuat.",
+  investorQuickPickRisk: "Risiko lebih rendah",
+  investorQuickPickRiskBody: "Saya mengutamakan bisnis yang lebih aman dan stabil.",
+  investorQuickPickData: "Data bisnis paling lengkap",
+  investorQuickPickDataBody: "Saya lebih percaya kalau data operasional dan performanya jelas.",
+  investorQuickPickInterest: "Dekat dengan minat saya",
+  investorQuickPickInterestBody: "Saya ingin peluang yang sesuai dengan sektor atau tipe bisnis yang saya pahami.",
   surveyCustomerSatisfaction: "Minimal Kepuasan Pelanggan",
   surveyCustomerSatisfactionHelp:
     "Skala 1-5 untuk preferensi kualitas pelanggan UMKM.",
@@ -1757,6 +1943,14 @@ Object.assign(translations.id, {
     "Endpoint compare backend membutuhkan minimal 2 peluang. Pilih satu peluang lagi dari katalog peluang.",
   compareBackendFallback:
     "Compare backend belum mengembalikan data, FE menampilkan fallback dari daftar peluang.",
+  compareInvalidIdsWarning:
+    "{count} ID compare tidak valid atau duplikat, sehingga diabaikan.",
+  compareTrimmedIdsWarning:
+    "Maksimal compare {count} peluang per sesi. Sisa ID di URL tidak dipakai.",
+  compareMissingIdsWarning:
+    "{count} peluang compare tidak ditemukan atau belum tersedia.",
+  compareAutoSelectionInfo:
+    "Belum ada ID compare di URL. Sistem menampilkan hingga {count} peluang terbaru sebagai pembanding awal.",
   classPredictedByModel:
     "Class dihitung oleh backend/ML saat profil bisnis disimpan.",
 });
@@ -1766,6 +1960,72 @@ Object.assign(translations.en, {
     "Fill investor preferences that match the backend contract. After saving, the system requests UMKM recommendations from the AI matchmaking endpoint.",
   investorSurveyBackendMode:
     "Set preferences based on your investment target. The system uses them to show more relevant UMKM recommendations.",
+  investorQuickSetupTitle: "Set up investment preferences",
+  investorQuickSetupBody:
+    "Answer a few quick questions so FundRaise can show more relevant UMKM opportunities.",
+  investorQuickSetupStep: "Question {current} of {total}",
+  investorQuickSetupSkip: "Skip for now",
+  investorQuickSetupSave: "Save preferences",
+  investorQuickSetupSuccess: "Investor preferences saved successfully.",
+  investorQuickSetupRefreshWarning:
+    "Preferences were saved. Recommendations can be refreshed again from the recommendation page.",
+  investorQuickSetupError: "Preferences could not be saved.",
+  investorQuickSetupEditHint:
+    "You can change these preferences later from the Preferences or Survey page.",
+  investorQuickSetupRange: "Value must be between {min} - {max}.",
+  investorQuickGoalTitle: "What is your main investment goal?",
+  investorQuickGoalHelp:
+    "Choose the goal that best matches why you want to fund UMKM.",
+  investorQuickGoalStable: "Stable income",
+  investorQuickGoalStableBody: "I prefer mature businesses with more stable results.",
+  investorQuickGoalGrowth: "Value growth",
+  investorQuickGoalGrowthBody: "I am looking for businesses that can grow bigger.",
+  investorQuickGoalImpact: "Impact on local UMKM",
+  investorQuickGoalImpactBody: "I want my capital to help smaller businesses grow.",
+  investorQuickGoalMixed: "Mixed",
+  investorQuickGoalMixedBody: "I want a balance of return potential, stability, and impact.",
+  investorQuickRiskTitle: "How comfortable are you with risk?",
+  investorQuickRiskHelp:
+    "This helps the system balance safer opportunities with more aggressive ones.",
+  investorQuickRiskSafe: "Safe and stable",
+  investorQuickRiskSafeBody: "I prefer businesses with stronger data and lower risk.",
+  investorQuickRiskBalanced: "Balanced",
+  investorQuickRiskBalancedBody: "I can accept reasonable risk when the opportunity makes sense.",
+  investorQuickRiskAggressive: "Aggressive if the opportunity is good",
+  investorQuickRiskAggressiveBody: "I am open to higher-risk opportunities if the potential return is attractive.",
+  investorQuickUmkmTitle: "What type of UMKM do you prefer?",
+  investorQuickUmkmHelp:
+    "Choose the business stage you are most comfortable considering.",
+  investorQuickUmkmEstablished: "Already stable",
+  investorQuickUmkmEstablishedBody: "The business has been running for a while with clearer sales patterns.",
+  investorQuickUmkmGrowing: "Currently growing",
+  investorQuickUmkmGrowingBody: "The business is proven and looking for capital to scale.",
+  investorQuickUmkmPotential: "Early but promising",
+  investorQuickUmkmPotentialBody: "The business is still early, but has attractive growth potential.",
+  investorQuickSectorTitle: "Which sector interests you?",
+  investorQuickSectorHelp:
+    "This sector is used when the system refreshes your initial recommendations.",
+  investorQuickSectorCulinary: "Culinary",
+  investorQuickSectorCulinaryBody: "Food, beverages, cafes, catering, and consumer businesses.",
+  investorQuickSectorFashion: "Fashion",
+  investorQuickSectorFashionBody: "Clothing, accessories, textiles, and lifestyle products.",
+  investorQuickSectorAgribusiness: "Agribusiness",
+  investorQuickSectorAgribusinessBody: "Farming, livestock, commodities, and food products.",
+  investorQuickSectorServiceTech: "Services or technology",
+  investorQuickSectorServiceTechBody: "Professional, digital, technology, and operational services.",
+  investorQuickSectorAny: "Any sector",
+  investorQuickSectorAnyBody: "Show opportunities from every available sector.",
+  investorQuickPickTitle: "How do you usually choose an opportunity?",
+  investorQuickPickHelp:
+    "This helps the system rank opportunities based on how you make decisions.",
+  investorQuickPickReturn: "Most attractive estimated return",
+  investorQuickPickReturnBody: "I want opportunities with strong return potential.",
+  investorQuickPickRisk: "Lower risk",
+  investorQuickPickRiskBody: "I prioritize businesses that feel safer and more stable.",
+  investorQuickPickData: "Most complete business data",
+  investorQuickPickDataBody: "I trust opportunities more when operational and performance data is clear.",
+  investorQuickPickInterest: "Close to my interests",
+  investorQuickPickInterestBody: "I want opportunities that match sectors or business types I understand.",
   surveyCustomerSatisfaction: "Minimum Customer Satisfaction",
   surveyCustomerSatisfactionHelp:
     "Scale 1-5 for the preferred UMKM customer quality.",
@@ -1800,6 +2060,14 @@ Object.assign(translations.en, {
     "The backend compare endpoint requires at least 2 opportunities. Select one more opportunity from the opportunity catalog.",
   compareBackendFallback:
     "Backend compare has not returned data, so the FE shows a fallback from the opportunity list.",
+  compareInvalidIdsWarning:
+    "{count} compare IDs are invalid or duplicated, so they were ignored.",
+  compareTrimmedIdsWarning:
+    "Compare is limited to {count} opportunities per session. Extra IDs in the URL were ignored.",
+  compareMissingIdsWarning:
+    "{count} compared opportunities were not found or are not available yet.",
+  compareAutoSelectionInfo:
+    "No compare IDs were provided in the URL. The system shows up to {count} recent opportunities as a starter comparison.",
   classPredictedByModel:
     "Class is calculated by the backend/ML when the business profile is saved.",
 });
@@ -1953,6 +2221,7 @@ Object.assign(translations.id, {
   required: "Wajib",
   recommended: "Disarankan",
   upload: "Upload",
+  uploading: "Mengunggah...",
   replace: "Ganti",
   documentLocalNoticeTitle: "Belum tersambung backend",
   documentLocalNoticeBody:
@@ -2136,6 +2405,7 @@ Object.assign(translations.en, {
   required: "Required",
   recommended: "Recommended",
   upload: "Upload",
+  uploading: "Uploading...",
   replace: "Replace",
   documentLocalNoticeTitle: "Not connected to backend yet",
   documentLocalNoticeBody:

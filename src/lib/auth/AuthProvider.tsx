@@ -4,12 +4,22 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import type { AuthUser, LoginPayload, RegisterPayload, UserRole } from "../../types";
-import { apiClient, unwrapToken } from "../api/client";
+import {
+  apiClient,
+  authSessionExpiredEvent,
+  authSessionRefreshedEvent,
+  unwrap,
+  unwrapToken,
+} from "../api/client";
+import { useLanguage } from "../i18n/LanguageProvider";
+import { useToast } from "../../components/ToastProvider";
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -99,6 +109,11 @@ const tokenExpiryMs = (token: string): number | null => {
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const toast = useToast();
+  const { t } = useLanguage();
+  const lastSessionExpiredToast = useRef(0);
   const [user, setUser] = useState<AuthUser | null>(() => {
     const storedUser = localStorage.getItem(userKey);
     return storedUser ? (JSON.parse(storedUser) as AuthUser) : null;
@@ -173,7 +188,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token: responseToken,
         refreshToken: responseRefreshToken,
       } = unwrapToken<Record<string, unknown>>(response.data);
-      const nextUser = normalizeUser(data, payload.role ?? fallbackRole);
+      let nextUser = normalizeUser(data, payload.role ?? fallbackRole);
+      if (path === "/user/login") {
+        try {
+          const meResponse = await apiClient.get("/user/me");
+          const mePayload = unwrap<Record<string, unknown>>(meResponse.data);
+          nextUser = normalizeUser({ ...mePayload, ...data }, payload.role ?? fallbackRole);
+        } catch {
+          // Fallback to login payload if /user/me is unavailable.
+        }
+      }
       if (!responseToken) throw new Error("Login response does not include token");
       applySession(nextUser, responseToken, responseRefreshToken ?? null);
       return nextUser;
@@ -276,6 +300,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.clearTimeout(timeoutId);
     };
   }, [applySession, logout, refreshToken, token, user]);
+
+  useEffect(() => {
+    const authPaths = new Set([
+      "/login",
+      "/register",
+      "/forgot-password",
+      "/reset-password",
+      "/verify-email",
+    ]);
+
+    const onSessionExpired = () => {
+      setUser(null);
+      setToken(null);
+      setRefreshToken(null);
+
+      const now = Date.now();
+      if (now - lastSessionExpiredToast.current > 1_500) {
+        toast.warning(t("sessionExpiredMessage"), {
+          title: t("sessionExpiredTitle"),
+        });
+        lastSessionExpiredToast.current = now;
+      }
+
+      if (!authPaths.has(location.pathname)) {
+        navigate("/login", {
+          replace: true,
+          state: {
+            from: {
+              pathname: `${location.pathname}${location.search}`,
+            },
+          },
+        });
+      }
+    };
+
+    const onSessionRefreshed = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        user?: Record<string, unknown>;
+        token?: string;
+        refreshToken?: string | null;
+      }>).detail;
+      if (!detail?.user || !detail.token) return;
+      const fallbackRole = user?.role ?? normalizeRole(detail.user, "umkm");
+      applySession(
+        normalizeUser(detail.user, fallbackRole),
+        detail.token,
+        detail.refreshToken ?? localStorage.getItem(refreshTokenKey),
+      );
+    };
+
+    window.addEventListener(authSessionExpiredEvent, onSessionExpired);
+    window.addEventListener(authSessionRefreshedEvent, onSessionRefreshed);
+
+    return () => {
+      window.removeEventListener(authSessionExpiredEvent, onSessionExpired);
+      window.removeEventListener(authSessionRefreshedEvent, onSessionRefreshed);
+    };
+  }, [applySession, location.pathname, location.search, navigate, t, toast, user?.role]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

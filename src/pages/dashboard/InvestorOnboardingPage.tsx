@@ -254,7 +254,7 @@ export function InvestorOnboardingPage() {
         key: "survey",
         titleKey: "investorStepSurveyTitle",
         descriptionKey: "investorStepSurveyBody",
-        href: "/dashboard/investor/survey",
+        href: "/dashboard/investor/preferensi",
         actionKey: "completeSurvey",
         icon: BookOpen,
         done: false,
