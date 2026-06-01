@@ -64,6 +64,8 @@ const asRecord = (value: unknown): Record<string, unknown> =>
     : {};
 
 const asEntityArray = (value: unknown): Entity[] => (Array.isArray(value) ? (value as Entity[]) : []);
+const asEntity = (value: unknown): Entity =>
+  value && typeof value === "object" ? (value as Entity) : { id: "" };
 const asRecommendationArray = (value: unknown): Entity[] => {
   if (Array.isArray(value)) return value as Entity[];
   if (value && typeof value === "object") {
@@ -80,7 +82,60 @@ const toNumber = (value: unknown) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 };
+const readNumberPath = (item: Entity, paths: string[]) =>
+  toNumber(readPath(item, paths, "__missing__"));
 const clampPercent = (value: number) => Math.max(0, Math.min(100, value));
+const toTitleWords = (value: string) =>
+  value
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .map((chunk) => chunk.charAt(0).toUpperCase() + chunk.slice(1))
+    .join(" ");
+const mergeBusinessForImage = (item: Entity, businessById: Map<string, Entity>) => {
+  const currentBusiness = asEntity(item.bisnis);
+  const businessId = textValue(readPath(item, ["bisnis.id", "bisnis_id"], ""), "");
+  const fullBusiness = businessById.get(businessId);
+  if (!fullBusiness) return item;
+
+  const fullBusinessCovers = readPath(fullBusiness, ["covers"], "");
+  const currentBusinessCovers = readPath(currentBusiness, ["covers"], "");
+  const covers = Array.isArray(fullBusinessCovers) ? fullBusinessCovers : currentBusinessCovers;
+
+  return {
+    ...item,
+    bisnis: {
+      ...fullBusiness,
+      ...currentBusiness,
+      covers,
+    },
+    covers,
+  };
+};
+const businessImage = (item: Entity) => {
+  const directImage = textValue(
+    readPath(item, [
+      "image_url",
+      "cover_image_url",
+      "cover.url",
+      "cover.image_url",
+      "bisnis.image_url",
+      "bisnis.cover_image_url",
+    ], ""),
+    "",
+  );
+  if (directImage) return directImage;
+
+  const covers = readPath(item, ["covers", "bisnis.covers"], "");
+  if (Array.isArray(covers)) {
+    const firstCover = covers
+      .map((cover) => (cover && typeof cover === "object" ? (cover as Entity) : ({ id: "" } as Entity)))
+      .sort((first, second) => Number(first.urutan || 0) - Number(second.urutan || 0))[0];
+    const coverUrl = textValue(readPath(firstCover ?? { id: "" }, ["image_url", "url"], ""), "");
+    if (coverUrl) return coverUrl;
+  }
+  return "";
+};
 
 type OverviewStep = {
   key: string;
@@ -318,36 +373,45 @@ function MatchList({
     () =>
       submissions
         .map((item) => {
-          const fallbackId = textValue(readPath(item, ["pengajuan_id", "id"], ""), "");
+          const proposalId = textValue(
+            readPath(item, ["pengajuan_id", "proposal_id", "pengajuan.id", "pengajuans_id"], ""),
+            "",
+          );
           const rawName = textValue(
             readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "bisnis_nama", "nama", "business_name"], ""),
             "",
           );
           const businessName =
             rawName ||
-            (fallbackId
-              ? `${language === "id" ? "Peluang UMKM" : "UMKM Opportunity"} #${fallbackId}`
+            (proposalId
+              ? `${language === "id" ? "Peluang UMKM" : "UMKM Opportunity"} #${proposalId}`
               : language === "id"
                 ? "Peluang UMKM"
                 : "UMKM Opportunity");
           const sector = textValue(readPath(item, ["bisnis.tipe_usaha", "tipe_usaha", "sektor"], ""), "");
           const city = textValue(readPath(item, ["bisnis.kota", "kota"], ""), "");
-          const subtitle = [sector, city].filter(Boolean).join(" - ");
-          const scoreValue = toNumber(readPath(item, ["match_score", "skor_kecocokan"], ""));
+          const subtitle = [sector ? toTitleWords(sector) : "", city].filter(Boolean).join(" - ");
+          const scoreValue = readNumberPath(item, ["match_score", "skor_kecocokan"]);
           const score = scoreValue !== null && scoreValue > 0 ? clampPercent(scoreValue) : null;
-          const returnValue = toNumber(readPath(item, ["per_anual_return", "return", "return_investasi"], ""));
-          const riskValue = textValue(
-            readPath(item, ["risk_level", "matched_class", "class_label", "kelas.nama_kelas", "kelas"], ""),
-            "",
-          );
-          const riskProfile =
-            riskValue && riskValue !== "-"
-              ? riskValue
-              : language === "id"
-                ? "Belum tersedia"
-                : "Not available";
-          const targetValue = toNumber(readPath(item, ["target_pendanaan", "bisnis.target_pendanaan"], ""));
-          const fundedValue = toNumber(readPath(item, ["total_pendanaan", "terkumpul"], ""));
+          const returnValue = readNumberPath(item, [
+            "per_anual_return",
+            "return",
+            "return_investasi",
+            "pengajuan.per_anual_return",
+            "proposal.per_anual_return",
+          ]);
+          const targetValue = readNumberPath(item, [
+            "target_pendanaan",
+            "bisnis.target_pendanaan",
+            "pengajuan.target_pendanaan",
+            "proposal.target_pendanaan",
+          ]);
+          const fundedValue = readNumberPath(item, [
+            "total_pendanaan",
+            "terkumpul",
+            "pengajuan.total_pendanaan",
+            "proposal.total_pendanaan",
+          ]);
           const hasFundingProgress =
             targetValue !== null &&
             targetValue > 0 &&
@@ -356,17 +420,21 @@ function MatchList({
           const progress = hasFundingProgress
             ? clampPercent(Math.round((fundedValue / Math.max(targetValue, 1)) * 100))
             : null;
+          const cardKey =
+            proposalId ||
+            textValue(readPath(item, ["id", "bisnis.id"], ""), "");
           return {
-            id: fallbackId || textValue(item.id),
+            id: cardKey,
             businessName,
             subtitle,
             score,
             returnValue,
-            riskProfile,
             hasFundingProgress,
             fundedValue: fundedValue ?? 0,
             targetValue: targetValue ?? 0,
             progress,
+            detailHref: proposalId ? `/dashboard/investor/peluang/${proposalId}` : "/dashboard/investor/peluang",
+            imageSrc: businessImage(item),
           };
         })
         .sort((first, second) => {
@@ -395,63 +463,130 @@ function MatchList({
         </Link>
       </div>
       <div className="mt-5">
-        {isLoading ? <ListSkeleton rows={3} /> : null}
+        {isLoading ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <article
+                key={`match-loading-${index}`}
+                className="overflow-hidden rounded-md border border-base-300 bg-white shadow-sm"
+              >
+                <div className="skeleton h-52 w-full" />
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="skeleton h-5 w-4/5 rounded-md" />
+                      <div className="skeleton h-4 w-3/5 rounded-md" />
+                    </div>
+                    <div className="skeleton h-8 w-16 rounded-md" />
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <div className="skeleton h-16 rounded-md" />
+                    <div className="skeleton h-16 rounded-md" />
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <div className="skeleton h-3 w-full rounded-full" />
+                    <div className="skeleton h-10 w-full rounded-md" />
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : null}
         {!isLoading && items.length === 0 ? (
           <EmptyState title="dataUnavailable" body="matchDataEmpty" compact icon={Scale} />
         ) : null}
         {!isLoading && items.length > 0 ? (
-          <div className="grid gap-3 md:grid-cols-2">
-            {items.slice(0, 4).map((item) => {
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {items.slice(0, 3).map((item) => {
+              const returnLabel =
+                item.returnValue !== null && item.returnValue > 0
+                  ? percent(item.returnValue)
+                  : "-";
+              const targetLabel =
+                item.targetValue > 0
+                  ? currency(item.targetValue)
+                  : "-";
               return (
-                <article key={item.id} className="rounded-md border border-base-300 bg-base-100 p-4 transition-shadow duration-150 hover:shadow-sm">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="truncate text-base font-black text-neutral">{item.businessName}</p>
-                      <p className="mt-1 text-xs font-semibold text-neutral/50">
-                        {item.subtitle || (language === "id" ? "Data bisnis aktif" : "Active business data")}
-                      </p>
-                    </div>
-                    {item.score !== null ? (
-                      <span className="badge badge-primary badge-lg text-white">{item.score}%</span>
+                <article
+                  key={item.id}
+                  className="flex h-full flex-col overflow-hidden rounded-md border border-base-300 bg-white shadow-sm transition-[transform,box-shadow] duration-200 ease-out md:hover:-translate-y-0.5 md:hover:shadow-md"
+                >
+                  <div className="aspect-[16/9] w-full overflow-hidden bg-base-200">
+                    {item.imageSrc ? (
+                      <img
+                        src={item.imageSrc}
+                        alt={item.businessName}
+                        className="h-full w-full object-cover object-center"
+                        loading="lazy"
+                        onError={(event) => {
+                          event.currentTarget.src = "/brand/logo-horizontal-transparent.png";
+                          event.currentTarget.className = "h-full w-full object-contain p-8 opacity-70";
+                        }}
+                      />
                     ) : (
-                      <span className="badge badge-outline badge-lg">
-                        {language === "id" ? "Belum dinilai" : "Not scored"}
-                      </span>
+                      <div className="grid h-full place-items-center px-6 text-center">
+                        <div>
+                          <img
+                            src="/brand/logo-icon-transparent.png"
+                            alt=""
+                            className="mx-auto h-12 w-12 object-contain opacity-70"
+                          />
+                          <p className="mt-3 text-sm font-bold text-neutral/50">{t("noBusinessImage")}</p>
+                        </div>
+                      </div>
                     )}
                   </div>
 
-                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                    <div className="rounded-md bg-base-200/70 px-3 py-2">
-                      <p className="text-[11px] font-bold uppercase tracking-wide text-neutral/45">
-                        {t("estimatedReturnMetric")}
-                      </p>
-                      <p className="mt-1 text-sm font-black text-neutral">
-                        {item.returnValue !== null ? percent(item.returnValue) : "-"}
-                      </p>
+                  <div className="flex flex-1 flex-col p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <h3 className="truncate text-lg font-black">{item.businessName}</h3>
+                        <p className="mt-1 text-xs font-semibold text-neutral/55">
+                          {item.subtitle || (language === "id" ? "Data bisnis aktif" : "Active business data")}
+                        </p>
+                      </div>
+                      {item.score !== null && item.score > 0 ? (
+                        <span className="badge badge-success border-transparent text-sm font-black text-white">
+                          {percent(item.score)}
+                        </span>
+                      ) : null}
                     </div>
-                    <div className="rounded-md bg-base-200/70 px-3 py-2">
-                      <p className="text-[11px] font-bold uppercase tracking-wide text-neutral/45">
-                        {t("riskProfileMetric")}
-                      </p>
-                      <p className="mt-1 text-sm font-black text-neutral">{item.riskProfile}</p>
-                    </div>
-                  </div>
 
-                  {item.hasFundingProgress && item.progress !== null ? (
-                    <div className="mt-3">
-                      <p className="mb-1 text-xs font-semibold text-neutral/55">
-                        {language === "id"
-                          ? `${currency(item.fundedValue)} dari ${currency(item.targetValue)} terdanai`
-                          : `${currency(item.fundedValue)} of ${currency(item.targetValue)} funded`}
-                      </p>
-                      <div className="h-2 rounded-full bg-base-200">
-                        <div
-                          className="h-2 rounded-full bg-primary transition-[width] duration-[420ms] ease-out"
-                          style={{ width: `${item.progress}%` }}
-                        />
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                      <div className="min-w-0 rounded-md bg-base-200 p-2.5">
+                        <p className="text-xs font-semibold text-neutral/55">{t("metricTarget")}</p>
+                        <p className="mt-1 break-words text-sm font-black leading-tight">{targetLabel}</p>
+                      </div>
+                      <div className="min-w-0 rounded-md bg-base-200 p-2.5">
+                        <p className="text-xs font-semibold text-neutral/55">{t("metricReturn")}</p>
+                        <p className="mt-1 break-words text-sm font-black leading-tight">{returnLabel}</p>
                       </div>
                     </div>
-                  ) : null}
+
+                    {item.hasFundingProgress && item.progress !== null ? (
+                      <div className="mt-3">
+                        <div className="mb-2 flex justify-between text-sm font-semibold text-neutral/60">
+                          <span>{currency(item.fundedValue)}</span>
+                          <span>{item.progress}%</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-base-200">
+                          <div
+                            className="h-2 rounded-full bg-primary transition-[width] duration-[420ms] ease-out"
+                            style={{ width: `${item.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                      <Link to={item.detailHref} className="btn btn-primary btn-sm flex-1 rounded-md text-white">
+                        {t("detail")}
+                      </Link>
+                      <Link to="/dashboard/investor/peluang" className="btn btn-outline btn-sm rounded-md">
+                        {t("viewAllOpportunities")}
+                      </Link>
+                    </div>
+                  </div>
                 </article>
               );
             })}
@@ -890,8 +1025,123 @@ export function InvestorOverviewPage() {
     enabled: Boolean(scopeKey),
     retry: false,
   });
-  const submissions = submissionsQuery.data ?? [];
-  const recommendations = recommendationsQuery.data ?? [];
+  const businessCoverQuery = useQuery({
+    queryKey: ["overview", scopeKey ?? "anonymous", "investor-business-covers"],
+    queryFn: async () => {
+      try {
+        return await resourceApi.list({
+          ...businessConfig,
+          listPath: "/businesses?page=1&limit=200",
+        });
+      } catch {
+        return [] as Entity[];
+      }
+    },
+    enabled: Boolean(scopeKey),
+    retry: false,
+  });
+  const submissions = useMemo(
+    () => submissionsQuery.data ?? [],
+    [submissionsQuery.data],
+  );
+  const recommendations = useMemo(
+    () => recommendationsQuery.data ?? [],
+    [recommendationsQuery.data],
+  );
+  const businessById = useMemo(
+    () => new Map((businessCoverQuery.data ?? []).map((item) => [String(item.id), item])),
+    [businessCoverQuery.data],
+  );
+  const submissionsWithBusinessCover = useMemo(
+    () => submissions.map((item) => mergeBusinessForImage(item, businessById)),
+    [submissions, businessById],
+  );
+  const recommendationsWithBusinessCover = useMemo(
+    () => recommendations.map((item) => mergeBusinessForImage(item, businessById)),
+    [recommendations, businessById],
+  );
+  const submissionsByBusinessId = useMemo(
+    () =>
+      submissionsWithBusinessCover.reduce((map, item) => {
+        const businessId = textValue(readPath(item, ["bisnis.id", "bisnis_id"], ""), "");
+        if (!businessId) return map;
+        const current = map.get(businessId);
+        if (!current) {
+          map.set(businessId, item);
+          return map;
+        }
+
+        const currentTimestamp = new Date(
+          String(readPath(current, ["updated_at", "created_at"], "")),
+        ).getTime();
+        const nextTimestamp = new Date(
+          String(readPath(item, ["updated_at", "created_at"], "")),
+        ).getTime();
+
+        if (!Number.isFinite(currentTimestamp) || nextTimestamp >= currentTimestamp) {
+          map.set(businessId, item);
+        }
+        return map;
+      }, new Map<string, Entity>()),
+    [submissionsWithBusinessCover],
+  );
+  const recommendationsWithProposalData = useMemo(
+    () =>
+      recommendationsWithBusinessCover.map((item) => {
+        const businessId = textValue(readPath(item, ["bisnis.id", "bisnis_id"], ""), "");
+        if (!businessId) return item;
+
+        const matchedSubmission = submissionsByBusinessId.get(businessId);
+        if (!matchedSubmission) return item;
+
+        const recommendationProposalId = textValue(
+          readPath(item, ["pengajuan_id", "proposal_id", "pengajuan.id", "pengajuans_id"], ""),
+          "",
+        );
+        const submissionProposalId = textValue(
+          readPath(matchedSubmission, ["id", "pengajuan_id"], ""),
+          "",
+        );
+        const targetValue = readNumberPath(item, [
+          "target_pendanaan",
+          "bisnis.target_pendanaan",
+          "pengajuan.target_pendanaan",
+          "proposal.target_pendanaan",
+        ]);
+        const returnValue = readNumberPath(item, [
+          "per_anual_return",
+          "return",
+          "return_investasi",
+          "pengajuan.per_anual_return",
+          "proposal.per_anual_return",
+        ]);
+        const fundedValue = readNumberPath(item, [
+          "total_pendanaan",
+          "terkumpul",
+          "pengajuan.total_pendanaan",
+          "proposal.total_pendanaan",
+        ]);
+
+        return {
+          ...item,
+          pengajuan_id: recommendationProposalId || submissionProposalId || item.pengajuan_id,
+          proposal_id: recommendationProposalId || submissionProposalId || item.proposal_id,
+          target_pendanaan:
+            targetValue !== null && targetValue > 0
+              ? targetValue
+              : readPath(matchedSubmission, ["target_pendanaan"], ""),
+          per_anual_return:
+            returnValue !== null && returnValue > 0
+              ? returnValue
+              : readPath(matchedSubmission, ["per_anual_return"], ""),
+          total_pendanaan:
+            fundedValue !== null && fundedValue >= 0
+              ? fundedValue
+              : readPath(matchedSubmission, ["total_pendanaan"], ""),
+        };
+      }),
+    [recommendationsWithBusinessCover, submissionsByBusinessId],
+  );
   const investments = investmentsQuery.data ?? [];
   const invoices = invoicesQuery.data ?? [];
   const profits = profitsQuery.data ?? [];
@@ -906,8 +1156,8 @@ export function InvestorOverviewPage() {
   const pendingProfit = Number(dashboardProfit.total_pending ?? 0);
   const investmentCount = Number(dashboardInvestment.jumlah_aktif ?? 0) || investments.length;
   const hasPreferences = Boolean(preferencesQuery.data);
-  const hasRecommendationData = recommendations.length > 0;
-  const matchItems = hasRecommendationData ? recommendations : submissions;
+  const hasRecommendationData = recommendationsWithProposalData.length > 0;
+  const matchItems = hasRecommendationData ? recommendationsWithProposalData : submissionsWithBusinessCover;
   const hasNegotiation = negotiations.length > 0;
   const hasInvestment = investmentCount > 0;
   const pendingInvoices = invoices.filter((item) => {
@@ -1014,7 +1264,7 @@ export function InvestorOverviewPage() {
       {hasPreferences ? (
         <MatchList
           submissions={matchItems}
-          isLoading={submissionsQuery.isLoading || recommendationsQuery.isLoading}
+          isLoading={submissionsQuery.isLoading || recommendationsQuery.isLoading || businessCoverQuery.isLoading}
           isFallback={!hasRecommendationData}
         />
       ) : null}

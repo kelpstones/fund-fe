@@ -9,7 +9,6 @@ import {
   Handshake,
   PlayCircle,
   Quote,
-  Store,
   Sparkles,
   Target,
   TrendingUp,
@@ -53,6 +52,8 @@ const featuredOpportunities = [
     score: 92,
     returnRate: 18,
     risk: "Moderate",
+    image:
+      "https://unsplash.com/photos/8jlQWO01vGU/download?force=true&w=1200",
   },
   {
     name: "Batik Lestari",
@@ -63,6 +64,8 @@ const featuredOpportunities = [
     score: 81,
     returnRate: 15,
     risk: "High",
+    image:
+      "https://unsplash.com/photos/XOvNsILkVCo/download?force=true&w=1200",
   },
   {
     name: "TaniHub Lokal",
@@ -73,6 +76,8 @@ const featuredOpportunities = [
     score: 88,
     returnRate: 21,
     risk: "Low",
+    image:
+      "https://unsplash.com/photos/9zMPGHBiFxg/download?force=true&w=1200",
   },
 ];
 
@@ -387,54 +392,67 @@ export function HomePage() {
                 Math.round((item.raised / item.target) * 100),
               );
               return (
-                <article
+                <Link
                   key={item.name}
-                  className="rounded-md border border-base-300 bg-white p-5 shadow-sm transition-[transform,box-shadow] duration-200 ease-out md:hover:-translate-y-0.5 md:hover:shadow-md"
+                  to="/portfolio"
+                  className="group flex h-full flex-col overflow-hidden rounded-md border border-base-300 bg-white shadow-sm transition-[transform,box-shadow] duration-200 ease-out md:hover:-translate-y-0.5 md:hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                   data-reveal
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-wide text-neutral/40">
-                        {t(item.sectorKey)}
-                      </p>
-                      <h3 className="mt-2 text-xl font-black">{item.name}</h3>
-                      <p className="mt-1 text-sm text-neutral/55">
-                        {item.city}
-                      </p>
-                    </div>
-                    <div className="grid h-10 w-10 place-items-center rounded-md bg-primary/10 text-primary">
-                      <Store size={19} />
+                  <div className="relative aspect-[16/9] overflow-hidden bg-base-200">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                      loading="lazy"
+                    />
+                    <div className="absolute right-3 top-3 rounded-md bg-success px-2.5 py-1 text-sm font-black text-white">
+                      {percent(item.score)}
                     </div>
                   </div>
-                  <div className="mt-5 grid grid-cols-3 gap-2 text-sm">
-                    <div className="rounded-md bg-base-200 p-3">
-                      <p className="text-neutral/50">{t("metricReturn")}</p>
-                      <p className="font-black">{percent(item.returnRate)}</p>
+                  <div className="flex flex-1 flex-col p-4">
+                    <div className="min-w-0">
+                      <h3 className="truncate text-lg font-black">{item.name}</h3>
+                      <p className="mt-1 text-xs font-semibold text-neutral/55">{item.city}</p>
                     </div>
-                    <div className="rounded-md bg-base-200 p-3">
-                      <p className="text-neutral/50">{t("metricRisk")}</p>
-                      <p className="font-black">{t(riskLabelKey(item.risk))}</p>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                      <div className="min-w-0 rounded-md bg-base-200 p-2.5">
+                        <p className="text-xs font-semibold text-neutral/55">{t("metricTarget")}</p>
+                        <p className="mt-1 break-words text-sm font-black leading-tight">
+                          {compactCurrency(item.target)}
+                        </p>
+                      </div>
+                      <div className="min-w-0 rounded-md bg-base-200 p-2.5">
+                        <p className="text-xs font-semibold text-neutral/55">{t("metricReturn")}</p>
+                        <p className="mt-1 break-words text-sm font-black leading-tight">
+                          {percent(item.returnRate)}
+                        </p>
+                      </div>
                     </div>
-                    <div className="rounded-md bg-base-200 p-3">
-                      <p className="text-neutral/50">{t("metricMatch")}</p>
-                      <p className="font-black text-secondary">
-                        {percent(item.score)}
-                      </p>
+
+                    <div className="mt-3">
+                      <div className="mb-2 flex justify-between text-sm font-semibold text-neutral/60">
+                        <span>{compactCurrency(item.raised)}</span>
+                        <span>{progress}%</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-base-200">
+                        <div
+                          className="h-2 rounded-full bg-primary"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="text-xs font-semibold text-neutral/55">
+                        {t(item.sectorKey)} - {t(riskLabelKey(item.risk))}
+                      </span>
+                      <span className="btn btn-primary btn-xs rounded-md text-white">
+                        {t("detail")}
+                      </span>
                     </div>
                   </div>
-                  <div className="mt-5">
-                    <div className="mb-2 flex justify-between text-sm font-semibold text-neutral/60">
-                      <span>{compactCurrency(item.raised)}</span>
-                      <span>{progress}%</span>
-                    </div>
-                    <div className="h-3 rounded-full bg-base-200">
-                      <div
-                        className="h-3 rounded-full bg-primary transition-[width] duration-[420ms] ease-out"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  </div>
-                </article>
+                </Link>
               );
             })}
           </div>

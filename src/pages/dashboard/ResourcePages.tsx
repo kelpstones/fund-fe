@@ -4,6 +4,7 @@ import axios from "axios";
 import { Link } from "react-router-dom";
 import { Filter, Loader2, RefreshCw } from "lucide-react";
 import { ResourcePage } from "../../components/ResourcePage";
+import { DashboardBreadcrumb } from "../../components/DashboardBreadcrumb";
 import { useToast } from "../../components/ToastProvider";
 import { resourceApi } from "../../lib/api/resources";
 import { apiClient, unwrap } from "../../lib/api/client";
@@ -1686,22 +1687,109 @@ export function AiRecommendationsPage() {
 }
 
 export function InvoicesPage({ investor = false }: { investor?: boolean }) {
+  const { language } = useLanguage();
+  const summaryQuery = useQuery({
+    queryKey: ["investor-invoice-summary"],
+    queryFn: () => resourceApi.list(investor ? investorInvoiceConfig : invoiceConfig),
+    retry: false,
+    enabled: investor,
+  });
+
+  const invoiceRows = summaryQuery.data ?? [];
+  const pendingInvoices = invoiceRows.filter((item) => {
+    const normalized = String(readPath(item, ["status", "invoice_status"], "")).toLowerCase();
+    return ["pending", "unpaid", "waiting_payment", "belum_dibayar"].includes(normalized);
+  });
+  const paidInvoices = invoiceRows.filter((item) => {
+    const normalized = String(readPath(item, ["status", "invoice_status"], "")).toLowerCase();
+    return ["paid", "completed", "settled", "lunas"].includes(normalized);
+  });
+  const pendingNominal = pendingInvoices.reduce(
+    (sum, item) => sum + Number(readPath(item, ["total_nominal", "nominal_tagihan"], "0") || 0),
+    0,
+  );
+
+  if (investor) {
+    return (
+      <section className="space-y-5">
+        <div>
+          <h2 className="text-2xl font-black tracking-normal text-neutral">Invoice</h2>
+          <DashboardBreadcrumb />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <article className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold text-neutral/55">
+              {language === "id" ? "Perlu Dibayar" : "Pending Payment"}
+            </p>
+            <p className="mt-2 text-3xl font-black">{pendingInvoices.length}</p>
+            <p className="mt-1 text-xs font-semibold text-neutral/45">
+              {language === "id" ? "Invoice belum lunas" : "Unpaid investor invoices"}
+            </p>
+          </article>
+          <article className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold text-neutral/55">
+              {language === "id" ? "Sudah Dibayar" : "Paid"}
+            </p>
+            <p className="mt-2 text-3xl font-black">{paidInvoices.length}</p>
+            <p className="mt-1 text-xs font-semibold text-neutral/45">
+              {language === "id" ? "Status pembayaran selesai" : "Completed payments"}
+            </p>
+          </article>
+          <article className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold text-neutral/55">
+              {language === "id" ? "Total Tagihan Aktif" : "Active Invoice Amount"}
+            </p>
+            <p className="mt-2 text-3xl font-black">{currency(pendingNominal)}</p>
+            <p className="mt-1 text-xs font-semibold text-neutral/45">
+              {language === "id" ? "Akumulasi invoice pending" : "Sum of pending invoices"}
+            </p>
+          </article>
+        </div>
+
+        <ResourcePage
+          title="Invoice"
+          description="Pantau tagihan investasi dan status pembayaran invoice."
+          config={investorInvoiceConfig}
+          columns={invoiceColumns}
+          fields={[]}
+          createLabel="Update Invoice"
+          actions={invoiceActions}
+          readonly
+          emptyTitle="Belum ada invoice"
+          emptyDescription="Invoice investasi akan muncul setelah negosiasi berlanjut ke proses pembayaran."
+          searchableFields={[
+            "kode_pembayaran",
+            "status",
+            "total_nominal",
+            "nominal_tagihan",
+            (item) => readPath(item, ["pengajuan.bisnis.nama_bisnis", "bisnis.nama_bisnis", "bisnis"]),
+          ]}
+          showTitle={false}
+          showBreadcrumb={false}
+          statusFilterVariant="tabs"
+          emptyAction={
+            <Link to="/dashboard/investor/negosiasi" className="btn btn-sm btn-primary rounded-md text-white">
+              {language === "id" ? "Lanjut ke Negosiasi" : "Go to Negotiations"}
+            </Link>
+          }
+        />
+      </section>
+    );
+  }
+
   return (
     <ResourcePage
       title="Invoice"
       description="Pantau tagihan investasi dan status pembayaran invoice."
-      config={investor ? investorInvoiceConfig : invoiceConfig}
+      config={invoiceConfig}
       columns={invoiceColumns}
       fields={[]}
       createLabel="Update Invoice"
-      actions={investor ? invoiceActions : []}
+      actions={[]}
       readonly
       emptyTitle="Belum ada invoice"
-      emptyDescription={
-        investor
-          ? "Invoice investasi akan muncul setelah negosiasi berlanjut ke proses pembayaran."
-          : "Invoice platform akan muncul setelah ada transaksi investasi."
-      }
+      emptyDescription="Invoice platform akan muncul setelah ada transaksi investasi."
       searchableFields={["kode_pembayaran", "status", "total_nominal", "nominal_tagihan"]}
     />
   );

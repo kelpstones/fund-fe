@@ -286,14 +286,6 @@ export function InvestorWalletPage() {
         id="rekening"
         className="scroll-mt-24 rounded-md border border-base-300 bg-white p-5 shadow-sm"
       >
-        <div className="mb-4">
-          <p className="text-xs font-bold uppercase tracking-wide text-primary">
-            {copy.withdrawalAccountsEyebrow}
-          </p>
-          <h3 className="text-xl font-black tracking-normal text-neutral">
-            {copy.withdrawalAccountsTitle}
-          </h3>
-        </div>
         <InvestorBankAccountsManager embedded />
       </div>
 
@@ -470,7 +462,7 @@ export function InvestorWalletPage() {
                       <span className={`badge ${statusTone(item.status)}`}>{textValue(item.status)}</span>
                     </td>
                     <td>{dateShort(item.created_at)}</td>
-                    <td className="max-w-sm whitespace-normal break-words leading-6">
+                    <td className="max-w-sm whitespace-normal break-words [overflow-wrap:anywhere] leading-6">
                       {textValue(item.deskripsi)}
                     </td>
                   </tr>
@@ -517,6 +509,7 @@ const bankAccountColumns: ResourceColumn<Entity>[] = [
 ];
 
 function InvestorBankAccountsManager({ embedded = false }: { embedded?: boolean }) {
+  const { language } = useLanguage();
   const banksQuery = useQuery({
     queryKey: ["supported-banks-public"],
     queryFn: () => resourceApi.list(supportedBankPublicConfig),
@@ -574,8 +567,13 @@ function InvestorBankAccountsManager({ embedded = false }: { embedded?: boolean 
       allowDelete
       emptyTitle="Belum ada rekening terdaftar"
       emptyDescription="Tambahkan minimal satu rekening untuk proses penarikan dana dompet."
+      emptyAction={
+        <a href="#rekening" className="btn btn-primary btn-sm rounded-md text-white">
+          {language === "id" ? "Tambah rekening sekarang" : "Add account now"}
+        </a>
+      }
       searchableFields={["bank_name", "bank_account_number", "bank_account_holder", "bank_code"]}
-      showTitle={!embedded}
+      showTitle
       showBreadcrumb={!embedded}
       extraInvalidateKeys={[["wallet-bank-accounts"]]}
     />

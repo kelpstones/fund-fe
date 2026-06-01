@@ -116,9 +116,6 @@ const normalizeRecommendations = (value: unknown): Entity[] => {
 const businessName = (item: Entity) =>
   textValue(readPath(item, ["bisnis.nama_bisnis", "bisnis.nama", "nama", "bisnis_id"]));
 
-const businessClass = (item: Entity) =>
-  textValue(readPath(item, ["bisnis.kelas.nama_kelas", "matched_class", "risk_level"]));
-
 const matchScore = (item: Entity) => Number(readPath(item, ["skor_kecocokan", "match_score"], "0"));
 
 export function InvestorSurveyPage() {
@@ -453,7 +450,6 @@ export function InvestorSurveyPage() {
                       {t("match")} #{index + 1}
                     </p>
                     <h4 className="mt-2 text-lg font-black">{businessName(item)}</h4>
-                    <p className="mt-1 text-sm text-neutral/55">{businessClass(item)}</p>
                   </div>
                   <span className="badge badge-secondary badge-lg text-white">
                     {percent(matchScore(item))}

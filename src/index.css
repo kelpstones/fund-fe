@@ -173,11 +173,16 @@ textarea {
   }
 
   [data-reveal] {
-    opacity: 0;
-    transform: translate3d(0, 10px, 0);
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
     transition-property: opacity, transform;
     transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
     will-change: opacity, transform;
+  }
+
+  [data-reveal][data-reveal-state="hidden"] {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
   }
 
   [data-reveal][data-reveal-state="visible"] {

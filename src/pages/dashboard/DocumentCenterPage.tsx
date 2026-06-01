@@ -236,6 +236,17 @@ const localizedText = (
   language: "id" | "en",
 ) => item[language];
 
+const backendStatusLabel = (
+  status: BackendDocument["status"] | string,
+  language: "id" | "en",
+) => {
+  const normalized = String(status ?? "").toLowerCase();
+  if (normalized === "pending") return language === "id" ? "Menunggu" : "Pending";
+  if (normalized === "valid") return language === "id" ? "Valid" : "Valid";
+  if (normalized === "invalid") return language === "id" ? "Perlu perbaikan" : "Needs revision";
+  return language === "id" ? "Diproses" : "Processing";
+};
+
 export function DocumentCenterPage() {
   const { t, language } = useLanguage();
   const { user } = useAuth();
@@ -448,7 +459,12 @@ export function DocumentCenterPage() {
           const fileSize = isUmkm ? null : document?.size;
 
           return (
-            <article key={requirement.key} className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+            <article
+              key={requirement.key}
+              className={`rounded-md border bg-white p-5 shadow-sm transition-colors ${
+                isUploading ? "border-primary/40" : "border-base-300"
+              }`}
+            >
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="flex gap-4">
                   <div
@@ -482,17 +498,7 @@ export function DocumentCenterPage() {
                                 : "badge-warning"
                           }`}
                         >
-                          {backendDocument.status === "pending"
-                            ? language === "id"
-                              ? "Menunggu"
-                              : "Pending"
-                            : backendDocument.status === "valid"
-                              ? language === "id"
-                                ? "Valid"
-                                : "Valid"
-                              : language === "id"
-                                ? "Perlu perbaikan"
-                                : "Needs revision"}
+                          {backendStatusLabel(backendDocument.status, language)}
                         </span>
                       ) : null}
                     </div>

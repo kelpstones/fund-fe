@@ -1,20 +1,24 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
-  ArrowRight,
   Bookmark,
   BookmarkCheck,
   CheckCircle2,
   CircleDollarSign,
   ClipboardCheck,
-  FileText,
   Filter,
   Handshake,
   Loader2,
   RefreshCw,
-  Scale,
   Search,
   Sparkles,
   TrendingUp,
@@ -33,7 +37,7 @@ import {
   myNegotiationConfig,
   submissionConfig,
 } from "../../lib/resourceConfigs";
-import { currency, dateShort, percent, readPath, textValue } from "../../lib/format";
+import { compactCurrency, currency, dateShort, percent, readPath, textValue } from "../../lib/format";
 import type { Entity } from "../../types";
 
 type SavedOpportunity = Entity & {
@@ -131,29 +135,11 @@ const city = (item: Entity) => {
   const parts = location.split(",").map((part) => part.trim()).filter(Boolean);
   return parts.length > 1 ? parts.at(-1) ?? location : location;
 };
-const risk = (item: Entity) =>
-  textValue(
-    readPath(item, [
-      "risk_level",
-      "matched_class",
-      "bisnis.class_label",
-      "class_label",
-      "bisnis.kelas.nama_kelas",
-      "kelas.nama_kelas",
-      "kelas",
-    ], ""),
-    "moderate",
-  );
 const target = (item: Entity) => Number(readPath(item, ["target_pendanaan", "bisnis.target_pendanaan"], "0"));
 const funded = (item: Entity) => Number(readPath(item, ["total_pendanaan", "terkumpul"], "0"));
 const returnRate = (item: Entity) => Number(readPath(item, ["per_anual_return", "return_investasi"], "0"));
 const matchScore = (item: Entity) => Number(readPath(item, ["match_score", "skor_kecocokan"], "0"));
 const progress = (item: Entity) => Math.min(100, Math.round((funded(item) / Math.max(target(item), 1)) * 100));
-const opportunityDescription = (item: Entity, fallback: string) =>
-  textValue(
-    readPath(item, ["deskripsi_peluang", "description", "reason", "alasan", "explanation", "match_reason", "bisnis.deskripsi"], ""),
-    fallback,
-  );
 const businessImage = (item: Entity) => {
   const directImage = textValue(
     readPath(item, [
@@ -351,108 +337,111 @@ function OpportunityCard({
   const score = matchScore(item);
   const imageSrc = businessImage(item);
   const isSavingThis = Boolean(savingId && savingId === saveId);
+  const targetValue = target(item);
+  const returnValue = returnRate(item);
+  const fundedValue = funded(item);
+  const progressValue = progress(item);
+  const hasFundingProgress = targetValue > 0;
 
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-md border border-base-300 bg-white shadow-sm transition-[transform,box-shadow] duration-200 ease-out md:hover:-translate-y-0.5 md:hover:shadow-md">
-      <div className="aspect-[16/9] bg-base-200">
+      <div className="relative aspect-[16/9] overflow-hidden bg-base-200">
+        <div className="absolute inset-0 grid place-items-center px-6 text-center">
+          <div>
+            <img
+              src="/brand/logo-icon-transparent.png"
+              alt=""
+              className="mx-auto h-12 w-12 object-contain opacity-70"
+            />
+            <p className="mt-3 text-sm font-bold text-neutral/50">{t("noBusinessImage")}</p>
+          </div>
+        </div>
         {imageSrc ? (
           <img
             src={imageSrc}
             alt={businessName(item)}
-            className="h-full w-full object-cover"
+            className="relative z-10 h-full w-full object-cover"
             loading="lazy"
             onError={(event) => {
-              event.currentTarget.src = "/brand/logo-horizontal-transparent.png";
-              event.currentTarget.className = "h-full w-full object-contain p-8 opacity-70";
+              event.currentTarget.style.display = "none";
             }}
           />
-        ) : (
-          <div className="grid h-full place-items-center px-6 text-center">
-            <div>
-              <img
-                src="/brand/logo-icon-transparent.png"
-                alt=""
-                className="mx-auto h-12 w-12 object-contain opacity-70"
-              />
-              <p className="mt-3 text-sm font-bold text-neutral/50">{t("noBusinessImage")}</p>
-            </div>
-          </div>
-        )}
+        ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col p-5">
+      <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-black uppercase tracking-wide text-neutral/40">{sector(item)}</p>
-            <h3 className="mt-2 text-xl font-black">{businessName(item)}</h3>
-            <p className="mt-1 text-sm text-neutral/55">{city(item)}</p>
+          <div className="min-w-0">
+            <h3 className="truncate text-lg font-black">{businessName(item)}</h3>
+            <p className="mt-1 text-xs font-semibold text-neutral/55">{city(item)}</p>
           </div>
+          {score > 0 ? (
+            <span className="badge badge-success border-transparent text-sm font-black text-white">
+              {percent(score)}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+          <div className="min-w-0 rounded-md bg-base-200 p-2.5">
+            <p className="text-xs font-semibold text-neutral/55">{t("metricTarget")}</p>
+            <p className="mt-1 break-words text-sm font-black leading-tight">
+              {targetValue > 0 ? currency(targetValue) : "-"}
+            </p>
+          </div>
+          <div className="min-w-0 rounded-md bg-base-200 p-2.5">
+            <p className="text-xs font-semibold text-neutral/55">{t("metricReturn")}</p>
+            <p className="mt-1 break-words text-sm font-black leading-tight">
+              {returnValue > 0 ? percent(returnValue) : "-"}
+            </p>
+          </div>
+        </div>
+
+        {hasFundingProgress ? (
+          <div className="mt-3">
+          <div className="mb-2 flex justify-between text-sm font-semibold text-neutral/60">
+            <span>{currency(fundedValue)}</span>
+            <span>{progressValue}%</span>
+          </div>
+          <div className="h-2 rounded-full bg-base-200">
+            <div className="h-2 rounded-full bg-primary" style={{ width: `${progressValue}%` }} />
+          </div>
+          </div>
+        ) : null}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
-            className={`btn btn-square btn-sm rounded-md ${isSaved ? "btn-primary text-white" : "btn-outline"}`}
+            className={`btn btn-xs rounded-md ${isSaved ? "btn-primary text-white" : "btn-outline"} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2`}
             onClick={() => onToggleSave(item)}
             disabled={!canSave || isSavingThis}
             aria-label={isSaved ? t("removeBookmark") : t("saveOpportunity")}
             title={!canSave ? t("saveUnavailable") : isSaved ? t("removeBookmark") : t("saveOpportunity")}
           >
-            {isSavingThis ? <Loader2 className="animate-spin" size={17} /> : isSaved ? <BookmarkCheck size={17} /> : <Bookmark size={17} />}
+            {isSavingThis ? <Loader2 className="animate-spin" size={14} /> : isSaved ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
+            {isSaved ? t("saved") : t("save")}
           </button>
-        </div>
-
-        <div className="mt-5 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
-          <div className="min-w-0 rounded-md bg-base-200 p-3">
-            <p className="text-neutral/50">{t("metricTarget")}</p>
-            <p className="mt-1 break-words text-sm font-black leading-tight">{currency(target(item))}</p>
-          </div>
-          <div className="min-w-0 rounded-md bg-base-200 p-3">
-            <p className="text-neutral/50">{t("metricReturn")}</p>
-            <p className="mt-1 break-words text-sm font-black leading-tight">{percent(returnRate(item))}</p>
-          </div>
-          <div className="min-w-0 rounded-md bg-base-200 p-3 sm:col-span-1">
-            <p className="text-neutral/50">{t("riskProfileMetric")}</p>
-            <p className="mt-1 break-words text-sm font-black leading-tight">{risk(item)}</p>
-          </div>
-        </div>
-
-        <div className="mt-5">
-          <div className="mb-2 flex justify-between text-sm font-semibold text-neutral/60">
-            <span>{currency(funded(item))}</span>
-            <span>{progress(item)}%</span>
-          </div>
-          <div className="h-3 rounded-full bg-base-200">
-            <div className="h-3 rounded-full bg-primary" style={{ width: `${progress(item)}%` }} />
-          </div>
-        </div>
-
-        <p className="mt-5 flex-1 text-sm leading-6 text-neutral/60">
-          {opportunityDescription(item, t("opportunityDefaultReason"))}
-        </p>
-
-        <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-          {canOpenDetail ? (
-            <Link to={`/dashboard/investor/peluang/${id}`} className="btn btn-primary flex-1 rounded-md text-white">
-              {t("detail")}
-              <ArrowRight size={17} />
-            </Link>
-          ) : (
-            <button className="btn btn-disabled flex-1 rounded-md">
-              {t("detail")}
-            </button>
-          )}
           {onToggleCompare && canOpenDetail ? (
             <button
-              className={`btn rounded-md ${compareSelected ? "btn-secondary text-white" : "btn-outline"}`}
+              className={`btn btn-xs rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${compareSelected ? "btn-secondary text-white" : "btn-outline"}`}
               onClick={() => onToggleCompare(item)}
             >
               {t("compare")}
             </button>
           ) : null}
         </div>
-
-        {score > 0 ? (
-          <div className="mt-4 rounded-md border border-secondary/20 bg-secondary/10 p-3">
-            <p className="text-sm font-bold text-secondary">{t("matchScoreValue", { score: percent(score) })}</p>
-          </div>
-        ) : null}
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          {canOpenDetail ? (
+            <Link
+              to={`/dashboard/investor/peluang/${id}`}
+              className="btn btn-primary btn-sm flex-1 rounded-md text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              {t("detail")}
+            </Link>
+          ) : (
+            <button className="btn btn-disabled btn-sm flex-1 rounded-md">
+              {t("detail")}
+            </button>
+          )}
+        </div>
       </div>
     </article>
   );
@@ -489,7 +478,7 @@ function CatalogGrid({
   }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {items.map((item) => (
         <OpportunityCard
           key={opportunityId(item)}
@@ -511,7 +500,22 @@ export function OpportunitiesPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") === "rekomendasi" ? "recommendations" : "all";
+  const rawTabParam = searchParams.get("tab");
+  const activeTab =
+    rawTabParam === "rekomendasi" || rawTabParam === "recommendations"
+      ? "recommendations"
+      : "all";
+  const searchParamsSnapshot = searchParams.toString();
+  useEffect(() => {
+    if (!rawTabParam || rawTabParam === "rekomendasi") return;
+    const next = new URLSearchParams(searchParamsSnapshot);
+    if (rawTabParam === "recommendations") {
+      next.set("tab", "rekomendasi");
+    } else {
+      next.delete("tab");
+    }
+    setSearchParams(next, { replace: true });
+  }, [rawTabParam, searchParamsSnapshot, setSearchParams]);
   const opportunitiesQuery = usePublishedOpportunities();
   const data = useMemo(
     () => opportunitiesQuery.data?.items ?? [],
@@ -522,7 +526,6 @@ export function OpportunitiesPage() {
   const { saved, savedIds, toggle, savingId } = savedState;
   const [search, setSearch] = useState("");
   const [sectorFilter, setSectorFilter] = useState("all");
-  const [riskFilter, setRiskFilter] = useState("all");
   const [minReturnInput, setMinReturnInput] = useState("0");
   const [minScore, setMinScore] = useState(0);
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
@@ -606,29 +609,16 @@ export function OpportunitiesPage() {
       ).sort((first, second) => first[1].localeCompare(second[1])),
     [activeData],
   );
-  const riskOptions = useMemo(
-    () =>
-      Array.from(
-        activeData.reduce((options, item) => {
-          const label = risk(item);
-          options.set(label.toLowerCase(), label);
-          return options;
-        }, new Map<string, string>()),
-      ).sort((first, second) => first[1].localeCompare(second[1])),
-    [activeData],
-  );
-
   const filtered = useMemo(() => {
     const needle = search.toLowerCase();
     return activeData.filter((item) => {
       const matchesSearch = `${businessName(item)} ${sector(item)} ${city(item)}`.toLowerCase().includes(needle);
       const matchesSector = sectorFilter === "all" || sector(item).toLowerCase() === sectorFilter;
-      const matchesRisk = riskFilter === "all" || risk(item).toLowerCase() === riskFilter;
       const matchesReturn = returnRate(item) >= minReturn;
       const matchesScore = activeTab !== "recommendations" || matchScore(item) >= minScore;
-      return matchesSearch && matchesSector && matchesRisk && matchesReturn && matchesScore;
+      return matchesSearch && matchesSector && matchesReturn && matchesScore;
     });
-  }, [activeData, activeTab, minReturn, minScore, riskFilter, search, sectorFilter]);
+  }, [activeData, activeTab, minReturn, minScore, search, sectorFilter]);
 
   const toggleCompare = (item: Entity) => {
     const id = opportunityId(item);
@@ -652,9 +642,16 @@ export function OpportunitiesPage() {
   const hasActiveFilters =
     Boolean(search.trim()) ||
     sectorFilter !== "all" ||
-    riskFilter !== "all" ||
     minReturn > 0 ||
     (activeTab === "recommendations" && minScore > 0);
+  const activeTabLabel =
+    activeTab === "recommendations" ? t("recommendedForYou") : t("allOpportunities");
+  const tabSummary =
+    activeTab === "recommendations"
+      ? t("recommendedForYouTabHint")
+      : t("allOpportunitiesTabHint");
+  const recommendationCount = recommendations.length;
+  const allOpportunityCount = data.length;
   const setTab = (tab: "all" | "recommendations") => {
     const next = new URLSearchParams(searchParams);
     if (tab === "recommendations") {
@@ -665,14 +662,33 @@ export function OpportunitiesPage() {
     setSearchParams(next, { replace: true });
     setSearch("");
     setSectorFilter("all");
-    setRiskFilter("all");
     setMinReturnInput("0");
     setMinScore(0);
+  };
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      event.preventDefault();
+      setTab(activeTab === "recommendations" ? "all" : "recommendations");
+      return;
+    }
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      event.preventDefault();
+      setTab(activeTab === "recommendations" ? "all" : "recommendations");
+      return;
+    }
+    if (event.key === "Home") {
+      event.preventDefault();
+      setTab("recommendations");
+      return;
+    }
+    if (event.key === "End") {
+      event.preventDefault();
+      setTab("all");
+    }
   };
   const clearFilters = () => {
     setSearch("");
     setSectorFilter("all");
-    setRiskFilter("all");
     setMinReturnInput("0");
     setMinScore(0);
   };
@@ -683,12 +699,12 @@ export function OpportunitiesPage() {
         title="marketplaceOpportunitiesTitle"
         actions={
           <>
-            <Link to="/dashboard/investor/saved" className="btn btn-outline rounded-md">
+            <Link to="/dashboard/investor/saved" className="btn btn-outline rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
               <Bookmark size={17} />
               {t("savedCount", { count: saved.length })}
             </Link>
             {compareIds.size >= 2 ? (
-              <Link to={compareUrl} className="btn btn-secondary rounded-md text-white">
+              <Link to={compareUrl} className="btn btn-secondary rounded-md text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
                 {t("compareCount", { count: compareIds.size })}
               </Link>
             ) : (
@@ -700,46 +716,112 @@ export function OpportunitiesPage() {
         }
       />
 
-      <div className="flex flex-col gap-3 rounded-md border border-base-300 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div className="join w-full sm:w-auto">
-          <button
-            type="button"
-            className={`btn join-item flex-1 rounded-l-md sm:flex-none ${activeTab === "recommendations" ? "btn-primary text-white" : "btn-ghost"}`}
-            onClick={() => setTab("recommendations")}
-          >
-            <Sparkles size={17} />
-            {t("recommendedForYou")}
-          </button>
-          <button
-            type="button"
-            className={`btn join-item flex-1 rounded-r-md sm:flex-none ${activeTab === "all" ? "btn-primary text-white" : "btn-ghost"}`}
-            onClick={() => setTab("all")}
-          >
-            <ClipboardCheck size={17} />
-            {t("allOpportunities")}
-          </button>
-        </div>
-        {activeTab === "recommendations" ? (
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Link to="/dashboard/investor/preferensi" className="btn btn-outline rounded-md">
-              {t("improveRecommendations")}
-            </Link>
-            <button
-              className="btn btn-primary rounded-md text-white"
-              type="button"
-              onClick={() => refreshMutation.mutate()}
-              disabled={refreshMutation.isPending}
+      <div className="rounded-md border border-base-300 bg-white p-3 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <div
+              role="tablist"
+              aria-label={t("marketplaceTablistLabel")}
+              className="grid w-full gap-2 sm:grid-cols-2"
+              onKeyDown={handleTabKeyDown}
             >
-              {refreshMutation.isPending ? <Loader2 className="animate-spin" size={17} /> : <RefreshCw size={17} />}
-              {t("refresh")}
-            </button>
+              <button
+                id="marketplace-tab-recommendations"
+                role="tab"
+                type="button"
+                aria-selected={activeTab === "recommendations"}
+                aria-controls="marketplace-panel-recommendations"
+                tabIndex={activeTab === "recommendations" ? 0 : -1}
+                className={[
+                  "btn h-auto min-h-[3rem] justify-between rounded-md px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                  activeTab === "recommendations"
+                    ? "btn-primary text-white"
+                    : "btn-ghost border border-base-300",
+                ].join(" ")}
+                onClick={() => setTab("recommendations")}
+              >
+                <span className="flex items-center gap-2 font-bold">
+                  <Sparkles size={17} />
+                  {t("recommendedForYou")}
+                </span>
+                <span
+                  className={[
+                    "badge badge-sm",
+                    activeTab === "recommendations"
+                      ? "border-white/30 bg-white/20 text-white"
+                      : "badge-ghost",
+                  ].join(" ")}
+                >
+                  {recommendationCount}
+                </span>
+              </button>
+              <button
+                id="marketplace-tab-all"
+                role="tab"
+                type="button"
+                aria-selected={activeTab === "all"}
+                aria-controls="marketplace-panel-all"
+                tabIndex={activeTab === "all" ? 0 : -1}
+                className={[
+                  "btn h-auto min-h-[3rem] justify-between rounded-md px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                  activeTab === "all"
+                    ? "btn-primary text-white"
+                    : "btn-ghost border border-base-300",
+                ].join(" ")}
+                onClick={() => setTab("all")}
+              >
+                <span className="flex items-center gap-2 font-bold">
+                  <ClipboardCheck size={17} />
+                  {t("allOpportunities")}
+                </span>
+                <span
+                  className={[
+                    "badge badge-sm",
+                    activeTab === "all"
+                      ? "border-white/30 bg-white/20 text-white"
+                      : "badge-ghost",
+                  ].join(" ")}
+                >
+                  {allOpportunityCount}
+                </span>
+              </button>
+            </div>
+            <p className="mt-2 text-xs font-semibold text-neutral/55">{tabSummary}</p>
+            <p className="sr-only" aria-live="polite">
+              {t("marketplaceResultsCount", {
+                count: filtered.length,
+                mode: activeTabLabel,
+              })}
+            </p>
           </div>
-        ) : null}
+          {activeTab === "recommendations" ? (
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Link to="/dashboard/investor/preferensi" className="btn btn-outline rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                {t("improveRecommendations")}
+              </Link>
+              <button
+                className="btn btn-primary rounded-md text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                type="button"
+                onClick={() => refreshMutation.mutate()}
+                disabled={refreshMutation.isPending}
+              >
+                {refreshMutation.isPending ? <Loader2 className="animate-spin" size={17} /> : <RefreshCw size={17} />}
+                {t("refresh")}
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
 
+      <div
+        id={activeTab === "recommendations" ? "marketplace-panel-recommendations" : "marketplace-panel-all"}
+        role="tabpanel"
+        aria-labelledby={activeTab === "recommendations" ? "marketplace-tab-recommendations" : "marketplace-tab-all"}
+        className="space-y-5"
+      >
       <div className="rounded-md border border-base-300 bg-white p-4 shadow-sm">
-        <div className={`grid gap-3 ${activeTab === "recommendations" ? "lg:grid-cols-[1.2fr_0.8fr_0.8fr_0.7fr_0.7fr]" : "lg:grid-cols-[1.2fr_0.8fr_0.8fr_0.7fr]"}`}>
-          <label className="input input-bordered flex items-center gap-2 rounded-md">
+        <div className={`grid gap-3 ${activeTab === "recommendations" ? "lg:grid-cols-[1.2fr_0.8fr_0.7fr_0.7fr]" : "lg:grid-cols-[1.2fr_0.8fr_0.7fr]"}`}>
+          <label className="input input-bordered flex items-center gap-2 rounded-md focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
             <Search size={17} className="text-neutral/40" />
             <input
               className="w-full min-w-0 bg-transparent outline-none"
@@ -749,7 +831,7 @@ export function OpportunitiesPage() {
               aria-label={t("searchUmkmSectorCity")}
             />
           </label>
-          <label className="flex h-12 items-center gap-2 rounded-md border border-base-300 px-3">
+          <label className="flex h-12 items-center gap-2 rounded-md border border-base-300 px-3 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
             <Filter size={17} className="text-neutral/45" />
             <select
               className="w-full bg-transparent outline-none"
@@ -765,23 +847,10 @@ export function OpportunitiesPage() {
               ))}
             </select>
           </label>
-          <select
-            className="select select-bordered rounded-md"
-            value={riskFilter}
-            onChange={(event) => setRiskFilter(event.target.value)}
-            aria-label={t("riskProfileMetric")}
-          >
-            <option value="all">{t("allRiskProfiles")}</option>
-            {riskOptions.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <label className="input input-bordered flex items-center gap-2 rounded-md">
+          <label className="input input-bordered flex items-center gap-2 rounded-md focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
             <span className="text-sm font-bold">{t("metricReturn")}</span>
             <input
-              className="w-14"
+              className="w-14 outline-none"
               type="number"
               min={0}
               max={100}
@@ -793,10 +862,10 @@ export function OpportunitiesPage() {
             <span className="text-sm font-bold">%</span>
           </label>
           {activeTab === "recommendations" ? (
-            <label className="input input-bordered flex items-center gap-2 rounded-md">
+            <label className="input input-bordered flex items-center gap-2 rounded-md focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
               <span className="text-sm font-bold">{t("minScore")}</span>
               <input
-                className="w-14"
+                className="w-14 outline-none"
                 type="number"
                 min={0}
                 max={100}
@@ -872,7 +941,17 @@ export function OpportunitiesPage() {
                   {t("viewAllOpportunities")}
                 </button>
               </div>
-            ) : undefined
+            ) : (
+              <button
+                className="btn btn-outline rounded-md"
+                type="button"
+                onClick={() => void refetch()}
+                disabled={isFetching}
+              >
+                {isFetching ? <Loader2 className="animate-spin" size={16} /> : <RefreshCw size={16} />}
+                {t("refresh")}
+              </button>
+            )
           }
           savedIds={savedIds}
           onToggleSave={toggle}
@@ -886,6 +965,7 @@ export function OpportunitiesPage() {
           {t("opportunityFetchLimitWarning")}
         </div>
       ) : null}
+      </div>
     </section>
   );
 }
@@ -942,7 +1022,17 @@ export function SavedOpportunitiesPage() {
         </div>
       ) : null}
       {!savedState.isLoading && !savedState.isError ? (
-        <CatalogGrid items={mergedSaved} savedIds={savedIds} onToggleSave={toggle} savingId={savingId} />
+        <CatalogGrid
+          items={mergedSaved}
+          savedIds={savedIds}
+          onToggleSave={toggle}
+          savingId={savingId}
+          emptyAction={
+            <Link to="/dashboard/investor/peluang" className="btn btn-outline rounded-md">
+              {t("viewAllOpportunities")}
+            </Link>
+          }
+        />
       ) : null}
     </section>
   );
@@ -1057,7 +1147,14 @@ export function CompareOpportunitiesPage() {
         <CardSkeletonGrid count={3} />
       ) : null}
       {!compareIsLoading && compared.length === 0 ? (
-        <EmptyState title="noCompareItems" body="noCompareItemsBody" />
+        <div className="space-y-4">
+          <EmptyState title="noCompareItems" body="noCompareItemsBody" />
+          <div className="text-center">
+            <Link to="/dashboard/investor/peluang" className="btn btn-outline rounded-md">
+              {t("addOpportunity")}
+            </Link>
+          </div>
+        </div>
       ) : (
         <div className="space-y-4">
           <div className="space-y-3 md:hidden">
@@ -1078,10 +1175,6 @@ export function CompareOpportunitiesPage() {
                     <div className="rounded-md bg-base-200 p-2">
                       <p className="text-xs text-neutral/50">{t("metricReturn")}</p>
                       <p className="font-semibold">{percent(returnRate(item))}</p>
-                    </div>
-                    <div className="rounded-md bg-base-200 p-2">
-                      <p className="text-xs text-neutral/50">{t("riskProfileMetric")}</p>
-                      <p className="font-semibold">{risk(item)}</p>
                     </div>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -1120,7 +1213,6 @@ export function CompareOpportunitiesPage() {
                   ["funded", (item: Entity) => currency(funded(item))],
                   ["progress", (item: Entity) => `${progress(item)}%`],
                   ["metricReturn", (item: Entity) => percent(returnRate(item))],
-                  ["riskProfileMetric", (item: Entity) => risk(item)],
                   ["metricMatch", (item: Entity) => (matchScore(item) ? percent(matchScore(item)) : "-")],
                 ].map(([label, render]) => (
                   <tr key={String(label)}>
@@ -1168,7 +1260,7 @@ export function CompareOpportunitiesPage() {
 }
 
 export function OpportunityDetailPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { id = "" } = useParams();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -1233,8 +1325,31 @@ export function OpportunityDetailPage() {
     penawaran_return: "",
     catatan: "",
   });
+  const nominalFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat("id-ID", {
+        maximumFractionDigits: 0,
+      }),
+    [],
+  );
+  const quickNominalOptions = useMemo(() => [10_000_000, 50_000_000, 100_000_000], []);
+  const parseNominalDigits = (value: string) => value.replace(/\D+/g, "");
+  const formatNominalInput = (value: string) => {
+    const digits = parseNominalDigits(value);
+    if (!digits) return "";
+    return nominalFormatter.format(Number(digits));
+  };
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const nominalValue = Number(parseNominalDigits(form.penawaran_nominal));
+  const returnValue = Number(String(form.penawaran_return).replace(",", "."));
+  const canSubmitNegotiation =
+    /^\d+$/.test(id) &&
+    Number.isFinite(nominalValue) &&
+    nominalValue > 0 &&
+    Number.isFinite(returnValue) &&
+    returnValue >= 0 &&
+    returnValue <= 100;
   const bookmarkStatusQuery = useQuery({
     queryKey: ["investor-bookmark-status", opportunityBusinessId],
     queryFn: async () => {
@@ -1251,10 +1366,13 @@ export function OpportunityDetailPage() {
 
   const negotiationMutation = useMutation({
     mutationFn: async () => {
+      if (!canSubmitNegotiation) {
+        throw new Error(t("negotiationStartError"));
+      }
       const response = await apiClient.post("/businesses/proposals/negotiations/start", {
         pengajuans_id: Number(id),
-        penawaran_nominal: Number(form.penawaran_nominal),
-        penawaran_return: Number(form.penawaran_return),
+        penawaran_nominal: nominalValue,
+        penawaran_return: returnValue,
         catatan: form.catatan,
       });
       return unwrap<unknown>(response.data);
@@ -1284,6 +1402,25 @@ export function OpportunityDetailPage() {
   }
 
   const isSaved = bookmarkStatusQuery.data ?? savedIds.has(opportunityBusinessId);
+  const detailImageSrc = businessImage(opportunity);
+  const opportunityDescription = textValue(
+    readPath(opportunity, ["deskripsi_peluang", "proposal.deskripsi_peluang", "deskripsi", "description"], ""),
+    "",
+  );
+  const fundingPlanRaw = readPath(
+    opportunity,
+    ["rencana_penggunaan_dana", "proposal.rencana_penggunaan_dana"],
+    "",
+  );
+  const fundingPlanItems = Array.isArray(fundingPlanRaw)
+    ? fundingPlanRaw
+        .map((item) => asEntity(item))
+        .map((item) => ({
+          kategori: textValue(readPath(item, ["kategori", "category", "label"], ""), ""),
+          jumlah: Number(readPath(item, ["jumlah", "amount"], "0")),
+        }))
+        .filter((item) => item.kategori && Number.isFinite(item.jumlah) && item.jumlah > 0)
+    : [];
 
   return (
     <section className="space-y-5">
@@ -1316,7 +1453,31 @@ export function OpportunityDetailPage() {
 
       <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="rounded-md border border-base-300 bg-white p-6 shadow-sm">
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="relative overflow-hidden rounded-md border border-base-300 bg-base-200">
+            <div className="grid h-[240px] place-items-center px-6 text-center sm:h-[320px]">
+              <div>
+                <img
+                  src="/brand/logo-icon-transparent.png"
+                  alt=""
+                  className="mx-auto h-14 w-14 object-contain opacity-70"
+                />
+                <p className="mt-3 text-sm font-bold text-neutral/50">{t("noBusinessImage")}</p>
+              </div>
+            </div>
+            {detailImageSrc ? (
+              <img
+                src={detailImageSrc}
+                alt={businessName(opportunity)}
+                className="absolute inset-0 z-10 h-[240px] w-full object-cover sm:h-[320px]"
+                loading="lazy"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
+            ) : null}
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
             <div className="rounded-md bg-base-200 p-4">
               <CircleDollarSign className="text-primary" size={22} />
               <p className="mt-3 text-xs font-bold uppercase tracking-wide text-neutral/45">{t("metricTarget")}</p>
@@ -1326,16 +1487,6 @@ export function OpportunityDetailPage() {
               <TrendingUp className="text-primary" size={22} />
               <p className="mt-3 text-xs font-bold uppercase tracking-wide text-neutral/45">{t("metricReturn")}</p>
               <p className="mt-1 font-black">{percent(returnRate(opportunity))}</p>
-            </div>
-            <div className="rounded-md bg-base-200 p-4">
-              <Scale className="text-primary" size={22} />
-              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-neutral/45">{t("risk")}</p>
-              <p className="mt-1 font-black">{risk(opportunity)}</p>
-            </div>
-            <div className="rounded-md bg-base-200 p-4">
-              <Sparkles className="text-primary" size={22} />
-              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-neutral/45">{t("metricMatch")}</p>
-              <p className="mt-1 font-black">{matchScore(opportunity) ? percent(matchScore(opportunity)) : "-"}</p>
             </div>
           </div>
 
@@ -1353,8 +1504,6 @@ export function OpportunityDetailPage() {
             {[
               ["sector", sector(opportunity)],
               ["location", city(opportunity)],
-              ["submissionId", `#${opportunityId(opportunity)}`],
-              ["status", textValue(readPath(opportunity, ["approval.status", "status", "approval_status"]))],
             ].map(([label, value]) => (
               <div key={label} className="rounded-md border border-base-300 p-4">
                 <p className="text-xs font-bold uppercase tracking-wide text-neutral/45">{t(label)}</p>
@@ -1362,18 +1511,30 @@ export function OpportunityDetailPage() {
               </div>
             ))}
           </div>
-
-          <div className="mt-6 rounded-md border border-base-300 p-5">
-            <h3 className="font-black">{t("documentsAndRiskSignals")}</h3>
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              {["businessProfile", "salesReport", "riskMemo"].map((item) => (
-                <div key={item} className="flex items-center gap-3 rounded-md bg-base-200 p-3">
-                  <FileText size={18} className="text-primary" />
-                  <span className="text-sm font-bold">{t(item)}</span>
-                </div>
-              ))}
+          {opportunityDescription ? (
+            <div className="mt-6 rounded-md border border-base-300 p-5">
+              <h3 className="font-black">{language === "id" ? "Deskripsi peluang" : "Opportunity description"}</h3>
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-neutral/75">{opportunityDescription}</p>
             </div>
-          </div>
+          ) : null}
+          {fundingPlanItems.length > 0 ? (
+            <div className="mt-4 rounded-md border border-base-300 p-5">
+              <h3 className="font-black">
+                {language === "id" ? "Rencana penggunaan dana" : "Fund usage plan"}
+              </h3>
+              <div className="mt-3 grid gap-2">
+                {fundingPlanItems.map((plan, index) => (
+                  <div
+                    key={`${plan.kategori}-${index}`}
+                    className="flex items-center justify-between gap-3 rounded-md bg-base-200 px-3 py-2"
+                  >
+                    <p className="text-sm font-semibold text-neutral/80">{plan.kategori}</p>
+                    <p className="text-sm font-black">{currency(plan.jumlah)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <form className="rounded-md border border-base-300 bg-white p-6 shadow-sm" onSubmit={(event: FormEvent<HTMLFormElement>) => {
@@ -1388,18 +1549,86 @@ export function OpportunityDetailPage() {
           <div className="mt-5 grid gap-4">
             <label className="form-control">
               <span className="label-text mb-2 font-semibold">{t("offerNominal")}</span>
-              <input className="input input-bordered rounded-md" type="number" required value={form.penawaran_nominal} onChange={(event) => setForm((current) => ({ ...current, penawaran_nominal: event.target.value }))} />
+              <div className="input input-bordered flex items-center gap-2 rounded-md">
+                <span className="text-sm font-bold text-neutral/50">IDR</span>
+                <input
+                  className="w-full min-w-0 bg-transparent outline-none"
+                  type="text"
+                  required
+                  inputMode="numeric"
+                  placeholder={t("offerNominalPlaceholder")}
+                  value={form.penawaran_nominal}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      penawaran_nominal: formatNominalInput(event.target.value),
+                    }))
+                  }
+                />
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {quickNominalOptions.map((amount) => (
+                  <button
+                    key={amount}
+                    type="button"
+                    className="btn btn-xs rounded-md border border-base-300 bg-base-100 px-3 font-semibold text-neutral hover:border-base-content/20"
+                    onClick={() =>
+                      setForm((current) => ({
+                        ...current,
+                        penawaran_nominal: nominalFormatter.format(amount),
+                      }))
+                    }
+                  >
+                    {compactCurrency(amount)}
+                  </button>
+                ))}
+              </div>
+              <span className="mt-2 text-xs text-neutral/55">
+                {t("offerNominalHint")}
+              </span>
             </label>
             <label className="form-control">
               <span className="label-text mb-2 font-semibold">{t("offerReturn")}</span>
-              <input className="input input-bordered rounded-md" type="number" required value={form.penawaran_return} onChange={(event) => setForm((current) => ({ ...current, penawaran_return: event.target.value }))} />
+              <div className="input input-bordered flex items-center gap-2 rounded-md">
+                <input
+                  className="w-full min-w-0 bg-transparent outline-none"
+                  type="number"
+                  required
+                  min={0}
+                  max={100}
+                  step={0.1}
+                  inputMode="decimal"
+                  placeholder={t("offerReturnPlaceholder")}
+                  value={form.penawaran_return}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      penawaran_return: event.target.value,
+                    }))
+                  }
+                />
+                <span className="text-sm font-bold text-neutral/50">%</span>
+              </div>
             </label>
             <label className="form-control">
               <span className="label-text mb-2 font-semibold">{t("notes")}</span>
-              <textarea className="textarea textarea-bordered min-h-28 rounded-md" value={form.catatan} onChange={(event) => setForm((current) => ({ ...current, catatan: event.target.value }))} />
+              <textarea
+                className="textarea textarea-bordered min-h-28 rounded-md"
+                placeholder={t("notesPlaceholder")}
+                value={form.catatan}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    catatan: event.target.value,
+                  }))
+                }
+              />
             </label>
           </div>
-          <button className="btn btn-primary mt-5 w-full rounded-md text-white" disabled={negotiationMutation.isPending}>
+          <button
+            className="btn btn-primary mt-5 w-full rounded-md text-white"
+            disabled={negotiationMutation.isPending || !canSubmitNegotiation}
+          >
             {negotiationMutation.isPending ? <Loader2 className="animate-spin" size={17} /> : <Handshake size={17} />}
             {t("sendOffer")}
           </button>

@@ -37,6 +37,14 @@ export const resourceApi = {
       return normalizeList<T>(unwrap<unknown>(response.data));
     } catch (error) {
       if (
+        config.notFoundIsEmpty &&
+        axios.isAxiosError(error) &&
+        error.response?.status === 404
+      ) {
+        return config.fallback;
+      }
+
+      if (
         config.key.startsWith("sales-pengajuan-") &&
         axios.isAxiosError(error)
       ) {
@@ -64,13 +72,6 @@ export const resourceApi = {
             }
           }
         }
-      }
-      if (
-        config.notFoundIsEmpty &&
-        axios.isAxiosError(error) &&
-        error.response?.status === 404
-      ) {
-        return config.fallback;
       }
       throw error;
     }

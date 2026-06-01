@@ -740,7 +740,7 @@ Object.assign(translations.id, {
     "Peluang UMKM akan tampil setelah pengajuan dipublikasikan atau rekomendasi investor tersedia.",
   noFilteredOpportunities: "Tidak ada hasil sesuai filter",
   noFilteredOpportunitiesBody:
-    "Coba ubah kata kunci, sektor, profil risiko, atau minimum return.",
+    "Coba ubah kata kunci, sektor, atau minimum return.",
   opportunityFetchLimitWarning:
     "Sebagian data mungkin belum tampil karena jumlah peluang sangat banyak. Persempit pencarian atau muat ulang halaman.",
   marketplaceOpportunitiesTitle: "Peluang Pendanaan UMKM",
@@ -748,6 +748,12 @@ Object.assign(translations.id, {
     "Telusuri peluang pendanaan seperti katalog investasi: simpan peluang, bandingkan UMKM, lalu buka detail sebelum memulai negosiasi.",
   recommendedForYou: "Cocok untukmu",
   allOpportunities: "Semua peluang",
+  marketplaceTablistLabel: "Mode daftar peluang",
+  recommendedForYouTabHint:
+    "Daftar peluang yang dipersonalisasi dari preferensi investasi kamu.",
+  allOpportunitiesTabHint:
+    "Daftar seluruh peluang pendanaan UMKM yang tersedia saat ini.",
+  marketplaceResultsCount: "{count} peluang ditampilkan untuk mode {mode}.",
   improveRecommendations: "Atur preferensi",
   savedCount: "Tersimpan ({count})",
   compareCount: "Compare ({count})",
@@ -780,7 +786,7 @@ Object.assign(translations.id, {
   removeFromCompare: "Hapus dari Compare",
   compareUmkmTitle: "Compare UMKM",
   compareUmkmBody:
-    "Bandingkan peluang berdasarkan target pendanaan, return, risiko, progress, dan skor match sebelum mengambil keputusan.",
+    "Bandingkan peluang berdasarkan target pendanaan, return, progress, dan skor match sebelum mengambil keputusan.",
   addOpportunity: "Tambah Peluang",
   noCompareItems: "Belum ada peluang untuk dibandingkan",
   noCompareItemsBody: "Simpan atau pilih minimal dua peluang dari katalog peluang.",
@@ -804,14 +810,22 @@ Object.assign(translations.id, {
   riskMemo: "Risk Memo",
   startNegotiation: "Mulai Negosiasi",
   startNegotiationBody:
-    "Ajukan nominal dan return yang kamu tawarkan ke UMKM. Setelah dibuat, lanjutkan proses di Deal Room.",
+    "Ajukan nominal (IDR) dan return (%) yang kamu tawarkan ke UMKM. Setelah dibuat, lanjutkan proses di halaman Negosiasi.",
   offerNominal: "Nominal Penawaran",
+  offerNominalPlaceholder: "Mis. 50.000.000",
+  offerNominalHint:
+    "Jumlah dana yang kamu tawarkan.",
   offerReturn: "Return Penawaran",
+  offerReturnPlaceholder: "Mis. 12",
+  offerReturnHint:
+    "Masukkan persentase return per tahun. Contoh 12.5 berarti 12,5% per tahun.",
   notes: "Catatan",
+  notesPlaceholder:
+    "Contoh: skema pembayaran fleksibel, siap negosiasi tenor 12 bulan.",
   sendOffer: "Kirim Penawaran",
   viewNegotiations: "Lihat Negosiasi",
   negotiationStartedMessage:
-    "Negosiasi berhasil dimulai. Buka Deal Room untuk memantau prosesnya.",
+    "Negosiasi berhasil dimulai. Buka halaman Negosiasi untuk memantau prosesnya.",
   negotiationStartError: "Negosiasi belum berhasil dibuat.",
   loadingOpportunityDetail: "Memuat detail peluang",
   dealRoomTitle: "Deal Room",
@@ -862,7 +876,7 @@ Object.assign(translations.en, {
     "UMKM opportunities will appear after submissions are published or investor recommendations are available.",
   noFilteredOpportunities: "No results match the filters",
   noFilteredOpportunitiesBody:
-    "Try changing the keyword, sector, risk profile, or minimum return.",
+    "Try changing the keyword, sector, or minimum return.",
   opportunityFetchLimitWarning:
     "Some data may not be visible because there are many opportunities. Narrow the search or reload the page.",
   marketplaceOpportunitiesTitle: "UMKM Funding Opportunities",
@@ -870,6 +884,12 @@ Object.assign(translations.en, {
     "Browse funding opportunities like an investment catalog: save opportunities, compare UMKM, then open details before starting negotiations.",
   recommendedForYou: "Recommended for you",
   allOpportunities: "All opportunities",
+  marketplaceTablistLabel: "Opportunity list mode",
+  recommendedForYouTabHint:
+    "Personalized opportunities based on your saved investment preferences.",
+  allOpportunitiesTabHint:
+    "All currently available UMKM funding opportunities.",
+  marketplaceResultsCount: "{count} opportunities are shown for {mode} mode.",
   improveRecommendations: "Set preferences",
   savedCount: "Saved ({count})",
   compareCount: "Compare ({count})",
@@ -902,7 +922,7 @@ Object.assign(translations.en, {
   removeFromCompare: "Remove from Compare",
   compareUmkmTitle: "Compare UMKM",
   compareUmkmBody:
-    "Compare opportunities by funding target, return, risk, progress, and match score before deciding.",
+    "Compare opportunities by funding target, return, progress, and match score before deciding.",
   addOpportunity: "Add Opportunity",
   noCompareItems: "No opportunities to compare",
   noCompareItemsBody:
@@ -927,14 +947,22 @@ Object.assign(translations.en, {
   riskMemo: "Risk Memo",
   startNegotiation: "Start Negotiation",
   startNegotiationBody:
-    "Submit the nominal amount and return you offer to the UMKM. After it is created, continue the process in Deal Room.",
+    "Submit the offered nominal amount (IDR) and return (%). After it is created, continue the process in the Negotiations page.",
   offerNominal: "Offer Nominal",
+  offerNominalPlaceholder: "Ex: 50,000,000",
+  offerNominalHint:
+    "Total funding amount you want to offer.",
   offerReturn: "Offer Return",
+  offerReturnPlaceholder: "Ex: 12",
+  offerReturnHint:
+    "Enter the annual return percentage. Example: 12.5 means 12.5% per year.",
   notes: "Notes",
+  notesPlaceholder:
+    "Example: flexible payment scheme, open to 12-month tenor negotiation.",
   sendOffer: "Send Offer",
   viewNegotiations: "View Negotiations",
   negotiationStartedMessage:
-    "Negotiation started successfully. Open Deal Room to monitor the process.",
+    "Negotiation started successfully. Open the Negotiations page to monitor the process.",
   negotiationStartError: "Negotiation could not be created.",
   loadingOpportunityDetail: "Loading opportunity detail",
   dealRoomTitle: "Deal Room",
