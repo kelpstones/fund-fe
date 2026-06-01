@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
   type KeyboardEvent,
@@ -63,8 +64,6 @@ const apiErrorMessage = (error: unknown, fallback: string) => {
   }
   return fallback;
 };
-const isBusinessDetailAccessFallback = (error: unknown) =>
-  axios.isAxiosError(error) && [401, 403, 404].includes(error.response?.status ?? 0);
 
 const asEntity = (value: unknown): Entity =>
   value && typeof value === "object" ? (value as Entity) : { id: "" };
@@ -652,6 +651,8 @@ export function OpportunitiesPage() {
       : t("allOpportunitiesTabHint");
   const recommendationCount = recommendations.length;
   const allOpportunityCount = data.length;
+  const recommendationTabRef = useRef<HTMLButtonElement | null>(null);
+  const allTabRef = useRef<HTMLButtonElement | null>(null);
   const setTab = (tab: "all" | "recommendations") => {
     const next = new URLSearchParams(searchParams);
     if (tab === "recommendations") {
@@ -665,25 +666,32 @@ export function OpportunitiesPage() {
     setMinReturnInput("0");
     setMinScore(0);
   };
+  const setTabAndFocus = (tab: "all" | "recommendations") => {
+    setTab(tab);
+    requestAnimationFrame(() => {
+      const targetTab = tab === "recommendations" ? recommendationTabRef.current : allTabRef.current;
+      targetTab?.focus();
+    });
+  };
   const handleTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
       event.preventDefault();
-      setTab(activeTab === "recommendations" ? "all" : "recommendations");
+      setTabAndFocus(activeTab === "recommendations" ? "all" : "recommendations");
       return;
     }
     if (event.key === "ArrowRight" || event.key === "ArrowDown") {
       event.preventDefault();
-      setTab(activeTab === "recommendations" ? "all" : "recommendations");
+      setTabAndFocus(activeTab === "recommendations" ? "all" : "recommendations");
       return;
     }
     if (event.key === "Home") {
       event.preventDefault();
-      setTab("recommendations");
+      setTabAndFocus("recommendations");
       return;
     }
     if (event.key === "End") {
       event.preventDefault();
-      setTab("all");
+      setTabAndFocus("all");
     }
   };
   const clearFilters = () => {
@@ -721,16 +729,18 @@ export function OpportunitiesPage() {
           <div className="min-w-0 flex-1">
             <div
               role="tablist"
+              aria-orientation="horizontal"
               aria-label={t("marketplaceTablistLabel")}
               className="grid w-full gap-2 sm:grid-cols-2"
               onKeyDown={handleTabKeyDown}
             >
               <button
+                ref={recommendationTabRef}
                 id="marketplace-tab-recommendations"
                 role="tab"
                 type="button"
                 aria-selected={activeTab === "recommendations"}
-                aria-controls="marketplace-panel-recommendations"
+                aria-controls="marketplace-panel"
                 tabIndex={activeTab === "recommendations" ? 0 : -1}
                 className={[
                   "btn h-auto min-h-[3rem] justify-between rounded-md px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
@@ -756,11 +766,12 @@ export function OpportunitiesPage() {
                 </span>
               </button>
               <button
+                ref={allTabRef}
                 id="marketplace-tab-all"
                 role="tab"
                 type="button"
                 aria-selected={activeTab === "all"}
-                aria-controls="marketplace-panel-all"
+                aria-controls="marketplace-panel"
                 tabIndex={activeTab === "all" ? 0 : -1}
                 className={[
                   "btn h-auto min-h-[3rem] justify-between rounded-md px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
@@ -814,8 +825,9 @@ export function OpportunitiesPage() {
       </div>
 
       <div
-        id={activeTab === "recommendations" ? "marketplace-panel-recommendations" : "marketplace-panel-all"}
+        id="marketplace-panel"
         role="tabpanel"
+        tabIndex={0}
         aria-labelledby={activeTab === "recommendations" ? "marketplace-tab-recommendations" : "marketplace-tab-all"}
         className="space-y-5"
       >
@@ -1285,8 +1297,8 @@ export function OpportunityDetailPage() {
       try {
         const businessResponse = await apiClient.get(`/businesses/${encodeURIComponent(detailBusinessId)}`);
         fullBusiness = asEntity(unwrap<unknown>(businessResponse.data));
-      } catch (error) {
-        if (!isBusinessDetailAccessFallback(error)) throw error;
+      } catch {
+        fullBusiness = null;
       }
 
       if (!fullBusiness) {
@@ -1300,7 +1312,7 @@ export function OpportunityDetailPage() {
         const businesses = await resourceApi
           .list({
             ...businessConfig,
-            listPath: `/businesses?page=1&limit=50${searchQuery}`,
+            listPath: `/businesses?page=1&limit=${businessLookupLimit}${searchQuery}`,
           })
           .catch(() => [] as Entity[]);
         fullBusiness =
@@ -1317,8 +1329,9 @@ export function OpportunityDetailPage() {
     enabled: Boolean(id),
     retry: false,
   });
-  const opportunity = data.find((item) => opportunityId(item) === id) ?? detailQuery.data;
-  const isLoading = opportunitiesQuery.isLoading || detailQuery.isLoading;
+  const listOpportunity = data.find((item) => opportunityId(item) === id);
+  const opportunity = detailQuery.data ?? listOpportunity;
+  const isLoading = !opportunity && (detailQuery.isLoading || opportunitiesQuery.isLoading);
   const opportunityBusinessId = opportunity ? bookmarkKey(opportunity) : "";
   const [form, setForm] = useState({
     penawaran_nominal: "",
@@ -1405,6 +1418,11 @@ export function OpportunityDetailPage() {
   const detailImageSrc = businessImage(opportunity);
   const opportunityDescription = textValue(
     readPath(opportunity, ["deskripsi_peluang", "proposal.deskripsi_peluang", "deskripsi", "description"], ""),
+    "",
+  );
+  const addressValue = textValue(readPath(opportunity, ["bisnis.alamat", "alamat"], ""), "");
+  const classValue = textValue(
+    readPath(opportunity, ["bisnis.kelas.nama_kelas", "bisnis.kelas", "kelas.nama_kelas", "kelas", "class_label"], ""),
     "",
   );
   const fundingPlanRaw = readPath(
@@ -1511,6 +1529,22 @@ export function OpportunityDetailPage() {
               </div>
             ))}
           </div>
+          {(addressValue || classValue) ? (
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              {addressValue ? (
+                <div className="rounded-md border border-base-300 p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-neutral/45">Alamat</p>
+                  <p className="mt-2 text-sm font-semibold text-neutral/80">{addressValue}</p>
+                </div>
+              ) : null}
+              {classValue ? (
+                <div className="rounded-md border border-base-300 p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-neutral/45">Kelas</p>
+                  <p className="mt-2 text-sm font-semibold text-neutral/80">{classValue}</p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {opportunityDescription ? (
             <div className="mt-6 rounded-md border border-base-300 p-5">
               <h3 className="font-black">{language === "id" ? "Deskripsi peluang" : "Opportunity description"}</h3>

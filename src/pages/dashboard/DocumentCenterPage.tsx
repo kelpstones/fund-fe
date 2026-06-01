@@ -330,23 +330,18 @@ export function DocumentCenterPage() {
     [backendDocuments],
   );
 
-  const uploadedCount = isUmkm
+  const progressEligibleStatuses = new Set(["valid", "pending"]);
+  const completedCount = isUmkm
     ? requirements.filter((item) => {
         if (!item.backend) return false;
         const document = backendByDocName.get(normalizeDocName(item.backend.nama_dokumen));
-        return Boolean(document);
+        if (!document) return false;
+        return progressEligibleStatuses.has(String(document.status ?? "").toLowerCase());
       }).length
     : requirements.filter((item) => documents[item.key]).length;
-  const validCount = isUmkm
-    ? requirements.filter((item) => {
-        if (!item.backend) return false;
-        const document = backendByDocName.get(normalizeDocName(item.backend.nama_dokumen));
-        return document?.status === "valid";
-      }).length
-    : uploadedCount;
 
   const progress = clampProgress(
-    Math.round((validCount / Math.max(requirements.length, 1)) * 100),
+    Math.round((completedCount / Math.max(requirements.length, 1)) * 100),
   );
 
   const validateUploadFile = (file: File) => {

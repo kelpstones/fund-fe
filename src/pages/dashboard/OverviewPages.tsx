@@ -84,6 +84,34 @@ const toNumber = (value: unknown) => {
 };
 const readNumberPath = (item: Entity, paths: string[]) =>
   toNumber(readPath(item, paths, "__missing__"));
+const proposalIdPaths = ["pengajuan_id", "proposal_id", "pengajuan.id", "pengajuans_id", "id"];
+const businessIdPaths = ["bisnis.id", "bisnis_id"];
+const targetValuePaths = [
+  "target_pendanaan",
+  "target",
+  "bisnis.target_pendanaan",
+  "pengajuan.target_pendanaan",
+  "proposal.target_pendanaan",
+];
+const returnValuePaths = [
+  "per_anual_return",
+  "return",
+  "return_investasi",
+  "pengajuan.per_anual_return",
+  "proposal.per_anual_return",
+];
+const fundedValuePaths = [
+  "total_pendanaan",
+  "terkumpul",
+  "pengajuan.total_pendanaan",
+  "proposal.total_pendanaan",
+];
+const entityTimestamp = (item: Entity) => {
+  const updatedAt = new Date(String(readPath(item, ["updated_at"], ""))).getTime();
+  if (Number.isFinite(updatedAt)) return updatedAt;
+  const createdAt = new Date(String(readPath(item, ["created_at"], ""))).getTime();
+  return Number.isFinite(createdAt) ? createdAt : 0;
+};
 const clampPercent = (value: number) => Math.max(0, Math.min(100, value));
 const toTitleWords = (value: string) =>
   value
@@ -374,7 +402,7 @@ function MatchList({
       submissions
         .map((item) => {
           const proposalId = textValue(
-            readPath(item, ["pengajuan_id", "proposal_id", "pengajuan.id", "pengajuans_id"], ""),
+            readPath(item, proposalIdPaths, ""),
             "",
           );
           const rawName = textValue(
@@ -393,25 +421,9 @@ function MatchList({
           const subtitle = [sector ? toTitleWords(sector) : "", city].filter(Boolean).join(" - ");
           const scoreValue = readNumberPath(item, ["match_score", "skor_kecocokan"]);
           const score = scoreValue !== null && scoreValue > 0 ? clampPercent(scoreValue) : null;
-          const returnValue = readNumberPath(item, [
-            "per_anual_return",
-            "return",
-            "return_investasi",
-            "pengajuan.per_anual_return",
-            "proposal.per_anual_return",
-          ]);
-          const targetValue = readNumberPath(item, [
-            "target_pendanaan",
-            "bisnis.target_pendanaan",
-            "pengajuan.target_pendanaan",
-            "proposal.target_pendanaan",
-          ]);
-          const fundedValue = readNumberPath(item, [
-            "total_pendanaan",
-            "terkumpul",
-            "pengajuan.total_pendanaan",
-            "proposal.total_pendanaan",
-          ]);
+          const returnValue = readNumberPath(item, returnValuePaths);
+          const targetValue = readNumberPath(item, targetValuePaths);
+          const fundedValue = readNumberPath(item, fundedValuePaths);
           const hasFundingProgress =
             targetValue !== null &&
             targetValue > 0 &&
@@ -1063,7 +1075,7 @@ export function InvestorOverviewPage() {
   const submissionsByBusinessId = useMemo(
     () =>
       submissionsWithBusinessCover.reduce((map, item) => {
-        const businessId = textValue(readPath(item, ["bisnis.id", "bisnis_id"], ""), "");
+        const businessId = textValue(readPath(item, businessIdPaths, ""), "");
         if (!businessId) return map;
         const current = map.get(businessId);
         if (!current) {
@@ -1071,15 +1083,23 @@ export function InvestorOverviewPage() {
           return map;
         }
 
-        const currentTimestamp = new Date(
-          String(readPath(current, ["updated_at", "created_at"], "")),
-        ).getTime();
-        const nextTimestamp = new Date(
-          String(readPath(item, ["updated_at", "created_at"], "")),
-        ).getTime();
-
-        if (!Number.isFinite(currentTimestamp) || nextTimestamp >= currentTimestamp) {
+        const currentTimestamp = entityTimestamp(current);
+        const nextTimestamp = entityTimestamp(item);
+        if (nextTimestamp >= currentTimestamp) {
           map.set(businessId, item);
+        }
+        return map;
+      }, new Map<string, Entity>()),
+    [submissionsWithBusinessCover],
+  );
+  const submissionsByProposalId = useMemo(
+    () =>
+      submissionsWithBusinessCover.reduce((map, item) => {
+        const proposalId = textValue(readPath(item, proposalIdPaths, ""), "");
+        if (!proposalId) return map;
+        const current = map.get(proposalId);
+        if (!current || entityTimestamp(item) >= entityTimestamp(current)) {
+          map.set(proposalId, item);
         }
         return map;
       }, new Map<string, Entity>()),
@@ -1088,59 +1108,50 @@ export function InvestorOverviewPage() {
   const recommendationsWithProposalData = useMemo(
     () =>
       recommendationsWithBusinessCover.map((item) => {
-        const businessId = textValue(readPath(item, ["bisnis.id", "bisnis_id"], ""), "");
-        if (!businessId) return item;
-
-        const matchedSubmission = submissionsByBusinessId.get(businessId);
+        const recommendationProposalId = textValue(
+          readPath(item, proposalIdPaths, ""),
+          "",
+        );
+        const businessId = textValue(readPath(item, businessIdPaths, ""), "");
+        const matchedSubmission =
+          (recommendationProposalId
+            ? submissionsByProposalId.get(recommendationProposalId)
+            : null) ??
+          (businessId ? submissionsByBusinessId.get(businessId) : null);
         if (!matchedSubmission) return item;
 
-        const recommendationProposalId = textValue(
-          readPath(item, ["pengajuan_id", "proposal_id", "pengajuan.id", "pengajuans_id"], ""),
-          "",
-        );
         const submissionProposalId = textValue(
-          readPath(matchedSubmission, ["id", "pengajuan_id"], ""),
+          readPath(matchedSubmission, proposalIdPaths, ""),
           "",
         );
-        const targetValue = readNumberPath(item, [
-          "target_pendanaan",
-          "bisnis.target_pendanaan",
-          "pengajuan.target_pendanaan",
-          "proposal.target_pendanaan",
-        ]);
-        const returnValue = readNumberPath(item, [
-          "per_anual_return",
-          "return",
-          "return_investasi",
-          "pengajuan.per_anual_return",
-          "proposal.per_anual_return",
-        ]);
-        const fundedValue = readNumberPath(item, [
-          "total_pendanaan",
-          "terkumpul",
-          "pengajuan.total_pendanaan",
-          "proposal.total_pendanaan",
-        ]);
+        const targetValue = readNumberPath(item, targetValuePaths);
+        const fallbackTargetValue = readNumberPath(matchedSubmission, targetValuePaths);
+        const returnValue = readNumberPath(item, returnValuePaths);
+        const fallbackReturnValue = readNumberPath(matchedSubmission, returnValuePaths);
+        const fundedValue = readNumberPath(item, fundedValuePaths);
+        const fallbackFundedValue = readNumberPath(matchedSubmission, fundedValuePaths);
+        const submissionBusinessId = textValue(readPath(matchedSubmission, businessIdPaths, ""), "");
 
         return {
           ...item,
+          bisnis_id: businessId || submissionBusinessId || item.bisnis_id,
           pengajuan_id: recommendationProposalId || submissionProposalId || item.pengajuan_id,
           proposal_id: recommendationProposalId || submissionProposalId || item.proposal_id,
           target_pendanaan:
             targetValue !== null && targetValue > 0
               ? targetValue
-              : readPath(matchedSubmission, ["target_pendanaan"], ""),
+              : fallbackTargetValue ?? "",
           per_anual_return:
             returnValue !== null && returnValue > 0
               ? returnValue
-              : readPath(matchedSubmission, ["per_anual_return"], ""),
+              : fallbackReturnValue ?? "",
           total_pendanaan:
             fundedValue !== null && fundedValue >= 0
               ? fundedValue
-              : readPath(matchedSubmission, ["total_pendanaan"], ""),
+              : fallbackFundedValue ?? "",
         };
       }),
-    [recommendationsWithBusinessCover, submissionsByBusinessId],
+    [recommendationsWithBusinessCover, submissionsByBusinessId, submissionsByProposalId],
   );
   const investments = investmentsQuery.data ?? [];
   const invoices = invoicesQuery.data ?? [];
