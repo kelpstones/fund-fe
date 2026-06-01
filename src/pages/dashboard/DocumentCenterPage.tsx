@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
 import {
   CheckCircle2,
   Download,
@@ -11,7 +10,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../lib/auth/AuthProvider";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
-import { dateShort } from "../../lib/format";
+import { apiErrorMessage, dateShort } from "../../lib/format";
 import { apiClient, unwrap } from "../../lib/api/client";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { useToast } from "../../components/ToastProvider";
@@ -211,13 +210,6 @@ const allowedExtensions = [
   ".csv",
 ];
 const acceptedFileInputValue = ".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.csv";
-
-const apiErrorMessage = (error: unknown, fallback: string) => {
-  if (axios.isAxiosError(error) && error.response?.data?.message) {
-    return String(error.response.data.message);
-  }
-  return fallback;
-};
 
 const normalizeDocName = (value: unknown) => String(value ?? "").trim().toLowerCase();
 

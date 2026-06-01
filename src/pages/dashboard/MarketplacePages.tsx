@@ -8,7 +8,6 @@ import {
   type ReactNode,
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   Bookmark,
@@ -38,7 +37,7 @@ import {
   myNegotiationConfig,
   submissionConfig,
 } from "../../lib/resourceConfigs";
-import { compactCurrency, currency, dateShort, percent, readPath, textValue } from "../../lib/format";
+import { apiErrorMessage, compactCurrency, currency, dateShort, percent, readPath, textValue } from "../../lib/format";
 import type { Entity } from "../../types";
 
 type SavedOpportunity = Entity & {
@@ -56,13 +55,6 @@ type ParsedCompareIds = {
   invalidCount: number;
   duplicateCount: number;
   overflowCount: number;
-};
-
-const apiErrorMessage = (error: unknown, fallback: string) => {
-  if (axios.isAxiosError(error) && error.response?.data?.message) {
-    return String(error.response.data.message);
-  }
-  return fallback;
 };
 
 const asEntity = (value: unknown): Entity =>
@@ -1680,6 +1672,8 @@ export function OpportunityDetailPage() {
 export function AdminReviewQueuePage() {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
+  const [documentRejectTarget, setDocumentRejectTarget] = useState<Entity | null>(null);
+  const [documentRejectNote, setDocumentRejectNote] = useState("");
   const { data = [], isLoading, isError, error } = useQuery({
     queryKey: ["admin-review-queue"],
     queryFn: () => resourceApi.list(submissionConfig),
@@ -1841,9 +1835,8 @@ export function AdminReviewQueuePage() {
                     className="btn btn-error rounded-md text-white"
                     disabled={documentReviewMutation.isPending}
                     onClick={() => {
-                      const note = window.prompt("Catatan penolakan dokumen:");
-                      if (!note?.trim()) return;
-                      documentReviewMutation.mutate({ item, status: "invalid", note: note.trim() });
+                      setDocumentRejectTarget(item);
+                      setDocumentRejectNote("");
                     }}
                   >
                     <XCircle size={17} />
@@ -1862,6 +1855,72 @@ export function AdminReviewQueuePage() {
           ))}
         </div>
       </div>
+      {documentRejectTarget ? (
+        <div className="modal modal-open">
+          <div className="modal-box fr-modal-panel max-w-lg rounded-md">
+            <h3 className="text-xl font-black text-neutral">Catatan penolakan dokumen</h3>
+            <p className="mt-2 text-sm leading-6 text-neutral/60">
+              {textValue(documentRejectTarget.nama_bisnis)} - {textValue(documentRejectTarget.nama_dokumen)}
+            </p>
+            <label className="form-control mt-5">
+              <span className="label-text mb-2 font-semibold">Alasan penolakan</span>
+              <textarea
+                className="textarea textarea-bordered min-h-32 rounded-md bg-white"
+                value={documentRejectNote}
+                onChange={(event) => setDocumentRejectNote(event.target.value)}
+                placeholder="Contoh: dokumen kurang jelas atau data tidak sesuai."
+                autoFocus
+              />
+            </label>
+            <div className="modal-action">
+              <button
+                type="button"
+                className="btn btn-outline rounded-md"
+                disabled={documentReviewMutation.isPending}
+                onClick={() => {
+                  setDocumentRejectTarget(null);
+                  setDocumentRejectNote("");
+                }}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                className="btn btn-error rounded-md text-white"
+                disabled={documentReviewMutation.isPending || !documentRejectNote.trim()}
+                onClick={() => {
+                  if (!documentRejectTarget || !documentRejectNote.trim()) return;
+                  documentReviewMutation.mutate(
+                    {
+                      item: documentRejectTarget,
+                      status: "invalid",
+                      note: documentRejectNote.trim(),
+                    },
+                    {
+                      onSuccess: () => {
+                        setDocumentRejectTarget(null);
+                        setDocumentRejectNote("");
+                      },
+                    },
+                  );
+                }}
+              >
+                {documentReviewMutation.isPending ? <Loader2 className="animate-spin" size={17} /> : <XCircle size={17} />}
+                Tolak Dokumen
+              </button>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="modal-backdrop fr-modal-backdrop"
+            onClick={() => {
+              setDocumentRejectTarget(null);
+              setDocumentRejectNote("");
+            }}
+            aria-label="Tutup modal"
+          />
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -1,6 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
 import { ArrowDownCircle, ArrowUpCircle, Loader2, Wallet } from "lucide-react";
 import { DashboardBreadcrumb } from "../../components/DashboardBreadcrumb";
 import { ResourcePage } from "../../components/ResourcePage";
@@ -15,15 +14,8 @@ import {
   supportedBankPublicConfig,
   userBankAccountConfig,
 } from "../../lib/resourceConfigs";
-import { currency, dateShort, readPath, statusTone, textValue } from "../../lib/format";
+import { apiErrorMessage, currency, dateShort, readPath, statusTone, textValue } from "../../lib/format";
 import type { Entity, ResourceAction, ResourceColumn, ResourceField } from "../../types";
-
-const apiErrorMessage = (error: unknown, fallback: string) => {
-  if (axios.isAxiosError(error) && error.response?.data?.message) {
-    return String(error.response.data.message);
-  }
-  return fallback;
-};
 
 type WalletDashboard = {
   saldo: number;

@@ -60,9 +60,10 @@ export function ForgotPasswordPage() {
           </div>
         ) : (
           <form className="mt-8 grid gap-4" onSubmit={submit}>
-            <label className="form-control">
+            <label className="form-control" htmlFor="forgot-password-email">
               <span className="label-text mb-2 font-semibold">{t("email")}</span>
               <input
+                id="forgot-password-email"
                 type="email"
                 className="input input-bordered rounded-md"
                 value={email}

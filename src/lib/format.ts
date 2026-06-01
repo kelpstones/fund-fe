@@ -1,3 +1,4 @@
+import axios from "axios";
 import type { Entity, UserRole } from "../types";
 
 export const currency = (value: unknown) =>
@@ -68,4 +69,15 @@ export const statusTone = (status: unknown) => {
   if (["pending", "active", "draft", "unread"].includes(normalized)) return "badge-warning";
   if (["rejected", "failed", "unpaid"].includes(normalized)) return "badge-error";
   return "badge-neutral";
+};
+
+export const apiErrorMessage = (error: unknown, fallback: string) => {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data;
+    if (data && typeof data === "object" && "message" in data) {
+      return String((data as Record<string, unknown>).message);
+    }
+    if (typeof data === "string") return data;
+  }
+  return fallback;
 };

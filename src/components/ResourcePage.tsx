@@ -1,7 +1,6 @@
-import { useMemo, useState } from "react";
-import type { ChangeEvent, FormEvent, ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ChangeEvent, Dispatch, FormEvent, ReactNode, SetStateAction } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
 import {
   AlertTriangle,
   Edit3,
@@ -19,6 +18,7 @@ import type {
   ResourceConfig,
   ResourceField,
   ResourceFormContext,
+  ResourceSearchField,
 } from "../types";
 import { resourceApi } from "../lib/api/resources";
 import { useAuth } from "../lib/auth/AuthProvider";
@@ -27,6 +27,7 @@ import { useToast } from "./ToastProvider";
 import { EmptyState } from "./EmptyState";
 import { ListSkeleton, TableRowSkeleton } from "./PageSkeleton";
 import { DashboardBreadcrumb } from "./DashboardBreadcrumb";
+import { apiErrorMessage } from "../lib/format";
 
 type ResourcePageProps<T extends Entity> = {
   title: string;
@@ -42,7 +43,7 @@ type ResourcePageProps<T extends Entity> = {
   actions?: ResourceAction<T>[];
   emptyTitle?: string;
   emptyDescription?: string;
-  searchableFields?: Array<keyof T & string | ((item: T) => unknown)>;
+  searchableFields?: ResourceSearchField<T>[];
   pageSize?: number;
   staticData?: T[];
   maxCreateItems?: number;
@@ -60,6 +61,19 @@ type ResourcePageProps<T extends Entity> = {
   showBreadcrumb?: boolean;
   showSearch?: boolean;
   showStatusFilter?: boolean;
+  formExtras?: (context: {
+    editing: T | null;
+    formValues: Record<string, unknown>;
+    setFormValues: Dispatch<SetStateAction<Record<string, unknown>>>;
+    isSaving: boolean;
+  }) => ReactNode;
+  onAfterCreate?: (
+    created: T,
+    context: {
+      values: Partial<T>;
+      rawValues: Record<string, unknown>;
+    },
+  ) => Promise<void> | void;
 };
 
 type ConfirmDialog = {
@@ -80,6 +94,20 @@ const emptyForm = <T extends Entity>(fields: ResourceField<T>[] = []) =>
     state[field.name] = field.type === "funding_plan" ? [{ kategori: "", jumlah: "" }] : "";
     return state;
   }, {});
+
+const formatCurrencyInput = (value: unknown) => {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  if (!digits) return "";
+  return new Intl.NumberFormat("id-ID").format(Number(digits));
+};
+
+const parsePercentInput = (value: unknown) => {
+  const normalized = String(value ?? "")
+    .replace(",", ".")
+    .replace(/[^\d.]/g, "");
+  const numeric = Number.parseFloat(normalized);
+  return Number.isFinite(numeric) ? numeric : null;
+};
 
 const coerceValues = <T extends Entity>(
   fields: ResourceField<T>[],
@@ -104,6 +132,20 @@ const coerceValues = <T extends Entity>(
 
       if (normalized.length === 0) return payload;
       payload[field.name] = normalized as T[keyof T & string];
+      return payload;
+    }
+
+    if (field.type === "currency") {
+      const digits = String(value).replace(/\D/g, "");
+      if (!digits) return payload;
+      payload[field.name] = Number(digits) as T[keyof T & string];
+      return payload;
+    }
+
+    if (field.type === "percent") {
+      const percent = parsePercentInput(value);
+      if (percent === null) return payload;
+      payload[field.name] = percent as T[keyof T & string];
       return payload;
     }
 
@@ -146,6 +188,97 @@ const readFundingPlanRows = (value: unknown) => {
   return [{ kategori: "", jumlah: "" }];
 };
 
+function FundingPlanInput({
+  fieldName,
+  value,
+  language,
+  setFormValues,
+}: {
+  fieldName: string;
+  value: unknown;
+  language: "id" | "en";
+  setFormValues: Dispatch<SetStateAction<Record<string, unknown>>>;
+}) {
+  const rows = useMemo(() => readFundingPlanRows(value), [value]);
+  const updateRows = (nextRows: Array<{ kategori: string; jumlah: string }>) => {
+    setFormValues((current) => ({ ...current, [fieldName]: nextRows }));
+  };
+
+  return (
+    <div className="space-y-3 rounded-md border border-base-300 bg-base-100 p-3">
+      {rows.map((row, index) => (
+        <div
+          key={`${fieldName}-${index}`}
+          className="grid gap-2 rounded-md border border-base-300 bg-white p-3 sm:grid-cols-[1fr_220px_auto]"
+        >
+          <input
+            className="input input-bordered rounded-md"
+            value={row.kategori}
+            onChange={(event) => {
+              const nextRows = [...rows];
+              nextRows[index] = {
+                ...nextRows[index],
+                kategori: event.target.value,
+              };
+              updateRows(nextRows);
+            }}
+            placeholder={
+              language === "id" ? "Kategori (contoh: Marketing)" : "Category (e.g. Marketing)"
+            }
+          />
+          <div className="input input-bordered flex items-center gap-2 rounded-md">
+            <span className="text-sm font-semibold text-neutral/60">IDR</span>
+            <input
+              className="w-full bg-transparent text-sm font-semibold outline-none"
+              value={row.jumlah ? new Intl.NumberFormat("id-ID").format(Number(row.jumlah)) : ""}
+              inputMode="numeric"
+              pattern="[0-9]*"
+              onChange={(event) => {
+                const nextRows = [...rows];
+                nextRows[index] = {
+                  ...nextRows[index],
+                  jumlah: event.target.value.replace(/\D/g, ""),
+                };
+                updateRows(nextRows);
+              }}
+              placeholder="0"
+            />
+          </div>
+          <button
+            type="button"
+            className="btn btn-outline relative z-[1] rounded-md"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              if (rows.length <= 1) {
+                updateRows([{ kategori: "", jumlah: "" }]);
+                return;
+              }
+              const nextRows = [...rows];
+              nextRows.splice(index, 1);
+              updateRows(nextRows);
+            }}
+            disabled={rows.length <= 1}
+          >
+            {language === "id" ? "Hapus" : "Remove"}
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        className="btn btn-outline btn-sm relative z-[1] rounded-md"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          updateRows([...rows, { kategori: "", jumlah: "" }]);
+        }}
+      >
+        {language === "id" ? "Tambah item" : "Add item"}
+      </button>
+    </div>
+  );
+}
+
 const displayPreviewValue = (value: unknown): ReactNode => {
   if (value === null || value === undefined || value === "") return "-";
   if (Array.isArray(value)) return `${value.length} item`;
@@ -156,13 +289,6 @@ const displayPreviewValue = (value: unknown): ReactNode => {
     return entries.length > 0 ? entries.join(", ") : "-";
   }
   return String(value);
-};
-
-const apiErrorMessage = (error: unknown, fallback: string) => {
-  if (axios.isAxiosError(error) && error.response?.data?.message) {
-    return String(error.response.data.message);
-  }
-  return fallback;
 };
 
 const nestedValue = (item: Entity, path: string) =>
@@ -178,47 +304,6 @@ const genericStatus = (item: Entity) =>
   item.approval_status ??
   nestedValue(item, "approval.status") ??
   (typeof item.is_read === "boolean" ? (item.is_read ? "read" : "unread") : undefined);
-
-const uiCopy = {
-  id: {
-    allStatus: "Semua status",
-    search: "Cari",
-    actions: "Aksi",
-    loading: "Memuat data",
-    loadError: "Gagal memuat data dari backend",
-    noFilterMatch: "Tidak ada data yang cocok dengan filter saat ini.",
-    detail: "Detail",
-    edit: "Edit",
-    delete: "Hapus",
-    choose: "Pilih",
-    cancel: "Batal",
-    save: "Simpan",
-    previous: "Sebelumnya",
-    next: "Berikutnya",
-    showing: "Menampilkan",
-    from: "dari",
-    data: "data",
-  },
-  en: {
-    allStatus: "All statuses",
-    search: "Search",
-    actions: "Actions",
-    loading: "Loading data",
-    loadError: "Failed to load data from backend",
-    noFilterMatch: "No data matches the current filters.",
-    detail: "Detail",
-    edit: "Edit",
-    delete: "Delete",
-    choose: "Choose",
-    cancel: "Cancel",
-    save: "Save",
-    previous: "Previous",
-    next: "Next",
-    showing: "Showing",
-    from: "of",
-    data: "records",
-  },
-};
 
 function DataPreview({ data }: { data: unknown }) {
   const { t } = useLanguage();
@@ -307,11 +392,32 @@ export function ResourcePage<T extends Entity>({
   showBreadcrumb = true,
   showSearch = true,
   showStatusFilter = true,
+  formExtras,
+  onAfterCreate,
 }: ResourcePageProps<T>) {
   const { user } = useAuth();
   const { language, t } = useLanguage();
   const toast = useToast();
-  const copy = uiCopy[language];
+  const copy = useMemo(
+    () => ({
+      allStatus: t("resourceAllStatus"),
+      search: t("resourceSearch"),
+      actions: t("resourceActions"),
+      loadError: t("resourceLoadError"),
+      detail: t("detail"),
+      edit: t("resourceEdit"),
+      delete: t("delete"),
+      choose: t("resourceChoose"),
+      cancel: t("cancel"),
+      save: t("save"),
+      previous: t("resourcePrevious"),
+      next: t("resourceNext"),
+      showing: t("resourceShowing"),
+      from: t("resourceFrom"),
+      data: t("resourceData"),
+    }),
+    [t],
+  );
   const queryClient = useQueryClient();
   const resourceQueryKey = ["resource", config.key, user?.id ?? "guest", user?.role ?? "guest"];
   const [search, setSearch] = useState("");
@@ -394,6 +500,12 @@ export function ResourcePage<T extends Entity>({
     return source.filter((item) => rowFilter(item));
   }, [query.data, rowFilter, staticData]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [rowFilter]);
+
+  const effectiveSearchableFields = searchableFields ?? config.searchableFields ?? [];
+
   const rows = useMemo(() => {
     const byStatus =
       statusFilter === "all"
@@ -402,16 +514,14 @@ export function ResourcePage<T extends Entity>({
     if (!search.trim()) return byStatus;
     const needle = search.toLowerCase();
     return byStatus.filter((item) => {
-      if (!searchableFields?.length) {
-        return JSON.stringify(item).toLowerCase().includes(needle);
-      }
-      return searchableFields
+      if (!effectiveSearchableFields.length) return false;
+      return effectiveSearchableFields
         .map((field) => (typeof field === "function" ? field(item) : nestedValue(item, field)))
         .join(" ")
         .toLowerCase()
         .includes(needle);
     });
-  }, [loadedRows, search, searchableFields, statusFilter]);
+  }, [effectiveSearchableFields, loadedRows, search, statusFilter]);
 
   const statusOptions = useMemo(() => {
     const values = new Set<string>();
@@ -447,6 +557,14 @@ export function ResourcePage<T extends Entity>({
       const value = field.getEditValue ? field.getEditValue(item) : item[field.name];
       if (field.type === "funding_plan") {
         next[field.name] = readFundingPlanRows(value);
+        return;
+      }
+      if (field.type === "currency") {
+        next[field.name] = String(value ?? "").replace(/\D/g, "");
+        return;
+      }
+      if (field.type === "percent") {
+        next[field.name] = String(value ?? "").replace(",", ".");
         return;
       }
       if (field.type === "textarea" && value && typeof value === "object") {
@@ -499,7 +617,24 @@ export function ResourcePage<T extends Entity>({
           title: t("dataUpdated"),
         });
       } else {
-        await createMutation.mutateAsync(values);
+        const created = await createMutation.mutateAsync(values);
+        if (onAfterCreate) {
+          try {
+            await onAfterCreate(created, { values, rawValues: formValues });
+          } catch (followUpError) {
+            toast.error(
+              apiErrorMessage(
+                followUpError,
+                language === "id"
+                  ? "Data tersimpan, tetapi proses lanjutan gagal."
+                  : "Data is saved, but follow-up process failed.",
+              ),
+              {
+                title: language === "id" ? "Perlu Tindakan Lanjutan" : "Follow-up Needed",
+              },
+            );
+          }
+        }
         toast.success(t("resourceCreateSuccess", { title: t(title) }), {
           title: t("dataAdded"),
         });
@@ -950,7 +1085,7 @@ export function ResourcePage<T extends Entity>({
                   };
 
                     return (
-                      <label
+                      <div
                         key={field.name}
                         className={isFullWidth ? "form-control sm:col-span-2" : "form-control"}
                       >
@@ -962,88 +1097,50 @@ export function ResourcePage<T extends Entity>({
                             placeholder={field.placeholder ? t(field.placeholder) : undefined}
                           />
                         ) : field.type === "funding_plan" ? (
-                          <div className="space-y-3 rounded-md border border-base-300 bg-base-100 p-3">
-                            {readFundingPlanRows(value).map((row, index, rows) => (
-                              <div
-                                key={`${field.name}-${index}`}
-                                className="grid gap-2 rounded-md border border-base-300 bg-white p-3 sm:grid-cols-[1fr_220px_auto]"
-                              >
-                                <input
-                                  className="input input-bordered rounded-md"
-                                  value={row.kategori}
-                                  onChange={(event) =>
-                                    setFormValues((current) => {
-                                      const nextRows = [...readFundingPlanRows(current[field.name])];
-                                      nextRows[index] = {
-                                        ...nextRows[index],
-                                        kategori: event.target.value,
-                                      };
-                                      return { ...current, [field.name]: nextRows };
-                                    })
-                                  }
-                                  placeholder={
-                                    language === "id" ? "Kategori (contoh: Marketing)" : "Category (e.g. Marketing)"
-                                  }
-                                />
-                                <div className="input input-bordered flex items-center gap-2 rounded-md">
-                                  <span className="text-sm font-semibold text-neutral/60">IDR</span>
-                                  <input
-                                    className="w-full bg-transparent text-sm font-semibold outline-none"
-                                    value={
-                                      row.jumlah
-                                        ? new Intl.NumberFormat("id-ID").format(Number(row.jumlah))
-                                        : ""
-                                    }
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
-                                    onChange={(event) =>
-                                      setFormValues((current) => {
-                                        const nextRows = [...readFundingPlanRows(current[field.name])];
-                                        nextRows[index] = {
-                                          ...nextRows[index],
-                                          jumlah: event.target.value.replace(/\D/g, ""),
-                                        };
-                                        return { ...current, [field.name]: nextRows };
-                                      })
-                                    }
-                                    placeholder="0"
-                                  />
-                                </div>
-                                <button
-                                  type="button"
-                                  className="btn btn-outline rounded-md"
-                                  onClick={() =>
-                                    setFormValues((current) => {
-                                      const nextRows = [...readFundingPlanRows(current[field.name])];
-                                      if (nextRows.length <= 1) {
-                                        return {
-                                          ...current,
-                                          [field.name]: [{ kategori: "", jumlah: "" }],
-                                        };
-                                      }
-                                      nextRows.splice(index, 1);
-                                      return { ...current, [field.name]: nextRows };
-                                    })
-                                  }
-                                  disabled={rows.length <= 1}
-                                >
-                                  {language === "id" ? "Hapus" : "Remove"}
-                                </button>
-                              </div>
-                            ))}
-                            <button
-                              type="button"
-                              className="btn btn-outline btn-sm rounded-md"
-                              onClick={() =>
-                                setFormValues((current) => {
-                                  const nextRows = [...readFundingPlanRows(current[field.name])];
-                                  nextRows.push({ kategori: "", jumlah: "" });
-                                  return { ...current, [field.name]: nextRows };
-                                })
+                          <FundingPlanInput
+                            fieldName={field.name}
+                            value={value}
+                            language={language}
+                            setFormValues={setFormValues}
+                          />
+                        ) : field.type === "currency" ? (
+                          <div className="input input-bordered flex items-center gap-2 rounded-md">
+                            <span className="text-sm font-semibold text-neutral/60">IDR</span>
+                            <input
+                              id={field.name}
+                              required={field.required}
+                              className="w-full bg-transparent text-sm font-semibold outline-none"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={formatCurrencyInput(inputValue)}
+                              onChange={(event) =>
+                                setFormValues((current) => ({
+                                  ...current,
+                                  [field.name]: event.target.value.replace(/\D/g, ""),
+                                }))
                               }
-                            >
-                              {language === "id" ? "Tambah item" : "Add item"}
-                            </button>
+                              placeholder={field.placeholder ? t(field.placeholder) : "0"}
+                            />
+                          </div>
+                        ) : field.type === "percent" ? (
+                          <div className="input input-bordered flex items-center gap-2 rounded-md">
+                            <input
+                              id={field.name}
+                              required={field.required}
+                              className="w-full bg-transparent text-sm font-semibold outline-none"
+                              inputMode="decimal"
+                              value={inputValue}
+                              onChange={(event) =>
+                                setFormValues((current) => ({
+                                  ...current,
+                                  [field.name]: event.target.value
+                                    .replace(",", ".")
+                                    .replace(/[^\d.]/g, ""),
+                                }))
+                              }
+                              placeholder={field.placeholder ? t(field.placeholder) : "0"}
+                            />
+                            <span className="text-sm font-semibold text-neutral/60">%</span>
                           </div>
                         ) : field.type === "select" ? (
                           <select {...commonProps} className="select select-bordered rounded-md">
@@ -1057,7 +1154,7 @@ export function ResourcePage<T extends Entity>({
                         ) : (
                         <input
                           {...commonProps}
-                          type={field.type ?? "text"}
+                          type={field.type === "number" ? "number" : field.type ?? "text"}
                           className="input input-bordered rounded-md"
                           placeholder={field.placeholder ? t(field.placeholder) : undefined}
                           min={field.type === "number" ? field.min : undefined}
@@ -1065,10 +1162,23 @@ export function ResourcePage<T extends Entity>({
                           step={field.type === "number" ? field.step : undefined}
                         />
                       )}
-                    </label>
+                        {field.helperText ? (
+                          <span className="mt-2 text-xs font-semibold text-neutral/50">
+                            {t(field.helperText)}
+                          </span>
+                        ) : null}
+                    </div>
                     );
                   })}
               </div>
+              {formExtras
+                ? formExtras({
+                    editing,
+                    formValues,
+                    setFormValues,
+                    isSaving,
+                  })
+                : null}
               <div className="modal-action">
                 <button type="button" className="btn rounded-md" onClick={closeForm}>
                   {copy.cancel}

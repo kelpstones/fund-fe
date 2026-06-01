@@ -1,7 +1,6 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
-import { ArrowDown, ArrowUp, ClipboardList, ImagePlus, Loader2, RefreshCw, Save, Trash2 } from "lucide-react";
+import { ClipboardList, Loader2, RefreshCw, Save } from "lucide-react";
 import { useAuth } from "../../lib/auth/AuthProvider";
 import { directApi } from "../../lib/api/direct";
 import { apiClient, unwrap } from "../../lib/api/client";
@@ -10,6 +9,7 @@ import { openInvestorQuickSetupPrompt } from "../../lib/investorQuickSetup";
 import { businessConfig, myBusinessConfig } from "../../lib/resourceConfigs";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import { DashboardBreadcrumb } from "../../components/DashboardBreadcrumb";
+import { apiErrorMessage } from "../../lib/format";
 
 function Panel({
   title,
@@ -42,13 +42,6 @@ const asRecord = (data: unknown): Record<string, unknown> =>
 const displayValue = (value: unknown) => {
   if (value === null || value === undefined || value === "") return "-";
   return String(value);
-};
-
-const apiErrorMessage = (error: unknown, fallback: string) => {
-  if (axios.isAxiosError(error) && error.response?.data?.message) {
-    return String(error.response.data.message);
-  }
-  return fallback;
 };
 
 type LocalizedCopy = { id: string; en: string };
@@ -428,7 +421,14 @@ export function InvestorPreferencesPage() {
         const response = await apiClient.get("/user/investor/preferences");
         return unwrap<Record<string, unknown>>(response.data);
       } catch (err) {
-        if (axios.isAxiosError(err) && err.response?.status === 404) return null;
+        if (
+          err &&
+          typeof err === "object" &&
+          "response" in err &&
+          (err as { response?: { status?: number } }).response?.status === 404
+        ) {
+          return null;
+        }
         throw err;
       }
     },
@@ -662,6 +662,21 @@ type BusinessFieldMeta = {
   unit?: LocalizedCopy;
 };
 
+const numericStepPrecision = (step: number) => {
+  const stepText = String(step);
+  return stepText.includes(".") ? stepText.split(".")[1].length : 0;
+};
+
+const sanitizeBusinessFieldValue = (
+  rawValue: number,
+  field: BusinessFieldMeta,
+) => {
+  if (!Number.isFinite(rawValue)) return field.min;
+  const clamped = Math.min(field.max, Math.max(field.min, rawValue));
+  const precision = numericStepPrecision(field.step);
+  return Number(clamped.toFixed(precision));
+};
+
 const businessProfileSections: Array<{
   key: BusinessFieldSection;
   title: LocalizedCopy;
@@ -779,14 +794,6 @@ const peakLatencyOptions: Array<{ value: string; label: LocalizedCopy }> = [
   { value: "high", label: { id: "Tinggi", en: "High" } },
 ];
 
-type BusinessCover = {
-  id: number;
-  bisnis_id: number;
-  image_url: string;
-  urutan: number;
-  created_at?: string;
-};
-
 export function BusinessProfilePage() {
   const { t, language } = useLanguage();
   const queryClient = useQueryClient();
@@ -796,7 +803,6 @@ export function BusinessProfilePage() {
   const [isDirty, setIsDirty] = useState(false);
   const [profileMessage, setProfileMessage] = useState("");
   const [profileError, setProfileError] = useState("");
-  const [coverError, setCoverError] = useState("");
   const isUmkm = user?.role === "umkm";
   const canSeeMlProfiles = user?.role === "admin" || user?.role === "superadmin";
   const businessOptionsQuery = useQuery({
@@ -826,21 +832,6 @@ export function BusinessProfilePage() {
     queryFn: () => directApi.get("/businesses/ml", []),
     enabled: canSeeMlProfiles,
   });
-  const coverQuery = useQuery({
-    queryKey: ["business-covers"],
-    queryFn: async () => {
-      const response = await apiClient.get("/businesses/covers");
-      const payload = unwrap<unknown>(response.data);
-      if (Array.isArray(payload)) return payload as BusinessCover[];
-      if (payload && typeof payload === "object") {
-        const objectPayload = payload as Record<string, unknown>;
-        if (Array.isArray(objectPayload.covers)) return objectPayload.covers as BusinessCover[];
-      }
-      return [] as BusinessCover[];
-    },
-    enabled: isUmkm,
-    retry: false,
-  });
 
   const upsertMutation = useMutation({
     mutationFn: async () => {
@@ -866,47 +857,6 @@ export function BusinessProfilePage() {
     onError: (err) => {
       setProfileMessage("");
       setProfileError(apiErrorMessage(err, t("businessProfileSaveError")));
-    },
-  });
-  const uploadCoverMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append("image", file);
-      const response = await apiClient.post("/businesses/covers", formData);
-      return unwrap<unknown>(response.data);
-    },
-    onSuccess: async () => {
-      setCoverError("");
-      await queryClient.invalidateQueries({ queryKey: ["business-covers"] });
-    },
-    onError: (err) => {
-      setCoverError(apiErrorMessage(err, "Upload cover gagal."));
-    },
-  });
-  const deleteCoverMutation = useMutation({
-    mutationFn: async (coverId: number) => {
-      const response = await apiClient.delete(`/businesses/covers/${coverId}`);
-      return unwrap<unknown>(response.data);
-    },
-    onSuccess: async () => {
-      setCoverError("");
-      await queryClient.invalidateQueries({ queryKey: ["business-covers"] });
-    },
-    onError: (err) => {
-      setCoverError(apiErrorMessage(err, "Hapus cover gagal."));
-    },
-  });
-  const reorderCoverMutation = useMutation({
-    mutationFn: async (orders: Array<{ id: number; urutan: number }>) => {
-      const response = await apiClient.patch("/businesses/covers/reorder", { orders });
-      return unwrap<unknown>(response.data);
-    },
-    onSuccess: async () => {
-      setCoverError("");
-      await queryClient.invalidateQueries({ queryKey: ["business-covers"] });
-    },
-    onError: (err) => {
-      setCoverError(apiErrorMessage(err, "Urutan cover gagal diperbarui."));
     },
   });
 
@@ -941,9 +891,19 @@ export function BusinessProfilePage() {
   const updateNumber = (key: BusinessNumericFieldKey, value: string) => {
     const field = businessProfileFields.find((item) => item.key === key);
     if (!field) return;
-    const parsed = Number(value);
+    const parsed = Number(value.replace(",", "."));
     if (!Number.isFinite(parsed)) return;
-    const nextValue = Math.min(field.max, parsed);
+    const nextValue = sanitizeBusinessFieldValue(parsed, field);
+    setIsDirty(true);
+    setForm({ ...activeBusinessProfile, [key]: nextValue });
+  };
+
+  const updateNumberFromText = (key: BusinessNumericFieldKey, value: string) => {
+    const field = businessProfileFields.find((item) => item.key === key);
+    if (!field) return;
+    const parsed = Number(value.replace(/[^\d-]/g, ""));
+    if (!Number.isFinite(parsed)) return;
+    const nextValue = sanitizeBusinessFieldValue(parsed, field);
     setIsDirty(true);
     setForm({ ...activeBusinessProfile, [key]: nextValue });
   };
@@ -968,19 +928,6 @@ export function BusinessProfilePage() {
   const mlProfiles = Array.isArray(mlProfilesQuery.data)
     ? (mlProfilesQuery.data as Record<string, unknown>[])
     : [];
-  const covers = coverQuery.data ?? [];
-  const moveCover = (coverId: number, direction: "up" | "down") => {
-    const currentIndex = covers.findIndex((item) => Number(item.id) === Number(coverId));
-    if (currentIndex < 0) return;
-    const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-    if (nextIndex < 0 || nextIndex >= covers.length) return;
-
-    const reordered = [...covers];
-    [reordered[currentIndex], reordered[nextIndex]] = [reordered[nextIndex], reordered[currentIndex]];
-    const orders = reordered.map((item, index) => ({ id: Number(item.id), urutan: index }));
-    reorderCoverMutation.mutate(orders);
-  };
-
   return (
     <div className="space-y-5">
       <div className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
@@ -1075,39 +1022,38 @@ export function BusinessProfilePage() {
                         <span className="mb-2 text-xs font-semibold leading-5 text-neutral/50">
                           {localeText(field.help, language)}
                         </span>
-                        <div className="relative">
-                          {field.key === "year_revenue" ? (
-                            <>
-                              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-xs font-black text-neutral/55">
-                                IDR
-                              </span>
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                className="input input-bordered w-full rounded-md pl-14"
-                                value={numberFormatter.format(Number(activeBusinessProfile[field.key] || 0))}
-                                onChange={(event) =>
-                                  updateNumber(field.key, event.target.value.replace(/[^\d]/g, ""))
-                                }
-                                disabled={!isUmkm}
-                              />
-                            </>
-                          ) : field.key === "review_volatility" ||
-                            field.key === "kepuasan_pelanggan" ||
-                            field.key === "repeat_order_rate" ? (
-                            <div className="grid gap-2 sm:grid-cols-[1fr_110px] sm:items-center">
-                              <input
-                                type="range"
-                                min={field.min}
-                                max={field.max}
-                                step={field.step}
-                                className="range range-neutral range-sm"
-                                value={Number(activeBusinessProfile[field.key] || 0)}
-                                onChange={(event) => updateNumber(field.key, event.target.value)}
-                                disabled={!isUmkm}
-                                aria-label={localeText(field.label, language)}
-                              />
-                              <div className="relative">
+                        <div className="grid gap-2 sm:grid-cols-[1fr_140px] sm:items-center">
+                          <input
+                            type="range"
+                            min={field.min}
+                            max={field.max}
+                            step={field.step}
+                            className="range range-neutral range-sm"
+                            value={Number(activeBusinessProfile[field.key] || 0)}
+                            onChange={(event) => updateNumber(field.key, event.target.value)}
+                            disabled={!isUmkm}
+                            aria-label={localeText(field.label, language)}
+                          />
+                          <div className="relative">
+                            {field.key === "year_revenue" ? (
+                              <>
+                                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-xs font-black text-neutral/55">
+                                  IDR
+                                </span>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  className="input input-bordered w-full rounded-md pl-12 text-right"
+                                  value={numberFormatter.format(Number(activeBusinessProfile[field.key] || 0))}
+                                  onChange={(event) =>
+                                    updateNumberFromText(field.key, event.target.value)
+                                  }
+                                  disabled={!isUmkm}
+                                  aria-label={localeText(field.label, language)}
+                                />
+                              </>
+                            ) : (
+                              <>
                                 <input
                                   type="number"
                                   min={field.min}
@@ -1124,28 +1070,9 @@ export function BusinessProfilePage() {
                                     {localeText(field.unit, language)}
                                   </span>
                                 ) : null}
-                              </div>
-                            </div>
-                          ) : (
-                            <input
-                              type="number"
-                              min={field.min}
-                              max={field.max}
-                              step={field.step}
-                              className={`input input-bordered w-full rounded-md ${field.unit ? "pr-16" : ""}`}
-                              value={String(activeBusinessProfile[field.key])}
-                              onChange={(event) => updateNumber(field.key, event.target.value)}
-                              disabled={!isUmkm}
-                            />
-                          )}
-                          {field.unit &&
-                          field.key !== "year_revenue" &&
-                          field.key !== "kepuasan_pelanggan" &&
-                          field.key !== "repeat_order_rate" ? (
-                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-black text-neutral/45">
-                              {localeText(field.unit, language)}
-                            </span>
-                          ) : null}
+                              </>
+                            )}
+                          </div>
                         </div>
                         {field.key === "review_volatility" ? (
                           <div className="mt-1 flex items-center justify-between text-[11px] font-semibold text-neutral/50">
@@ -1277,92 +1204,6 @@ export function BusinessProfilePage() {
           />
         </Panel>
       </div>
-      {isUmkm ? (
-        <Panel title="Business Cover Gallery" description="Upload maksimal 5 foto cover untuk profil bisnis.">
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-neutral/60">
-                {covers.length}/5 cover tersimpan
-              </p>
-              <label className="btn btn-primary rounded-md text-white">
-                <ImagePlus size={17} />
-                Upload Cover
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  disabled={uploadCoverMutation.isPending || covers.length >= 5}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    uploadCoverMutation.mutate(file);
-                    event.currentTarget.value = "";
-                  }}
-                />
-              </label>
-            </div>
-            {coverError ? (
-              <div className="rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-semibold text-error">
-                {coverError}
-              </div>
-            ) : null}
-            {coverQuery.isLoading ? (
-              <div className="rounded-md border border-base-300 bg-base-100 p-4 text-sm font-semibold text-neutral/60">
-                Memuat cover bisnis...
-              </div>
-            ) : null}
-            {coverQuery.isError ? (
-              <div className="rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-semibold text-error">
-                {apiErrorMessage(coverQuery.error, "Gagal memuat cover bisnis.")}
-              </div>
-            ) : null}
-            {!coverQuery.isLoading && !coverQuery.isError && covers.length === 0 ? (
-              <div className="rounded-md border border-base-300 bg-base-100 p-4 text-sm font-semibold text-neutral/60">
-                Belum ada cover bisnis.
-              </div>
-            ) : null}
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {covers.map((cover, index) => (
-                <article key={cover.id} className="overflow-hidden rounded-md border border-base-300 bg-white">
-                  <div className="aspect-video bg-base-200">
-                    <img
-                      src={cover.image_url}
-                      alt={`Cover bisnis ${index + 1}`}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between gap-2 p-3">
-                    <span className="text-sm font-bold text-neutral/70">Urutan #{index + 1}</span>
-                    <div className="flex gap-1">
-                      <button
-                        className="btn btn-ghost btn-xs btn-square"
-                        onClick={() => moveCover(Number(cover.id), "up")}
-                        disabled={index === 0 || reorderCoverMutation.isPending}
-                      >
-                        <ArrowUp size={15} />
-                      </button>
-                      <button
-                        className="btn btn-ghost btn-xs btn-square"
-                        onClick={() => moveCover(Number(cover.id), "down")}
-                        disabled={index === covers.length - 1 || reorderCoverMutation.isPending}
-                      >
-                        <ArrowDown size={15} />
-                      </button>
-                      <button
-                        className="btn btn-ghost btn-xs btn-square text-error"
-                        onClick={() => deleteCoverMutation.mutate(Number(cover.id))}
-                        disabled={deleteCoverMutation.isPending}
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </Panel>
-      ) : null}
       {canSeeMlProfiles ? (
         <Panel title="allModelProfiles" description="allModelProfilesBody">
           <div className="mb-4">

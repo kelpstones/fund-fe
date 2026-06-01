@@ -74,6 +74,16 @@ export const businessConfig: ResourceConfig<Entity> = {
     kelas_id: item.kelas_id ?? asObject(item.kelas).id,
     deskripsi: item.deskripsi,
   }),
+  searchableFields: [
+    "nama_bisnis",
+    "nama",
+    "tipe_usaha",
+    "email",
+    "no_telp",
+    "alamat",
+    "deskripsi",
+    "kelas.nama_kelas",
+  ],
   fallback: emptyFallback,
 };
 
@@ -111,6 +121,23 @@ export const submissionConfig: ResourceConfig<Entity> = {
     deskripsi_peluang: item.deskripsi_peluang,
     rencana_penggunaan_dana: toFundingPlan(item.rencana_penggunaan_dana),
   }),
+  searchableFields: [
+    "id",
+    "bisnis_id",
+    "bisnis.nama_bisnis",
+    "bisnis.nama",
+    "bisnis_nama",
+    "target_pendanaan",
+    "total_pendanaan",
+    "per_anual_return",
+    "deskripsi_peluang",
+    "status",
+    "approval.status",
+    "approval_status",
+    "approval.catatan",
+    "approval_catatan",
+    "catatan",
+  ],
   fallback: emptyFallback,
 };
 
@@ -126,6 +153,17 @@ export const salesConfig: ResourceConfig<Entity> = {
   createPath: "/businesses/proposals/sales",
   updatePath: "/businesses/proposals/sales/:id",
   detailPath: "/businesses/proposals/sales/:id",
+  searchableFields: [
+    "periode",
+    "pengajuans_id",
+    "pengajuan.id",
+    "total_penjualan",
+    "laba_kotor",
+    "laba_bersih",
+    "jumlah_transaksi",
+    "status",
+    "nama_dokumen",
+  ],
   fallback: emptyFallback,
 };
 
@@ -158,6 +196,19 @@ export const negotiationConfig: ResourceConfig<Entity> = {
       catatan: item.catatan ?? last.catatan,
     };
   },
+  searchableFields: [
+    "status",
+    "catatan",
+    "pengajuans_id",
+    "pengajuan.id",
+    "detail_pengajuan.id",
+    "bisnis.nama",
+    "bisnis.nama_bisnis",
+    "investor.nama",
+    "negosiasi_terakhir.catatan",
+    "negosiasi_terakhir.penawaran_nominal",
+    "negosiasi_terakhir.penawaran_return",
+  ],
   fallback: emptyFallback,
 };
 
@@ -173,6 +224,16 @@ export const invoiceConfig: ResourceConfig<Entity> = {
   listPath: "/invoices",
   updatePath: (item) => `/invoices/${item.id}/pay`,
   detailPath: "/invoices/:id",
+  searchableFields: [
+    "kode_pembayaran",
+    "status",
+    "invoice_status",
+    "total_nominal",
+    "nominal_tagihan",
+    "pengajuan.bisnis.nama_bisnis",
+    "bisnis.nama_bisnis",
+    "bisnis",
+  ],
   fallback: emptyFallback,
 };
 
@@ -185,6 +246,16 @@ export const investmentConfig: ResourceConfig<Entity> = {
   key: "investments",
   listPath: "/investasi",
   detailPath: "/investasi/:id",
+  searchableFields: [
+    "status",
+    "nominal_investasi",
+    "return_investasi",
+    "pengajuans_id",
+    "pengajuan.id",
+    "bisnis.nama_bisnis",
+    "pengajuan.bisnis.nama",
+    "bisnis",
+  ],
   fallback: emptyFallback,
 };
 
@@ -207,6 +278,17 @@ export const profitConfig: ResourceConfig<Entity> = {
   updatePath: "/profit-distributions/:id/status",
   detailPath: "/profit-distributions/:id",
   updateBody: (item) => ({ status: item.status }),
+  searchableFields: [
+    "periode",
+    "status",
+    "nominal_profit",
+    "penjualans_id",
+    "penjualan.id",
+    "penjualan.nama_bisnis",
+    "bisnis",
+    "investasi.id",
+    "investasi_id",
+  ],
   fallback: emptyFallback,
 };
 
@@ -230,6 +312,7 @@ export const classConfig: ResourceConfig<Entity> = {
   updatePath: "/businesses/classes/:id",
   deletePath: "/businesses/classes/:id",
   detailPath: "/businesses/classes/:id",
+  searchableFields: ["nama_kelas", "deskripsi"],
   fallback: emptyFallback,
 };
 
@@ -245,6 +328,7 @@ export const adminConfig: ResourceConfig<Entity> = {
   updatePath: "/admin/:id",
   deletePath: "/admin/:id",
   detailPath: "/admin/:id",
+  searchableFields: ["nama", "email", "no_telp", "level"],
   fallback: emptyFallback,
 };
 
@@ -253,6 +337,15 @@ export const userManagementConfig: ResourceConfig<Entity> = {
   listPath: "/user/users?page=1&limit=50",
   updatePath: "/user/:id",
   detailPath: "/user/:id",
+  searchableFields: [
+    "nama",
+    "email",
+    "no_telp",
+    "role.nama_role",
+    "role_name",
+    "role_id",
+    "level",
+  ],
   fallback: emptyFallback,
   updateBody: (item) => ({
     nama: item.nama,
@@ -266,12 +359,21 @@ export const notificationConfig: ResourceConfig<Entity> = {
   listPath: "/notifications",
   updatePath: "/notifications/:id",
   deletePath: "/notifications/:id",
+  searchableFields: [
+    "title",
+    "message",
+    "type",
+    "notification_type",
+    "related_entity",
+    "status",
+  ],
   fallback: emptyFallback,
 };
 
 export const supportedBankPublicConfig: ResourceConfig<Entity> = {
   key: "supported-banks-public",
   listPath: "/banks",
+  searchableFields: ["code", "name", "type"],
   fallback: emptyFallback,
 };
 
@@ -297,6 +399,7 @@ export const adminBankConfig: ResourceConfig<Entity> = {
     is_active: item.is_active !== "false" && item.is_active !== false,
     logo_url: item.logo_url || null,
   }),
+  searchableFields: ["code", "name", "type", "is_active"],
 };
 
 export const userBankAccountConfig: ResourceConfig<Entity> = {
@@ -304,6 +407,14 @@ export const userBankAccountConfig: ResourceConfig<Entity> = {
   listPath: "/user/profile/bank-accounts",
   createPath: "/user/profile/bank-accounts",
   deletePath: "/user/profile/bank-accounts/:id",
+  searchableFields: [
+    "bank.name",
+    "bank.code",
+    "bank.type",
+    "bank_account_number",
+    "bank_account_holder",
+    "is_primary",
+  ],
   fallback: emptyFallback,
   createBody: (values) => ({
     bank_id: Number(values.bank_id),
@@ -316,5 +427,14 @@ export const userBankAccountConfig: ResourceConfig<Entity> = {
 export const adminWithdrawalConfig: ResourceConfig<Entity> = {
   key: "admin-withdrawals",
   listPath: "/wallet/withdrawals?page=1&limit=50",
+  searchableFields: [
+    "status",
+    "amount",
+    "nominal",
+    "user.nama",
+    "user.email",
+    "bank_account.bank.name",
+    "bank_account.bank_account_number",
+  ],
   fallback: emptyFallback,
 };
