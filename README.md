@@ -61,7 +61,7 @@ src/
 ## Repositori Terkait
 
 Proyek backend ini merupakan bagian dari ekosistem aplikasi FundRaise. Berikut adalah repositori terkait lainnya:
-- **Frontend Application (fund-fe)**: [github.com/kelpstones/fund-fe](https://github.com/kelpstones/fund-fe)
+- **Backend (fund-be)**: [github.com/kelpstones/fund-be](https://github.com/kelpstones/fund-be)
 - **AI Service (fund-ai)**: [github.com/kelpstones/fund-ai](https://github.com/kelpstones/fund-ai)
 - **Model Machine Learning**: [google drive](https://drive.google.com/drive/folders/1ARBgCh-3UrBW-yZY1RJW0xTPc5kv0hnt?usp=sharing)
 - **Data Science (fund-ds)**: [github.com/kelpstones/fund-ds](https://github.com/kelpstones/fund-ds)
