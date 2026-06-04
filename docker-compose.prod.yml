@@ -2,8 +2,14 @@ services:
   frontend:
     build:
       context: .
-    env_file:
-      - .env
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_API_KEY: ${VITE_API_KEY}
+        VITE_APP_NAME: ${VITE_APP_NAME}
+        VITE_DEFAULT_THEME: ${VITE_DEFAULT_THEME}
+        VITE_AI_ADVISOR_URL: ${VITE_AI_ADVISOR_URL}
+        VITE_AI_ADVISOR_MODE: ${VITE_AI_ADVISOR_MODE}
+        VITE_AI_ADVISOR_API_NAME: ${VITE_AI_ADVISOR_API_NAME}
 
     container_name: fund_frontend
     restart: always
