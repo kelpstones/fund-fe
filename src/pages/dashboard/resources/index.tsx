@@ -1696,7 +1696,7 @@ function UmkmSalesPage() {
                   <input
                     className="w-full bg-transparent text-sm font-semibold outline-none"
                     inputMode="numeric"
-                    pattern="[0-9]*"
+                    pattern="[0-9.]*"
                     value={formatNumberInput(form[field.name as keyof typeof form] ?? "")}
                     onChange={(event) =>
                       update(
