@@ -131,7 +131,7 @@ export const resourceApi = {
   },
 
   async request<T extends Entity>(
-    method: "GET" | "POST" | "PUT" | "DELETE",
+    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
     path: string,
     body?: Record<string, unknown>,
     fallback?: T,

@@ -1757,19 +1757,6 @@ export function AdminReviewQueuePage() {
       toast.error(apiErrorMessage(error, "Gagal memproses dokumen"));
     },
   });
-  const verifyBusinessMutation = useMutation({
-    mutationFn: async (bisnisId: string | number) => {
-      const response = await apiClient.patch(`/businesses/documents/${bisnisId}/verify`);
-      return unwrap<unknown>(response.data);
-    },
-    onSuccess: async () => {
-      toast.success("Bisnis berhasil diverifikasi");
-      await queryClient.invalidateQueries({ queryKey: ["admin-review-queue", "documents"] });
-    },
-    onError: (error) => {
-      toast.error(apiErrorMessage(error, "Gagal memverifikasi bisnis"));
-    },
-  });
   const pendingDocuments = documentsQuery.data ?? [];
 
   return (
@@ -1822,7 +1809,12 @@ export function AdminReviewQueuePage() {
       </div>
       <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-4">
-          <h3 className="text-lg font-black">Review dokumen UMKM</h3>
+          <div>
+            <h3 className="text-lg font-black">Review dokumen UMKM</h3>
+            <p className="mt-1 text-sm font-semibold text-neutral/55">
+              Setelah semua dokumen wajib valid, verifikasi bisnis dari menu Bisnis.
+            </p>
+          </div>
           <span className="badge badge-neutral text-white">{pendingDocuments.length}</span>
         </div>
         {documentsQuery.isLoading ? <ListSkeleton rows={3} /> : null}
@@ -1878,13 +1870,6 @@ export function AdminReviewQueuePage() {
                   >
                     <XCircle size={17} />
                     Tolak
-                  </button>
-                  <button
-                    className="btn btn-outline rounded-md"
-                    disabled={verifyBusinessMutation.isPending}
-                    onClick={() => verifyBusinessMutation.mutate(String(item.bisnis_id))}
-                  >
-                    Verifikasi Bisnis
                   </button>
                 </div>
               </div>
