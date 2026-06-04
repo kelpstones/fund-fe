@@ -1576,7 +1576,7 @@ function SalesDetailPreview({ data }: { data: unknown }) {
     return null;
   }, [data]);
 
-  const bisnisId = readPath(item, ["pengajuan.bisnis_id", "bisnis_id"]);
+  const bisnisId = item ? readPath(item, ["pengajuan.bisnis_id", "bisnis_id"]) : undefined;
   const businessQuery = useQuery({
     queryKey: ["business-detail-admin-sales", bisnisId ?? "none"],
     queryFn: async () => {
@@ -1638,7 +1638,7 @@ function SalesDetailPreview({ data }: { data: unknown }) {
           <h3 className="text-lg font-black text-neutral mt-1">
             {textValue(readPath(item, ["pengajuan.nama_bisnis", "nama_bisnis"]))}
           </h3>
-          <p className="text-xs text-neutral/50">Periode Laporan: <span className="font-bold">{item.periode}</span></p>
+          <p className="text-xs text-neutral/50">Periode Laporan: <span className="font-bold">{textValue(item.periode)}</span></p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 text-sm leading-6">
@@ -2779,14 +2779,14 @@ function InvoiceDetailPreview({ data }: { data: unknown }) {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 border-b border-base-200 pb-4">
         <div>
           <span className="text-[10px] font-black uppercase tracking-widest text-primary">Invoice Receipt</span>
-          <h3 className="text-xl font-black text-neutral mt-1">{item.kode_pembayaran || `#INV-${item.id}`}</h3>
+          <h3 className="text-xl font-black text-neutral mt-1">{textValue(item.kode_pembayaran) || `#INV-${item.id}`}</h3>
           <p className="text-xs font-semibold text-neutral/50 mt-1">
             {language === "id" ? "Dibuat pada" : "Created at"}: {dateShort(item.created_at)}
           </p>
         </div>
         <div className="text-left sm:text-right">
           <span className={`badge badge-lg font-black uppercase tracking-wider text-xs ${statusTone(item.status)}`}>
-            {item.status}
+            {textValue(item.status)}
           </span>
           <p className="text-xs font-semibold text-neutral/50 mt-2">
             {language === "id" ? "Jatuh Tempo" : "Due Date"}: {dateShort(item.tenggat_waktu || item.due_date)}
@@ -3008,7 +3008,7 @@ function InvestmentDetailPreview({ data }: { data: unknown }) {
     );
   }
 
-  const bisnis = asObject(item.bisnis || item.pengajuan?.bisnis);
+  const bisnis = asObject(item.bisnis || asObject(item.pengajuan).bisnis);
   const nominal = Number(item.nominal_investasi || 0);
   const returnRate = Number(item.return_investasi || 0);
   const annualReturnEst = (nominal * returnRate) / 100;
@@ -3030,7 +3030,7 @@ function InvestmentDetailPreview({ data }: { data: unknown }) {
           </p>
         </div>
         <span className={`badge font-bold uppercase tracking-wider text-[10px] ${statusTone(readPath(item, ["negosiasi.status", "status"]))}`}>
-          {readPath(item, ["negosiasi.status", "status"])}
+          {textValue(readPath(item, ["negosiasi.status", "status"]))}
         </span>
       </div>
 
@@ -3126,7 +3126,7 @@ function ProfitDetailPreview({ data }: { data: unknown }) {
           </p>
         </div>
         <span className={`badge font-bold uppercase tracking-wider text-[10px] ${statusTone(item.status)}`}>
-          {item.status}
+          {textValue(item.status)}
         </span>
       </div>
 
