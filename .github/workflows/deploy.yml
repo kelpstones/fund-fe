@@ -13,22 +13,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: Install & Build
-        run: |
-          npm ci
-          npm run build
-        env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-          VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
-          VITE_APP_NAME: ${{ secrets.VITE_APP_NAME }}
-          VITE_DEFAULT_THEME: ${{ secrets.VITE_DEFAULT_THEME }}
-
 
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -39,5 +23,10 @@ jobs:
           script: |
             cd ~/fund-fe
             git pull origin main
-            docker compose -f docker-compose.prod.yml up -d --build
+            
+            # Matikan container lama, lalu build ulang tanpa cache agar mendeteksi perubahan .env di VPS
+            docker compose -f docker-compose.prod.yml down
+            docker compose -f docker-compose.prod.yml build --no-cache
+            docker compose -f docker-compose.prod.yml up -d
+            
             docker image prune -f
