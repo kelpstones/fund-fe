@@ -1205,4 +1205,7 @@ Object.assign(idTranslations, {
   readinessSales: "Riwayat penjualan periodik tersedia",
   readinessTeam: "Tim operasional aktif",
   readinessReporting: "Laporan bisnis siap untuk due diligence",
+  markAllAsRead: "Tandai dibaca semua",
+  markAllReadSuccess: "Semua notifikasi berhasil ditandai sebagai dibaca.",
+  markAllReadError: "Gagal menandai semua notifikasi sebagai dibaca.",
 });

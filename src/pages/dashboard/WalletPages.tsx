@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDownCircle, ArrowUpCircle, Loader2, Wallet } from "lucide-react";
 import { DashboardBreadcrumb } from "../../components/DashboardBreadcrumb";
@@ -197,6 +197,22 @@ export function InvestorWalletPage() {
       };
     },
   });
+
+  const hasPendingTx = useMemo(() => {
+    return (walletQuery.data?.transactions ?? []).some(
+      (tx) => String(tx.status).toLowerCase() === "pending"
+    );
+  }, [walletQuery.data?.transactions]);
+
+  // Dynamically update query options for polling
+  useEffect(() => {
+    if (hasPendingTx) {
+      const interval = setInterval(() => {
+        queryClient.invalidateQueries({ queryKey: walletQueryKey });
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [hasPendingTx, queryClient, walletQueryKey]);
 
   const bankAccountsQuery = useQuery({
     queryKey: bankAccountsQueryKey,

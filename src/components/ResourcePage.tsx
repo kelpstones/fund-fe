@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent, Dispatch, FormEvent, ReactNode, SetStateAction } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -90,6 +90,7 @@ type ResourcePageProps<T extends Entity> = {
       rawValues: Record<string, unknown>;
     },
   ) => Promise<void> | void;
+  headerExtras?: ReactNode;
 };
 
 type ConfirmDialog = {
@@ -415,6 +416,7 @@ export function ResourcePage<T extends Entity>({
   showStatusFilter = true,
   formExtras,
   onAfterCreate,
+  headerExtras,
 }: ResourcePageProps<T>) {
   const { user } = useAuth();
   const { language, t } = useLanguage();
@@ -757,7 +759,7 @@ export function ResourcePage<T extends Entity>({
   const colSpan = columns.length + (hasRowActions ? 1 : 0);
   const canShowStatusFilter = showStatusFilter && statusOptions.length > 1;
   const canShowSearchInput = showSearch;
-  const hasTopControls = canShowStatusFilter || canShowSearchInput || canCreate;
+  const hasTopControls = canShowStatusFilter || canShowSearchInput || canCreate || Boolean(headerExtras);
   const showTopBar = showTitle || hasTopControls;
 
   const visibleActionsFor = (item: T) =>
@@ -835,9 +837,9 @@ export function ResourcePage<T extends Entity>({
             </button>
           );
         })}
-        {visibleDisabledReasons.map((reason) => (
+        {visibleDisabledReasons.map((reason, index) => (
           <span
-            key={reason}
+            key={`${reason}-${index}`}
             className="basis-full rounded-md bg-base-200 px-2 py-1 text-right text-xs font-bold text-neutral/60"
           >
             {reason}
@@ -962,6 +964,7 @@ export function ResourcePage<T extends Entity>({
                   {t(createLabel)}
                 </button>
               ) : null}
+              {headerExtras}
             </div>
           ) : null}
         </div>
@@ -985,7 +988,13 @@ export function ResourcePage<T extends Entity>({
               {renderEmptyContent()}
             </div>
           ) : (
-            visibleRows.map((item) => renderRowCard(item))
+            visibleRows.map((item) => {
+              const card = renderRowCard(item);
+              if (React.isValidElement(card)) {
+                return React.cloneElement(card, { key: item.id } as any);
+              }
+              return card;
+            })
           )}
         </div>
       ) : (
@@ -994,8 +1003,8 @@ export function ResourcePage<T extends Entity>({
           <table className="table">
             <thead>
               <tr className="bg-base-200 text-xs uppercase tracking-wide text-neutral/60">
-                {columns.map((column) => (
-                  <th key={column.label} className={column.className}>
+                {columns.map((column, colIndex) => (
+                  <th key={`${column.label}-${colIndex}`} className={column.className}>
                     {t(column.label)}
                   </th>
                 ))}
@@ -1024,8 +1033,8 @@ export function ResourcePage<T extends Entity>({
               ) : (
                 visibleRows.map((item) => (
                   <tr key={item.id} className="hover:bg-base-200/60">
-                    {columns.map((column) => (
-                      <td key={`${item.id}-${column.label}`} className={column.className}>
+                    {columns.map((column, colIndex) => (
+                      <td key={`${item.id}-${column.label}-${colIndex}`} className={column.className}>
                         {column.render(item)}
                       </td>
                     ))}
