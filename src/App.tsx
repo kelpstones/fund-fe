@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { AiAdvisorChat } from "./components/AiAdvisorChat";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { dashboardPathFor, useAuth } from "./lib/auth/AuthProvider";
 
@@ -261,6 +262,7 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
+      <AiAdvisorChat />
     </>
   );
 }

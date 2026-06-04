@@ -161,6 +161,15 @@ textarea {
 }
 
 @layer utilities {
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
   .fr-toast-stack {
     top: calc(env(safe-area-inset-top) + 5.25rem);
     right: max(0.5rem, env(safe-area-inset-right));
