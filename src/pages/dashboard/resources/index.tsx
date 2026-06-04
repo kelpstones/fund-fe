@@ -1402,6 +1402,7 @@ export function BusinessesPage({
 }
 
 export function SubmissionsPage({ admin = false }: { admin?: boolean }) {
+  const { language } = useLanguage();
   const { user } = useAuth();
   const businessOptionsQuery = useQuery({
     queryKey: ["submission-business-options", admin, user?.id ?? "guest", user?.role ?? "guest"],
@@ -1503,6 +1504,17 @@ export function SubmissionsPage({ admin = false }: { admin?: boolean }) {
     ];
   }, [admin, businessOptionsQuery.data]);
 
+  const canEditSubmission = (item: Entity) => {
+    const status = readPath(item, ["approval.status", "approval_status", "status"]);
+    const mainStatus = readPath(item, ["status"]);
+    return (
+      status !== "approved" &&
+      mainStatus !== "published" &&
+      mainStatus !== "deal" &&
+      mainStatus !== "completed"
+    );
+  };
+
   return (
     <ResourcePage
       title="Pengajuan Dana"
@@ -1538,6 +1550,12 @@ export function SubmissionsPage({ admin = false }: { admin?: boolean }) {
       }
       maxCreateItems={admin ? undefined : 1}
       createLimitMessage="Setiap bisnis hanya bisa memiliki 1 pengajuan aktif."
+      canEditRow={admin ? undefined : canEditSubmission}
+      editDisabledReason={
+        language === "id"
+          ? "Pengajuan yang sudah disetujui tidak dapat diubah."
+          : "Approved submissions cannot be modified."
+      }
     />
   );
 }
@@ -1771,6 +1789,28 @@ function UmkmSalesPage() {
     enabled: user?.role === "umkm",
     retry: false,
   });
+  const documentsQuery = useQuery({
+    queryKey: ["document-center", "backend", "umkm"],
+    queryFn: async () => {
+      const response = await apiClient.get("/businesses/documents");
+      const payload = unwrap<any>(response.data);
+      return Array.isArray(payload?.dokumen) ? (payload.dokumen as any[]) : [];
+    },
+    enabled: user?.role === "umkm",
+    retry: false,
+  });
+  const uploadedSalesDocs = useMemo(() => {
+    const list = documentsQuery.data ?? [];
+    return list.filter((doc) => doc.jenis_dokumen === "laporan_penjualan");
+  }, [documentsQuery.data]);
+  const monthlyDoc = useMemo(() => {
+    return uploadedSalesDocs.find((doc) => doc.nama_dokumen === "Laporan Omset Bulanan");
+  }, [uploadedSalesDocs]);
+  const yearlyDoc = useMemo(() => {
+    return uploadedSalesDocs.find((doc) => doc.nama_dokumen === "Laporan Omset Tahunan");
+  }, [uploadedSalesDocs]);
+  const isMonthlyBlocked = Boolean(monthlyDoc && ["pending", "valid"].includes(monthlyDoc.status));
+  const isYearlyBlocked = Boolean(yearlyDoc && ["pending", "valid"].includes(yearlyDoc.status));
   const ownBusinessIds = useMemo(
     () =>
       new Set(
@@ -1867,7 +1907,7 @@ function UmkmSalesPage() {
       const response = await apiClient.post("/businesses/documents", formData);
       return unwrap<unknown>(response.data);
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: async (_data, variables) => {
       if (variables.type === "monthly") setMonthlySalesDoc(null);
       if (variables.type === "yearly") setYearlySalesDoc(null);
       toast.success(
@@ -1876,6 +1916,7 @@ function UmkmSalesPage() {
           : "Sales document uploaded successfully.",
         { title: t("dataAdded") },
       );
+      await queryClient.invalidateQueries({ queryKey: ["document-center", "backend"] });
     },
     onError: (error) => {
       toast.error(
@@ -2067,7 +2108,7 @@ function UmkmSalesPage() {
           ) : null}
         </div>
       </form>
-      <section className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+      <section className="rounded-md border border-base-300 bg-white p-5 shadow-sm space-y-5">
         <div>
           <h3 className="text-lg font-black text-neutral">
             {language === "id" ? "Upload Dokumen Penjualan" : "Upload Sales Documents"}
@@ -2078,52 +2119,143 @@ function UmkmSalesPage() {
               : "Upload monthly and yearly revenue documents to complete your sales data."}
           </p>
         </div>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-3 rounded-md border border-base-300 bg-base-100 p-4">
-            <p className="text-sm font-semibold text-neutral">
-              {language === "id" ? "Dokumen Omset Bulanan" : "Monthly Revenue Document"}
-            </p>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <p className="text-sm font-semibold text-neutral">
+                {language === "id" ? "Dokumen Omset Bulanan" : "Monthly Revenue Document"}
+              </p>
+              {isMonthlyBlocked && (
+                <span className="badge badge-success text-[10px] font-bold text-white px-2 py-1">
+                  {language === "id" ? "Terkunci" : "Locked"}
+                </span>
+              )}
+            </div>
             <input
               type="file"
-              className="file-input file-input-bordered w-full rounded-md bg-white"
+              className="file-input file-input-bordered w-full rounded-md bg-white text-xs font-semibold"
               onChange={(event) => setMonthlySalesDoc(event.target.files?.[0] ?? null)}
-              disabled={uploadSalesDocMutation.isPending}
+              disabled={uploadSalesDocMutation.isPending || isMonthlyBlocked}
             />
-            <button
-              type="button"
-              className="btn btn-outline btn-sm rounded-md"
-              onClick={() => uploadSalesDocument("monthly")}
-              disabled={uploadSalesDocMutation.isPending || !monthlySalesDoc}
-            >
-              {uploadSalesDocMutation.isPending ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : null}
-              {language === "id" ? "Upload Bulanan" : "Upload Monthly"}
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                className="btn btn-outline btn-sm rounded-md font-bold text-xs self-start"
+                onClick={() => uploadSalesDocument("monthly")}
+                disabled={uploadSalesDocMutation.isPending || isMonthlyBlocked || !monthlySalesDoc}
+              >
+                {uploadSalesDocMutation.isPending ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : null}
+                {language === "id" ? "Upload Bulanan" : "Upload Monthly"}
+              </button>
+              {isMonthlyBlocked && (
+                <p className="text-[11px] font-semibold text-neutral/50 italic leading-snug">
+                  {language === "id"
+                    ? "* Dokumen aktif/disetujui. Tidak dapat diunggah ulang kecuali ditolak admin."
+                    : "* Document is active/approved. Cannot re-upload unless rejected by admin."}
+                </p>
+              )}
+            </div>
           </div>
           <div className="space-y-3 rounded-md border border-base-300 bg-base-100 p-4">
-            <p className="text-sm font-semibold text-neutral">
-              {language === "id" ? "Dokumen Omset Tahunan" : "Yearly Revenue Document"}
-            </p>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <p className="text-sm font-semibold text-neutral">
+                {language === "id" ? "Dokumen Omset Tahunan" : "Yearly Revenue Document"}
+              </p>
+              {isYearlyBlocked && (
+                <span className="badge badge-success text-[10px] font-bold text-white px-2 py-1">
+                  {language === "id" ? "Terkunci" : "Locked"}
+                </span>
+              )}
+            </div>
             <input
               type="file"
-              className="file-input file-input-bordered w-full rounded-md bg-white"
+              className="file-input file-input-bordered w-full rounded-md bg-white text-xs font-semibold"
               onChange={(event) => setYearlySalesDoc(event.target.files?.[0] ?? null)}
-              disabled={uploadSalesDocMutation.isPending}
+              disabled={uploadSalesDocMutation.isPending || isYearlyBlocked}
             />
-            <button
-              type="button"
-              className="btn btn-outline btn-sm rounded-md"
-              onClick={() => uploadSalesDocument("yearly")}
-              disabled={uploadSalesDocMutation.isPending || !yearlySalesDoc}
-            >
-              {uploadSalesDocMutation.isPending ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : null}
-              {language === "id" ? "Upload Tahunan" : "Upload Yearly"}
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                className="btn btn-outline btn-sm rounded-md font-bold text-xs self-start"
+                onClick={() => uploadSalesDocument("yearly")}
+                disabled={uploadSalesDocMutation.isPending || isYearlyBlocked || !yearlySalesDoc}
+              >
+                {uploadSalesDocMutation.isPending ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : null}
+                {language === "id" ? "Upload Tahunan" : "Upload Yearly"}
+              </button>
+              {isYearlyBlocked && (
+                <p className="text-[11px] font-semibold text-neutral/50 italic leading-snug">
+                  {language === "id"
+                    ? "* Dokumen aktif/disetujui. Tidak dapat diunggah ulang kecuali ditolak admin."
+                    : "* Document is active/approved. Cannot re-upload unless rejected by admin."}
+                </p>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Status Dokumen Terupload */}
+        {uploadedSalesDocs.length > 0 && (
+          <div className="border-t border-base-200 pt-4 space-y-3">
+            <h4 className="text-sm font-black text-neutral">
+              {language === "id" ? "Status Dokumen Terupload" : "Uploaded Documents Status"}
+            </h4>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {uploadedSalesDocs.map((doc) => {
+                const isPending = doc.status === "pending";
+                const isValid = doc.status === "valid";
+                const isInvalid = doc.status === "invalid";
+                const toneClass = isValid
+                  ? "badge-success text-white"
+                  : isInvalid
+                    ? "badge-error text-white"
+                    : "badge-warning text-white";
+                const statusLabel = isPending
+                  ? (language === "id" ? "Menunggu Review" : "Pending Review")
+                  : isValid
+                    ? "Valid / Disetujui"
+                    : (language === "id" ? "Perlu Perbaikan" : "Revision Needed");
+
+                return (
+                  <div key={doc.id} className="rounded-lg border border-base-200 p-3 bg-neutral-50/50 flex flex-col justify-between gap-3 text-xs leading-normal">
+                    <div className="space-y-1">
+                      <p className="font-bold text-neutral truncate" title={doc.nama_dokumen}>
+                        {doc.nama_dokumen}
+                      </p>
+                      <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                        <span className={`badge badge-sm font-bold uppercase tracking-wider text-[9px] px-2 py-1.5 ${toneClass}`}>
+                          {statusLabel}
+                        </span>
+                      </div>
+                      {doc.catatan && isInvalid && (
+                        <p className="text-error font-semibold mt-2 p-1.5 bg-error/5 border border-error/15 rounded text-[11px]">
+                          Catatan: {doc.catatan}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between gap-2 border-t border-neutral-100 pt-2">
+                      <span className="text-[10px] text-neutral/45 font-semibold">
+                        {dateShort(doc.updated_at || doc.created_at)}
+                      </span>
+                      <a
+                        href={doc.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-ghost btn-xs border border-base-300 rounded-md font-bold text-[10px] px-2"
+                      >
+                        Buka
+                      </a>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </section>
       {activePengajuanId ? (
         <ResourcePage
@@ -2848,6 +2980,211 @@ export function InvoicesPage({ investor = false }: { investor?: boolean }) {
   );
 }
 
+const asObject = (value: unknown): Record<string, any> => {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, any>;
+  }
+  return {};
+};
+
+function InvestmentDetailPreview({ data }: { data: unknown }) {
+  const { language } = useLanguage();
+  const item = useMemo(() => {
+    if (Array.isArray(data)) return data[0] as Entity;
+    if (data && typeof data === "object") {
+      const obj = data as Record<string, unknown>;
+      if (Array.isArray(obj.items) && obj.items.length > 0) return obj.items[0] as Entity;
+      if (Array.isArray(obj.rows) && obj.rows.length > 0) return obj.rows[0] as Entity;
+      return obj as Entity;
+    }
+    return null;
+  }, [data]);
+
+  if (!item) {
+    return (
+      <div className="rounded-md border border-base-300 p-4 text-sm font-semibold text-neutral/55 bg-white">
+        {language === "id" ? "Detail investasi tidak ditemukan." : "Investment detail not found."}
+      </div>
+    );
+  }
+
+  const bisnis = asObject(item.bisnis || item.pengajuan?.bisnis);
+  const nominal = Number(item.nominal_investasi || 0);
+  const returnRate = Number(item.return_investasi || 0);
+  const annualReturnEst = (nominal * returnRate) / 100;
+  const monthlyReturnEst = annualReturnEst / 12;
+
+  return (
+    <div className="max-w-xl mx-auto rounded-xl border border-base-300 bg-white p-6 shadow-sm space-y-6 text-neutral">
+      <div className="flex justify-between items-start gap-4">
+        <div>
+          <span className="text-[10px] font-black uppercase tracking-widest text-primary">
+            {language === "id" ? "Detail Portofolio" : "Portfolio Detail"}
+          </span>
+          <h3 className="text-xl font-black text-neutral mt-1">
+            {textValue(bisnis.nama_bisnis || bisnis.nama, language === "id" ? "Detail Bisnis" : "Business Detail")}
+          </h3>
+          <p className="text-xs text-neutral/50">
+            {language === "id" ? "Tipe Usaha: " : "Business Type: "}
+            <span className="font-bold">{textValue(bisnis.tipe_usaha)}</span>
+          </p>
+        </div>
+        <span className={`badge font-bold uppercase tracking-wider text-[10px] ${statusTone(readPath(item, ["negosiasi.status", "status"]))}`}>
+          {readPath(item, ["negosiasi.status", "status"])}
+        </span>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-lg border border-base-200 p-4 bg-neutral-50/30">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-neutral/45">
+            {language === "id" ? "Nominal Pokok" : "Principal Amount"}
+          </span>
+          <p className="text-lg font-black text-neutral mt-1">{currency(nominal)}</p>
+        </div>
+        <div className="rounded-lg border border-base-200 p-4 bg-neutral-50/30">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-neutral/45">
+            {language === "id" ? "Return Rate Per Tahun" : "Annual Return Rate"}
+          </span>
+          <p className="text-lg font-black text-primary mt-1">{percent(returnRate)}</p>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-dashed border-base-300 p-4 space-y-3 bg-neutral-50/10">
+        <p className="text-xs font-bold uppercase tracking-widest text-neutral/45">
+          {language === "id" ? "Estimasi Pendapatan Bagi Hasil" : "Estimated Profit Share Income"}
+        </p>
+        <div className="flex justify-between items-center text-sm">
+          <span className="font-semibold text-neutral/60">
+            {language === "id" ? "Estimasi Bulanan" : "Monthly Estimate"}
+          </span>
+          <span className="font-black text-neutral">{currency(monthlyReturnEst)}</span>
+        </div>
+        <div className="flex justify-between items-center text-sm border-t border-neutral-100 pt-2">
+          <span className="font-semibold text-neutral/60">
+            {language === "id" ? "Estimasi Tahunan" : "Annual Estimate"}
+          </span>
+          <span className="font-black text-neutral">{currency(annualReturnEst)}</span>
+        </div>
+      </div>
+
+      <div className="text-xs space-y-2 border-t border-base-200 pt-4 leading-normal">
+        <div className="flex justify-between">
+          <span className="font-semibold text-neutral/50">
+            {language === "id" ? "ID Investasi" : "Investment ID"}
+          </span>
+          <span className="font-bold text-neutral">#{item.id}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="font-semibold text-neutral/50">
+            {language === "id" ? "Tanggal Mulai" : "Start Date"}
+          </span>
+          <span className="font-bold text-neutral">{dateShort(item.created_at)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProfitDetailPreview({ data }: { data: unknown }) {
+  const { language } = useLanguage();
+  const item = useMemo(() => {
+    if (Array.isArray(data)) return data[0] as Entity;
+    if (data && typeof data === "object") {
+      const obj = data as Record<string, unknown>;
+      if (Array.isArray(obj.items) && obj.items.length > 0) return obj.items[0] as Entity;
+      if (Array.isArray(obj.rows) && obj.rows.length > 0) return obj.rows[0] as Entity;
+      return obj as Entity;
+    }
+    return null;
+  }, [data]);
+
+  if (!item) {
+    return (
+      <div className="rounded-md border border-base-300 p-4 text-sm font-semibold text-neutral/55 bg-white">
+        {language === "id" ? "Detail profit tidak ditemukan." : "Profit detail not found."}
+      </div>
+    );
+  }
+
+  const penjualan = asObject(item.penjualan);
+  const investasi = asObject(item.investasi);
+  const nominalProfit = Number(item.nominal_profit || 0);
+
+  return (
+    <div className="max-w-xl mx-auto rounded-xl border border-base-300 bg-white p-6 shadow-sm space-y-6 text-neutral">
+      <div className="flex justify-between items-start gap-4">
+        <div>
+          <span className="text-[10px] font-black uppercase tracking-widest text-primary">
+            {language === "id" ? "Tanda Terima Distribusi Profit" : "Profit Distribution Receipt"}
+          </span>
+          <h3 className="text-xl font-black text-neutral mt-1">
+            {textValue(penjualan.nama_bisnis, language === "id" ? "Bagi Hasil Pendapatan" : "Income Profit Share")}
+          </h3>
+          <p className="text-xs text-neutral/50">
+            {language === "id" ? "Periode Penjualan: " : "Sales Period: "}
+            <span className="font-bold">{textValue(item.periode)}</span>
+          </p>
+        </div>
+        <span className={`badge font-bold uppercase tracking-wider text-[10px] ${statusTone(item.status)}`}>
+          {item.status}
+        </span>
+      </div>
+
+      <div className="rounded-xl border border-base-200 bg-primary/5 p-5 text-center space-y-1">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
+          {language === "id" ? "Nominal Profit Diterima" : "Received Profit Amount"}
+        </span>
+        <p className="text-2xl font-black text-primary">{currency(nominalProfit)}</p>
+      </div>
+
+      <div className="rounded-lg border border-base-200 p-4 space-y-3 bg-neutral-50/30 text-sm">
+        <p className="text-xs font-bold uppercase tracking-widest text-neutral/45">
+          {language === "id" ? "Detail Acuan Laporan" : "Sales Report Reference"}
+        </p>
+        <div className="flex justify-between items-center">
+          <span className="text-neutral/60">
+            {language === "id" ? "Laba Bersih Bisnis" : "Business Net Profit"}
+          </span>
+          <span className="font-bold text-neutral">{currency(penjualan.laba_bersih)}</span>
+        </div>
+        <div className="flex justify-between items-center border-t border-neutral-100 pt-2">
+          <span className="text-neutral/60">
+            {language === "id" ? "Nominal Pokok Investasi" : "Principal Investment"}
+          </span>
+          <span className="font-bold text-neutral">{currency(investasi.nominal_investasi)}</span>
+        </div>
+        <div className="flex justify-between items-center border-t border-neutral-100 pt-2">
+          <span className="text-neutral/60">
+            {language === "id" ? "Tingkat Return" : "Return Rate"}
+          </span>
+          <span className="font-bold text-primary">{percent(investasi.return_investasi)}</span>
+        </div>
+      </div>
+
+      <div className="text-xs space-y-2 border-t border-base-200 pt-4 leading-normal">
+        <div className="flex justify-between">
+          <span className="font-semibold text-neutral/50">
+            {language === "id" ? "ID Transaksi Profit" : "Profit Transaction ID"}
+          </span>
+          <span className="font-bold text-neutral">#{item.id}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="font-semibold text-neutral/50">
+            {language === "id" ? "ID Investasi Terkait" : "Related Investment ID"}
+          </span>
+          <span className="font-bold text-neutral">#{investasi.id}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="font-semibold text-neutral/50">
+            {language === "id" ? "Tanggal Distribusi" : "Distribution Date"}
+          </span>
+          <span className="font-bold text-neutral">{dateShort(item.created_at)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function InvestmentsPage({ investor = false }: { investor?: boolean }) {
   return (
     <ResourcePage
@@ -2864,6 +3201,7 @@ export function InvestmentsPage({ investor = false }: { investor?: boolean }) {
           : "Investasi akan muncul setelah investor menyelesaikan pembayaran invoice."
       }
       searchableFields={["status", "nominal_investasi", (item) => readPath(item, ["bisnis.nama_bisnis", "bisnis", "pengajuan.bisnis.nama"])]}
+      detailRenderer={(data) => <InvestmentDetailPreview data={data} />}
     />
   );
 }
@@ -3003,6 +3341,7 @@ export function InvestmentsByProposalPage() {
             readonly
             emptyTitle="Belum ada investasi untuk pengajuan ini"
             emptyDescription="Investasi akan muncul setelah investor menyelesaikan pembayaran untuk pengajuan yang dipilih."
+            detailRenderer={(data) => <InvestmentDetailPreview data={data} />}
           />
         </>
       )}
@@ -3026,6 +3365,7 @@ export function ProfitsPage({ investor = false }: { investor?: boolean }) {
       emptyTitle="Belum ada distribusi profit"
       emptyDescription="Distribusi profit akan muncul setelah laporan penjualan dan investasi tersedia."
       searchableFields={["periode", "status", "nominal_profit", (item) => readPath(item, ["penjualan.nama_bisnis", "bisnis"])]}
+      detailRenderer={(data) => <ProfitDetailPreview data={data} />}
     />
   );
 }
@@ -3212,6 +3552,7 @@ export function ProfitsBySalesPage() {
         readonly
         emptyTitle="Belum ada profit untuk penjualan ini"
         emptyDescription="Distribusi profit akan muncul setelah backend membuat distribusi untuk laporan yang dipilih."
+        detailRenderer={(data) => <ProfitDetailPreview data={data} />}
       />
     </div>
   );
