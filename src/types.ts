@@ -104,7 +104,7 @@ export type ResourceConfig<T extends Entity> = {
 
 export type ResourceAction<T extends Entity> = {
   label: string;
-  method: "GET" | "POST" | "PUT" | "DELETE";
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   path: string | ((item: T) => string);
   body?: Record<string, unknown> | ((item: T) => Record<string, unknown>);
   confirm?: string | ((item: T) => string);

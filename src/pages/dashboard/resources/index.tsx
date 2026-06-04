@@ -960,6 +960,17 @@ const submissionActions: ResourceAction<Entity>[] = [
   },
 ];
 
+const businessVerificationActions: ResourceAction<Entity>[] = [
+  {
+    label: "Verifikasi Bisnis",
+    method: "PATCH",
+    path: (item) => `/businesses/documents/${item.id}/verify`,
+    confirm: "Verifikasi bisnis ini? Pastikan semua dokumen wajib sudah valid.",
+    className: "btn btn-success btn-xs rounded-md text-white",
+    isVisible: (item) => !Boolean(item.is_verified),
+  },
+];
+
 const negotiationActionsFor = (
   userId?: string | number,
   language: "id" | "en" = "id",
@@ -1169,6 +1180,10 @@ export function BusinessesPage({
         allowCreate={canCreateBusiness}
         allowEdit={isUmkmOwner}
         allowDelete={canDelete}
+        actions={isAdminScope ? businessVerificationActions : []}
+        extraInvalidateKeys={
+          isAdminScope ? [["admin-review-queue"], ["admin-review-queue", "documents"]] : undefined
+        }
         emptyTitle={isUmkmOwner ? "Belum ada bisnis" : "Belum ada bisnis terdaftar"}
         emptyDescription={
           classOptionsUnavailable && isUmkmOwner
