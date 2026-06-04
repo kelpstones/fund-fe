@@ -24,7 +24,6 @@ jobs:
             cd ~/fund-fe
             git pull origin main
             
-            # Matikan container lama, lalu build ulang tanpa cache agar mendeteksi perubahan .env di VPS
             docker compose -f docker-compose.prod.yml down
             docker compose -f docker-compose.prod.yml build --no-cache
             docker compose -f docker-compose.prod.yml up -d
