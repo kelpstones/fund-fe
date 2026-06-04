@@ -3638,6 +3638,36 @@ export function AdminsPage() {
 }
 
 export function NotificationsPage() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const { t } = useLanguage();
+
+  const markAllReadMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.put("/notifications/mark-all-read");
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["resource", "notifications"],
+      });
+      toast.success(
+        t("markAllReadSuccess"),
+        {
+          title: t("actionSuccess"),
+        }
+      );
+    },
+    onError: (error) => {
+      toast.error(
+        apiErrorMessage(error, t("markAllReadError")),
+        {
+          title: t("actionFailed"),
+        }
+      );
+    },
+  });
+
   return (
     <ResourcePage
       title="Notifikasi"
@@ -3649,10 +3679,22 @@ export function NotificationsPage() {
       actions={notificationActions}
       allowCreate={false}
       allowEdit={false}
-      allowDelete={false}
+      allowDelete={true}
       emptyTitle="Belum ada notifikasi"
       emptyDescription="Notifikasi sistem dan aktivitas user akan muncul di sini."
       searchableFields={["title", "message", "type", "status"]}
+      headerExtras={
+        <button
+          className="btn btn-outline btn-primary h-11 rounded-md"
+          onClick={() => markAllReadMutation.mutate()}
+          disabled={markAllReadMutation.isPending}
+        >
+          {markAllReadMutation.isPending && (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          )}
+          {t("markAllAsRead")}
+        </button>
+      }
     />
   );
 }

@@ -1432,4 +1432,7 @@ Object.assign(enTranslations, {
   readinessSales: "Periodic sales history is available",
   readinessTeam: "Operational team is active",
   readinessReporting: "Business reports are ready for due diligence",
+  markAllAsRead: "Mark all as read",
+  markAllReadSuccess: "All notifications marked as read successfully.",
+  markAllReadError: "Failed to mark all notifications as read.",
 });

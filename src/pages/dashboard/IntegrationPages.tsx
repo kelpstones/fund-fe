@@ -49,6 +49,14 @@ type LocalizedCopy = { id: string; en: string };
 const localeText = (text: LocalizedCopy, language: "id" | "en") =>
   language === "id" ? text.id : text.en;
 
+const getUnitPaddingClass = (unit: LocalizedCopy | undefined, language: "id" | "en") => {
+  if (!unit) return "";
+  const text = localeText(unit, language);
+  if (text.length > 3) return "pr-12";
+  if (text.length > 1) return "pr-10";
+  return "pr-8";
+};
+
 function DetailRows({ rows }: { rows: Array<[string, unknown]> }) {
   const { t } = useLanguage();
 
@@ -573,7 +581,7 @@ export function InvestorPreferencesPage() {
                         min={field.min}
                         max={field.max}
                         step={field.step}
-                        className={`input input-bordered w-full rounded-md text-right ${field.unit ? "pr-10" : ""}`}
+                        className={`input input-bordered w-full rounded-md text-right ${getUnitPaddingClass(field.unit, language)}`}
                         value={String(activeForm[field.key])}
                         onChange={(event) => update(field.key, event.target.value)}
                         required
@@ -1059,7 +1067,7 @@ export function BusinessProfilePage() {
                                   min={field.min}
                                   max={field.max}
                                   step={field.step}
-                                  className={`input input-bordered w-full rounded-md text-right ${field.unit ? "pr-10" : ""}`}
+                                  className={`input input-bordered w-full rounded-md text-right ${getUnitPaddingClass(field.unit, language)}`}
                                   value={String(activeBusinessProfile[field.key])}
                                   onChange={(event) => updateNumber(field.key, event.target.value)}
                                   disabled={!isUmkm}

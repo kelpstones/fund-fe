@@ -90,6 +90,7 @@ type ResourcePageProps<T extends Entity> = {
       rawValues: Record<string, unknown>;
     },
   ) => Promise<void> | void;
+  headerExtras?: ReactNode;
 };
 
 type ConfirmDialog = {
@@ -415,6 +416,7 @@ export function ResourcePage<T extends Entity>({
   showStatusFilter = true,
   formExtras,
   onAfterCreate,
+  headerExtras,
 }: ResourcePageProps<T>) {
   const { user } = useAuth();
   const { language, t } = useLanguage();
@@ -757,7 +759,7 @@ export function ResourcePage<T extends Entity>({
   const colSpan = columns.length + (hasRowActions ? 1 : 0);
   const canShowStatusFilter = showStatusFilter && statusOptions.length > 1;
   const canShowSearchInput = showSearch;
-  const hasTopControls = canShowStatusFilter || canShowSearchInput || canCreate;
+  const hasTopControls = canShowStatusFilter || canShowSearchInput || canCreate || Boolean(headerExtras);
   const showTopBar = showTitle || hasTopControls;
 
   const visibleActionsFor = (item: T) =>
@@ -962,6 +964,7 @@ export function ResourcePage<T extends Entity>({
                   {t(createLabel)}
                 </button>
               ) : null}
+              {headerExtras}
             </div>
           ) : null}
         </div>
