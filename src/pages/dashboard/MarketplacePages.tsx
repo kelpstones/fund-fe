@@ -1689,6 +1689,7 @@ export function OpportunityDetailPage() {
 
 export function AdminReviewQueuePage() {
   const { t } = useLanguage();
+  const toast = useToast();
   const queryClient = useQueryClient();
   const [documentRejectTarget, setDocumentRejectTarget] = useState<Entity | null>(null);
   const [documentRejectNote, setDocumentRejectNote] = useState("");
@@ -1706,7 +1707,13 @@ export function AdminReviewQueuePage() {
       });
       return unwrap<unknown>(response.data);
     },
-    onSuccess: async () => queryClient.invalidateQueries({ queryKey: ["admin-review-queue"] }),
+    onSuccess: async () => {
+      toast.success("Berhasil memperbarui status pengajuan");
+      await queryClient.invalidateQueries({ queryKey: ["admin-review-queue"] });
+    },
+    onError: (error) => {
+      toast.error(apiErrorMessage(error, "Gagal memperbarui status pengajuan"));
+    },
   });
   const documentsQuery = useQuery({
     queryKey: ["admin-review-queue", "documents"],
@@ -1738,8 +1745,16 @@ export function AdminReviewQueuePage() {
       });
       return unwrap<unknown>(response.data);
     },
-    onSuccess: async () => {
+    onSuccess: async (_data, variables) => {
+      toast.success(
+        variables.status === "valid"
+          ? "Dokumen berhasil divalidasi"
+          : "Dokumen berhasil ditolak",
+      );
       await queryClient.invalidateQueries({ queryKey: ["admin-review-queue", "documents"] });
+    },
+    onError: (error) => {
+      toast.error(apiErrorMessage(error, "Gagal memproses dokumen"));
     },
   });
   const verifyBusinessMutation = useMutation({
@@ -1748,7 +1763,11 @@ export function AdminReviewQueuePage() {
       return unwrap<unknown>(response.data);
     },
     onSuccess: async () => {
+      toast.success("Bisnis berhasil diverifikasi");
       await queryClient.invalidateQueries({ queryKey: ["admin-review-queue", "documents"] });
+    },
+    onError: (error) => {
+      toast.error(apiErrorMessage(error, "Gagal memverifikasi bisnis"));
     },
   });
   const pendingDocuments = documentsQuery.data ?? [];
