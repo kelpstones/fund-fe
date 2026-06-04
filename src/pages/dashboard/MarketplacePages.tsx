@@ -1764,12 +1764,36 @@ export function AdminReviewQueuePage() {
     },
     onSuccess: async () => {
       toast.success("Bisnis berhasil diverifikasi");
-      await queryClient.invalidateQueries({ queryKey: ["admin-review-queue", "documents"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-review-queue", "documents"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-review-queue", "unverified-businesses"] }),
+      ]);
     },
     onError: (error) => {
       toast.error(apiErrorMessage(error, "Gagal memverifikasi bisnis"));
     },
   });
+  const businessesQuery = useQuery({
+    queryKey: ["admin-review-queue", "unverified-businesses"],
+    queryFn: async () => {
+      const response = await apiClient.get("/businesses/all?page=1&limit=100");
+      const payload = unwrap<unknown>(response.data);
+      if (Array.isArray(payload)) return payload as Entity[];
+      if (payload && typeof payload === "object") {
+        const objectPayload = payload as Record<string, unknown>;
+        if (Array.isArray(objectPayload.items)) return objectPayload.items as Entity[];
+        if (Array.isArray(objectPayload.rows)) return objectPayload.rows as Entity[];
+      }
+      return [];
+    },
+    retry: false,
+  });
+  const isBusinessVerified = (b: Entity) =>
+    b.is_verified === true ||
+    String(readPath(b, ["is_verified"], "")).toLowerCase() === "true";
+  const unverifiedBusinesses = (businessesQuery.data ?? []).filter(
+    (b) => !isBusinessVerified(b)
+  );
   const pendingDocuments = documentsQuery.data ?? [];
 
   return (
@@ -1883,6 +1907,53 @@ export function AdminReviewQueuePage() {
                     className="btn btn-outline rounded-md"
                     disabled={verifyBusinessMutation.isPending}
                     onClick={() => verifyBusinessMutation.mutate(String(item.bisnis_id))}
+                  >
+                    Verifikasi Bisnis
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-black">Verifikasi Status Bisnis</h3>
+            <p className="mt-1 text-sm text-neutral/55">
+              Daftar bisnis yang belum diverifikasi. Lakukan verifikasi manual setelah semua dokumen wajib valid.
+            </p>
+          </div>
+          <span className="badge badge-neutral text-white">{unverifiedBusinesses.length}</span>
+        </div>
+        {businessesQuery.isLoading ? <ListSkeleton rows={2} /> : null}
+        {businessesQuery.isError ? (
+          <div className="mt-4 rounded-md border border-error/20 bg-error/10 p-4 text-sm font-semibold text-error">
+            {apiErrorMessage(businessesQuery.error, "Gagal memuat daftar bisnis.")}
+          </div>
+        ) : null}
+        {!businessesQuery.isLoading && !businessesQuery.isError && unverifiedBusinesses.length === 0 ? (
+          <div className="mt-4 rounded-md border border-base-300 bg-base-100 p-4 text-sm font-semibold text-neutral/60">
+            Semua bisnis sudah diverifikasi.
+          </div>
+        ) : null}
+        <div className="mt-4 grid gap-3">
+          {unverifiedBusinesses.map((b) => (
+            <article key={String(b.id)} className="rounded-md border border-base-300 p-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <p className="font-black">
+                    {textValue(b.nama_bisnis || b.nama)}
+                  </p>
+                  <p className="mt-1 text-sm text-neutral/55">
+                    ID: #{String(b.id)} - {textValue(b.tipe_usaha, "Bisnis")}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    className="btn btn-success rounded-md text-white"
+                    disabled={verifyBusinessMutation.isPending}
+                    onClick={() => verifyBusinessMutation.mutate(String(b.id))}
                   >
                     Verifikasi Bisnis
                   </button>
