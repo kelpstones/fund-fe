@@ -785,6 +785,13 @@ export function UmkmOverviewPage() {
   const bannerBasePath = overviewBannerBasePath(language);
   const scopeKey = user?.id ? String(user.id) : undefined;
 
+  const dashboardQuery = useQuery({
+    queryKey: ["dashboard-umkm", scopeKey],
+    queryFn: () => directApi.get("/dashboard/umkm"),
+    enabled: Boolean(scopeKey),
+  });
+  const dbData = asRecord(dashboardQuery.data);
+
   const businessesQuery = useResource(myBusinessConfig, scopeKey);
   const submissionsQuery = useResource(submissionConfig, scopeKey);
   const negotiationsQuery = useResource(myNegotiationConfig, scopeKey);
@@ -819,7 +826,22 @@ export function UmkmOverviewPage() {
   );
   const bisnisCount = businesses.length;
   const investorCount = negotiations.length;
-  const hasBusiness = bisnisCount > 0;
+
+  const dbFunded = dbData.pengajuan ? Number(asRecord(dbData.pengajuan).total_pendanaan || 0) : null;
+  const displayFunded = dbFunded !== null ? dbFunded : funded;
+
+  const dbSales = Array.isArray(dbData.penjualan_chart)
+    ? dbData.penjualan_chart.reduce((sum: number, item: any) => sum + Number(item.total_penjualan || 0), 0)
+    : null;
+  const displaySales = dbSales !== null ? dbSales : totalSales;
+
+  const dbBisnisCount = dbData.bisnis ? 1 : null;
+  const displayBisnisCount = dbBisnisCount !== null ? dbBisnisCount : bisnisCount;
+
+  const dbInvestorCount = dbData.investor ? Number(asRecord(dbData.investor).total || 0) : null;
+  const displayInvestorCount = dbInvestorCount !== null ? dbInvestorCount : investorCount;
+
+  const hasBusiness = displayBisnisCount > 0;
   const hasProfileIdentity = Boolean(user?.nama && user?.email && user?.no_telp);
   const hasModelProfile = Boolean(
     modelProfile.net_profit_margin !== undefined ||
@@ -964,10 +986,10 @@ export function UmkmOverviewPage() {
         title="umkmOverviewTitle"
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label={t("business")} value={String(bisnisCount)} helper={t("activeProfile")} icon={Building2} loading={businessesQuery.isLoading} />
-        <StatCard label={t("totalFunding")} value={compactCurrency(funded)} helper={t("collected")} icon={CircleDollarSign} tone="green" loading={submissionsQuery.isLoading} />
-        <StatCard label={t("sales")} value={compactCurrency(totalSales)} helper={t("fromReports")} icon={BarChart3} tone="amber" loading={salesQuery.isLoading} />
-        <StatCard label={t("investor")} value={String(investorCount)} helper={t("relatedInvestors")} icon={Handshake} loading={negotiationsQuery.isLoading} />
+        <StatCard label={t("business")} value={String(displayBisnisCount)} helper={t("activeProfile")} icon={Building2} loading={businessesQuery.isLoading || dashboardQuery.isLoading} />
+        <StatCard label={t("totalFunding")} value={compactCurrency(displayFunded)} helper={t("collected")} icon={CircleDollarSign} tone="green" loading={submissionsQuery.isLoading || dashboardQuery.isLoading} />
+        <StatCard label={t("sales")} value={compactCurrency(displaySales)} helper={t("fromReports")} icon={BarChart3} tone="amber" loading={salesQuery.isLoading || dashboardQuery.isLoading} />
+        <StatCard label={t("investor")} value={String(displayInvestorCount)} helper={t("relatedInvestors")} icon={Handshake} loading={negotiationsQuery.isLoading || dashboardQuery.isLoading} />
       </div>
       {isOnboardingLoading ? (
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
@@ -991,6 +1013,13 @@ export function InvestorOverviewPage() {
   const { user } = useAuth();
   const bannerBasePath = overviewBannerBasePath(language);
   const scopeKey = user?.id ? String(user.id) : undefined;
+
+  const dashboardQuery = useQuery({
+    queryKey: ["dashboard-investor", scopeKey],
+    queryFn: () => directApi.get("/dashboard/investor"),
+    enabled: Boolean(scopeKey),
+  });
+  const dbData = asRecord(dashboardQuery.data);
 
   const submissionsQuery = useResource(submissionConfig, scopeKey);
   const investmentsQuery = useResource(investorInvestmentConfig, scopeKey);
@@ -1159,6 +1188,16 @@ export function InvestorOverviewPage() {
     if (!["pending", "waiting", "unpaid", "belum_dibayar"].includes(status)) return sum;
     return sum + Number(readPath(item, ["nominal_profit", "jumlah", "total_profit"], "0") || 0);
   }, 0);
+
+  const dbInvested = dbData.investasi ? Number(asRecord(dbData.investasi).total_nominal || 0) : null;
+  const displayInvested = dbInvested !== null ? dbInvested : invested;
+
+  const dbProfitTotal = dbData.profit ? Number(asRecord(dbData.profit).total_diterima || 0) : null;
+  const displayProfitTotal = dbProfitTotal !== null ? dbProfitTotal : profitTotal;
+
+  const dbPendingProfit = dbData.profit ? Number(asRecord(dbData.profit).total_pending || 0) : null;
+  const displayPendingProfit = dbPendingProfit !== null ? dbPendingProfit : pendingProfit;
+
   const investmentCount = investments.length;
   const hasPreferences = Boolean(preferencesQuery.data);
   const hasRecommendationData = recommendationsWithProposalData.length > 0;
@@ -1174,7 +1213,7 @@ export function InvestorOverviewPage() {
   const activeInvestmentItems = investments;
   const hasInvestmentActivity = activeInvestmentItems.length > 0;
   const shouldShowFinancialSummary =
-    hasInvestment || invested > 0 || profitTotal > 0 || pendingProfit > 0;
+    hasInvestment || displayInvested > 0 || displayProfitTotal > 0 || displayPendingProfit > 0;
   const nextAction: NextAction | null = !hasPreferences
     ? {
         titleKey: "investorNextPreferenceTitle",
@@ -1261,8 +1300,8 @@ export function InvestorOverviewPage() {
 
       {shouldShowFinancialSummary ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
-          <StatCard label={t("investments")} value={compactCurrency(invested)} helper={t("activePortfolio")} icon={TrendingUp} tone="green" loading={investmentsQuery.isLoading} />
-          <StatCard label={t("profit")} value={compactCurrency(profitTotal)} helper={t("pendingAmount", { amount: compactCurrency(pendingProfit) })} icon={CircleDollarSign} tone="amber" loading={profitsQuery.isLoading} />
+          <StatCard label={t("investments")} value={compactCurrency(displayInvested)} helper={t("activePortfolio")} icon={TrendingUp} tone="green" loading={investmentsQuery.isLoading || dashboardQuery.isLoading} />
+          <StatCard label={t("profit")} value={compactCurrency(displayProfitTotal)} helper={t("pendingAmount", { amount: compactCurrency(displayPendingProfit) })} icon={CircleDollarSign} tone="amber" loading={profitsQuery.isLoading || dashboardQuery.isLoading} />
         </div>
       ) : null}
 
@@ -1306,6 +1345,13 @@ export function AdminOverviewPage() {
   const { user } = useAuth();
   const scopeKey = user?.id ? String(user.id) : undefined;
 
+  const dashboardQuery = useQuery({
+    queryKey: ["dashboard-admin", scopeKey],
+    queryFn: () => directApi.get("/dashboard/admin"),
+    enabled: Boolean(scopeKey),
+  });
+  const dbData = asRecord(dashboardQuery.data);
+
   const businessesQuery = useResource(businessConfig, scopeKey);
   const submissionsQuery = useResource(submissionConfig, scopeKey);
   const adminsQuery = useResource(adminConfig, scopeKey);
@@ -1326,6 +1372,20 @@ export function AdminOverviewPage() {
     const status = String(readPath(item, ["approval.status", "approval_status", "status"])).toLowerCase();
     return status === "pending";
   }).length;
+
+  const dbBisnisCount = dbData.bisnis ? Number(asRecord(dbData.bisnis).total || 0) : null;
+  const displayBisnisCount = dbBisnisCount !== null ? dbBisnisCount : bisnisCount;
+
+  const dbSubmissionCount = dbData.pengajuan ? Number(asRecord(dbData.pengajuan).total || 0) : null;
+  const displaySubmissionCount = dbSubmissionCount !== null ? dbSubmissionCount : submissionCount;
+
+  const dbPending = dbData.pengajuan ? Number(asRecord(asRecord(dbData.pengajuan).by_status).pending || 0) : null;
+  const displayPending = dbPending !== null ? dbPending : pending;
+
+  const dbUserCount = dbData.users ? Number(asRecord(dbData.users).total || 0) : null;
+  const displayUserCount = dbUserCount !== null ? dbUserCount : userCount;
+
+  const displayRecentSubmissions = Array.isArray(dbData.recent_pengajuan) ? dbData.recent_pengajuan : submissions.slice(0, 5);
   const adminBannerItems: OverviewBannerItem[] = [
     ...(pending > 0
       ? [
@@ -1376,17 +1436,17 @@ export function AdminOverviewPage() {
         title="adminOverviewTitle"
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label={t("business")} value={String(bisnisCount)} helper={t("registered")} icon={Building2} loading={businessesQuery.isLoading} />
-        <StatCard label={t("submissions")} value={String(submissionCount)} helper={t("pendingCount", { count: pending })} icon={FileCheck2} tone="neutral" loading={submissionsQuery.isLoading} />
-        <StatCard label={t("users")} value={String(userCount)} helper={t("platformAccounts")} icon={Users} loading={usersQuery.isLoading && adminsQuery.isLoading} />
+        <StatCard label={t("business")} value={String(displayBisnisCount)} helper={t("registered")} icon={Building2} loading={businessesQuery.isLoading || dashboardQuery.isLoading} />
+        <StatCard label={t("submissions")} value={String(displaySubmissionCount)} helper={t("pendingCount", { count: displayPending })} icon={FileCheck2} tone="neutral" loading={submissionsQuery.isLoading || dashboardQuery.isLoading} />
+        <StatCard label={t("users")} value={String(displayUserCount)} helper={t("platformAccounts")} icon={Users} loading={(usersQuery.isLoading && adminsQuery.isLoading) || dashboardQuery.isLoading} />
         <StatCard label={t("notifications")} value={String(notifCount)} helper={t("operational")} icon={Bell} tone="neutral" loading={notificationsQuery.isLoading} />
       </div>
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <div className="rounded-md border border-base-300 bg-white p-5 shadow-sm">
           <h3 className="text-xl font-black">{t("submissionStatus")}</h3>
           <div className="mt-5 grid gap-3">
-            {!submissionsQuery.isLoading &&
-            submissions.length === 0 ? (
+            {!(submissionsQuery.isLoading || dashboardQuery.isLoading) &&
+            displayRecentSubmissions.length === 0 ? (
               <EmptyState
                 title="dataUnavailable"
                 body="latestUpdatesEmpty"
@@ -1394,7 +1454,7 @@ export function AdminOverviewPage() {
                 icon={FileCheck2}
               />
             ) : null}
-            {submissions.slice(0, 5).map((item) => (
+            {displayRecentSubmissions.map((item) => (
               <div key={item.id} className="flex items-center justify-between gap-4 rounded-md border border-base-300 p-4">
                 <div>
                   <p className="font-black">
