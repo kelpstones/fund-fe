@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 
 export type UserRole = "umkm" | "investor" | "admin" | "superadmin";
 
@@ -70,6 +70,12 @@ export type ResourceField<T extends Entity> = {
   getEditValue?: (item: T) => string | number | undefined;
   colSpan?: 1 | 2;
   options?: Array<{ value: string | number; label: string }>;
+  renderLabelAction?: (context: {
+    editing: T | null;
+    formValues: Record<string, unknown>;
+    setFormValues: Dispatch<SetStateAction<Record<string, unknown>>>;
+    isSaving: boolean;
+  }) => ReactNode;
 };
 
 export type ResourceFormContext<T extends Entity> = {
