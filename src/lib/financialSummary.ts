@@ -17,20 +17,83 @@ const trimTrailingSlash = (value: string) => value.replace(/\/+$/, "");
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value && typeof value === "object" && !Array.isArray(value));
 
-const cleanSummaryText = (value: string) =>
+const decodeHtmlEntities = (value: string) =>
   value
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'");
+
+const stripHtml = (value: string) =>
+  value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(?:p|div|li|h[1-6])>/gi, "\n")
+    .replace(/<[^>]+>/g, "");
+
+const summaryHeadings: Record<string, string> = {
+  "ringkasan performa": "Ringkasan performa",
+  "analisis kesehatan & keunggulan": "Kesehatan dan keunggulan",
+  "analisis kesehatan dan keunggulan": "Kesehatan dan keunggulan",
+  "kesehatan & keunggulan": "Kesehatan dan keunggulan",
+  "kesehatan dan keunggulan": "Kesehatan dan keunggulan",
+  "analisis risiko": "Catatan risiko",
+  "catatan risiko": "Catatan risiko",
+  "peluang pertumbuhan": "Peluang pertumbuhan",
+  "rekomendasi": "Rekomendasi",
+};
+
+const genericIntroPattern =
+  /^(berikut\s+(?:adalah\s+)?(?:analisis|ringkasan)[\w\s-]*(?:untuk\s+investor|bisnis|umkm)?\s*:|here(?:'s| is)\s+(?:a\s+)?(?:brief\s+)?(?:analysis|summary)[\w\s-]*:?)$/i;
+
+const normalizeSummaryLine = (rawLine: string) => {
+  const line = rawLine
+    .trim()
+    .replace(/^\s*[-*]\s+/, "")
+    .replace(/\s+/g, " ");
+
+  if (!line || genericIntroPattern.test(line)) return "";
+
+  const headingKey = line.replace(/:$/, "").trim().toLowerCase();
+  if (summaryHeadings[headingKey]) return summaryHeadings[headingKey];
+
+  return line
+    .replace(/^Status Kesehatan\s*:/i, "Status kesehatan:")
+    .replace(/^Keunggulan Utama\s*:/i, "Keunggulan utama:")
+    .replace(/^Risiko Utama\s*:/i, "Risiko utama:")
+    .replace(/^Rekomendasi Investor\s*:/i, "Rekomendasi investor:");
+};
+
+const cleanSummaryText = (value: string) => {
+  const cleaned = decodeHtmlEntities(stripHtml(value))
     .replace(/```[\s\S]*?```/g, (match) => match.replace(/```/g, ""))
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/__([^_]+)__/g, "$1")
     .replace(/^#{1,6}\s+/gm, "")
-    .replace(/^\s*[-*]\s+/gm, "- ")
     .replace(/\*+/g, "")
     .replace(/_{2,}/g, "")
     .replace(/[ \t]{2,}/g, " ")
     .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
     .trim();
+
+  const lines: string[] = [];
+
+  for (const rawLine of cleaned.split(/\r?\n/)) {
+    const line = normalizeSummaryLine(rawLine);
+    if (!line) continue;
+
+    const isHeading = Object.values(summaryHeadings).includes(line);
+    if (isHeading && lines.length && lines[lines.length - 1] !== "") {
+      lines.push("");
+    }
+
+    lines.push(line);
+  }
+
+  return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+};
 
 const extractSummary = (payload: unknown): string => {
   if (typeof payload === "string") return cleanSummaryText(payload);
