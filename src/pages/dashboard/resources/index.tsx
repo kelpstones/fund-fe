@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { ArrowDown, ArrowUp, Filter, ImagePlus, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Filter, ImagePlus, Loader2, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { ResourcePage } from "../../../components/ResourcePage";
 import { DashboardBreadcrumb } from "../../../components/DashboardBreadcrumb";
 import { useToast } from "../../../components/ToastProvider";
@@ -33,6 +33,10 @@ import {
   userManagementConfig,
 } from "../../../lib/resourceConfigs";
 import { apiErrorMessage, currency, dateShort, percent, readPath, statusTone, textValue } from "../../../lib/format";
+import {
+  generateFinancialSummary,
+  type FinancialSummaryPayload,
+} from "../../../lib/financialSummary";
 import type { Entity, ResourceAction, ResourceColumn, ResourceConfig, ResourceField } from "../../../types";
 
 const badge = (status: unknown) => (
@@ -1401,6 +1405,151 @@ export function BusinessesPage({
   );
 }
 
+const financialSummaryKeys = [
+  "net_profit_margin",
+  "kepuasan_pelanggan",
+  "review_volatility",
+  "repeat_order_rate",
+  "digital_adoption_score",
+  "year_revenue",
+  "business_tenure_years",
+] as const;
+
+const recordValue = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+
+const numericMetric = (source: Record<string, unknown>, key: string) => {
+  const value = source[key];
+  if (value === null || value === undefined || value === "") return null;
+  const numeric = typeof value === "number" ? value : Number(String(value).replace(",", "."));
+  return Number.isFinite(numeric) ? numeric : null;
+};
+
+const buildSummaryPayload = (
+  business: Entity | undefined,
+  profileOverride?: Record<string, unknown>,
+): FinancialSummaryPayload | null => {
+  if (!business) return null;
+  const profile = {
+    ...recordValue(business.profile),
+    ...profileOverride,
+  };
+
+  const metrics = financialSummaryKeys.reduce<Record<string, number>>((acc, key) => {
+    const value = numericMetric(profile, key);
+    if (value !== null) acc[key] = value;
+    return acc;
+  }, {});
+
+  const hasAllMetrics = financialSummaryKeys.every((key) => Number.isFinite(metrics[key]));
+  if (!hasAllMetrics) return null;
+
+  const latency = String(profile.peak_hour_latency ?? "medium").toLowerCase();
+  const peakHourLatency = ["low", "medium", "high"].includes(latency) ? latency : "medium";
+
+  return {
+    net_profit_margin: metrics.net_profit_margin,
+    kepuasan_pelanggan: metrics.kepuasan_pelanggan,
+    peak_hour_latency: peakHourLatency,
+    review_volatility: metrics.review_volatility,
+    repeat_order_rate: metrics.repeat_order_rate,
+    digital_adoption_score: metrics.digital_adoption_score,
+    year_revenue: Math.round(metrics.year_revenue),
+    business_tenure_years: metrics.business_tenure_years,
+  };
+};
+
+function SubmissionAiFillButton({
+  businesses,
+  formValues,
+  setFormValues,
+  disabled,
+}: {
+  businesses: Entity[];
+  formValues: Record<string, unknown>;
+  setFormValues: Dispatch<SetStateAction<Record<string, unknown>>>;
+  disabled?: boolean;
+}) {
+  const { language } = useLanguage();
+  const toast = useToast();
+  const [isGenerating, setIsGenerating] = useState(false);
+  const selectedBusinessId = String(formValues.bisnis_id ?? "");
+  const selectedBusiness =
+    businesses.find((business) => String(business.id) === selectedBusinessId) ?? businesses[0];
+
+  const label = language === "id" ? "Isi dengan AI" : "Fill with AI";
+  const loadingLabel = language === "id" ? "Membuat..." : "Generating...";
+  const actionTitle =
+    language === "id"
+      ? "Buat draft deskripsi peluang dari bisnis profile."
+      : "Generate an opportunity description draft from the business profile.";
+  const missingProfileMessage =
+    language === "id"
+      ? "Lengkapi bisnis profile terlebih dahulu sebelum menggunakan AI."
+      : "Complete the business profile before using AI.";
+
+  const handleGenerate = async () => {
+    if (!selectedBusiness || isGenerating) return;
+
+    setIsGenerating(true);
+    try {
+      let payload = buildSummaryPayload(selectedBusiness);
+
+      if (!payload) {
+        try {
+          const response = await apiClient.get(`/businesses/${selectedBusiness.id}/profile`);
+          const profile = unwrap<unknown>(response.data);
+          payload = buildSummaryPayload(selectedBusiness, recordValue(profile));
+        } catch {
+          payload = null;
+        }
+      }
+
+      if (!payload) {
+        toast.warning(missingProfileMessage);
+        return;
+      }
+
+      const summary = await generateFinancialSummary(payload);
+      setFormValues((current) => ({
+        ...current,
+        bisnis_id: current.bisnis_id || String(selectedBusiness.id),
+        deskripsi_peluang: summary,
+      }));
+      toast.success(
+        language === "id"
+          ? "Draft deskripsi peluang berhasil dibuat."
+          : "Opportunity description draft generated.",
+      );
+    } catch (error) {
+      const fallback =
+        language === "id"
+          ? "AI belum bisa membuat draft deskripsi."
+          : "AI could not generate the draft description.";
+      toast.error(error instanceof Error ? error.message : fallback);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      className="btn btn-outline btn-xs rounded-md"
+      disabled={disabled || isGenerating || !selectedBusiness}
+      onClick={handleGenerate}
+      title={selectedBusiness ? actionTitle : missingProfileMessage}
+    >
+      {isGenerating ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+      ) : (
+        <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+      )}
+      {isGenerating ? loadingLabel : label}
+    </button>
+  );
+}
+
 export function SubmissionsPage({ admin = false }: { admin?: boolean }) {
   const { language } = useLanguage();
   const { user } = useAuth();
@@ -1494,6 +1643,14 @@ export function SubmissionsPage({ admin = false }: { admin?: boolean }) {
         colSpan: 2,
         placeholder:
           "Jelaskan peluang usaha, target pasar, rencana pertumbuhan, dan alasan investor perlu mendanai bisnis ini.",
+        renderLabelAction: ({ formValues, setFormValues, isSaving }) => (
+          <SubmissionAiFillButton
+            businesses={availableBusinesses}
+            formValues={formValues}
+            setFormValues={setFormValues}
+            disabled={isSaving || businessOptionsQuery.isLoading}
+          />
+        ),
       },
       {
         name: "rencana_penggunaan_dana",
@@ -1502,7 +1659,7 @@ export function SubmissionsPage({ admin = false }: { admin?: boolean }) {
         colSpan: 2,
       },
     ];
-  }, [admin, businessOptionsQuery.data]);
+  }, [admin, availableBusinesses, businessOptionsQuery.isLoading, businessOptionsQuery.data]);
 
   const canEditSubmission = (item: Entity) => {
     const status = readPath(item, ["approval.status", "approval_status", "status"]);

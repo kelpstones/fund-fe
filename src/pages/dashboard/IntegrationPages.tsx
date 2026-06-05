@@ -1023,14 +1023,14 @@ export function BusinessProfilePage() {
               {groupedFields.map((section) => (
                 <div key={section.key} className="rounded-md border border-base-300 p-4">
                   <h3 className="text-sm font-black text-neutral">{localeText(section.title, language)}</h3>
-                  <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  <div className="mt-3 grid gap-4">
                     {section.fields.map((field) => (
                       <label className="form-control" key={field.key}>
                         <span className="label-text mb-1 font-semibold">{localeText(field.label, language)}</span>
                         <span className="mb-2 text-xs font-semibold leading-5 text-neutral/50">
                           {localeText(field.help, language)}
                         </span>
-                        <div className="grid gap-2 sm:grid-cols-[1fr_140px] sm:items-center">
+                        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(190px,220px)] sm:items-center">
                           <input
                             type="range"
                             min={field.min}
@@ -1051,7 +1051,7 @@ export function BusinessProfilePage() {
                                 <input
                                   type="text"
                                   inputMode="numeric"
-                                  className="input input-bordered w-full rounded-md pl-12 text-right"
+                                  className="input input-bordered w-full rounded-md pl-12 text-right tabular-nums"
                                   value={numberFormatter.format(Number(activeBusinessProfile[field.key] || 0))}
                                   onChange={(event) =>
                                     updateNumberFromText(field.key, event.target.value)

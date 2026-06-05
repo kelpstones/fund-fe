@@ -1159,7 +1159,17 @@ export function ResourcePage<T extends Entity>({
                         key={field.name}
                         className={isFullWidth ? "form-control sm:col-span-2" : "form-control"}
                       >
-                        <span className="label-text mb-2 font-semibold">{t(field.label)}</span>
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <span className="label-text font-semibold">{t(field.label)}</span>
+                          {field.renderLabelAction
+                            ? field.renderLabelAction({
+                                editing,
+                                formValues,
+                                setFormValues,
+                                isSaving,
+                              })
+                            : null}
+                        </div>
                         {field.type === "textarea" ? (
                           <textarea
                             {...commonProps}
